@@ -1,0 +1,116 @@
+{
+  "consultation": {
+    "keywords": [
+      "咨询",
+      "请问",
+      "求助",
+      "帮忙",
+      "帮助",
+      "问题",
+      "疑问",
+      "how",
+      "help",
+      "question"
+    ],
+    "patterns": [
+      "如何.*",
+      "怎么.*",
+      "请问.*",
+      "求助.*"
+    ],
+    "priority": "normal",
+    "auto_reply": true,
+    "folder": "INBOX"
+  },
+  "complaint": {
+    "keywords": [
+      "投诉",
+      "抱怨",
+      "不满",
+      "愤怒",
+      "生气",
+      "差评",
+      "投诉",
+      "complain",
+      "angry",
+      "unhappy"
+    ],
+    "patterns": [
+      "投诉.*",
+      "抱怨.*",
+      "太差.*",
+      "糟糕.*",
+      "不满意.*"
+    ],
+    "priority": "high",
+    "auto_reply": false,
+    "folder": "INBOX",
+    "alert": true
+  },
+  "subscription": {
+    "keywords": [
+      "新闻",
+      "简报",
+      "订阅",
+      "newsletter",
+      "订阅",
+      "update",
+      "news",
+      "bullet"
+    ],
+    "patterns": [
+      ".*新闻.*",
+      ".*简报.*",
+      ".*newsletter.*",
+      "订阅.*"
+    ],
+    "priority": "low",
+    "auto_reply": false,
+    "folder": "阅读列表",
+    "archive": true
+  },
+  "urgent": {
+    "keywords": [
+      "紧急",
+      "急",
+      "urgent",
+      "asap",
+      "immediately",
+      "critical",
+      "important"
+    ],
+    "patterns": [
+      "紧急.*",
+      "急.*",
+      "urgent.*",
+      "asap.*"
+    ],
+    "priority": "high",
+    "auto_reply": true,
+    "folder": "INBOX",
+    "alert": true
+  },
+  "spam": {
+    "keywords": [
+      "促销",
+      "优惠",
+      "打折",
+      "广告",
+      "推广",
+      "sale",
+      "promotion",
+      "discount",
+      "advertisement"
+    ],
+    "patterns": [
+      ".*促销.*",
+      ".*优惠.*",
+      ".*打折.*",
+      ".*广告.*"
+    ],
+    "priority": "low",
+    "auto_reply": false,
+    "folder": "垃圾邮件",
+    "delete": true
+  }
+}

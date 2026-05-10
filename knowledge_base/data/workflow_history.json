@@ -1,0 +1,843 @@
+[
+  {
+    "workflow_id": "weekly_report_1771855860",
+    "type": "weekly_report",
+    "start_time": "2026-02-23T22:11:00.409457",
+    "status": "completed",
+    "steps": [
+      {
+        "step": 1,
+        "action": "collect_data",
+        "start_time": "2026-02-23T22:11:00.410055",
+        "end_time": "2026-02-23T22:11:00.410102",
+        "data_collected": {
+          "date_range": "2026-02-23 周报",
+          "calendar_events": [
+            {
+              "date": "周一",
+              "event": "团队周会",
+              "time": "10:00-11:00"
+            },
+            {
+              "date": "周二",
+              "event": "项目评审",
+              "time": "14:00-16:00"
+            },
+            {
+              "date": "周三",
+              "event": "客户会议",
+              "time": "15:00-16:30"
+            },
+            {
+              "date": "周四",
+              "event": "代码审查",
+              "time": "10:30-12:00"
+            },
+            {
+              "date": "周五",
+              "event": "技术分享",
+              "time": "16:00-17:00"
+            }
+          ],
+          "git_commits": [
+            {
+              "date": "周一",
+              "repo": "project-a",
+              "commits": 3,
+              "message": "修复登录bug"
+            },
+            {
+              "date": "周二",
+              "repo": "project-b",
+              "commits": 5,
+              "message": "添加新功能模块"
+            },
+            {
+              "date": "周三",
+              "repo": "project-a",
+              "commits": 2,
+              "message": "优化性能"
+            },
+            {
+              "date": "周四",
+              "repo": "project-c",
+              "commits": 4,
+              "message": "更新文档"
+            },
+            {
+              "date": "周五",
+              "repo": "project-b",
+              "commits": 1,
+              "message": "修复测试用例"
+            }
+          ],
+          "chat_messages": [
+            {
+              "platform": "微信",
+              "count": 42,
+              "keywords": [
+                "需求",
+                "进度",
+                "问题"
+              ]
+            },
+            {
+              "platform": "钉钉",
+              "count": 28,
+              "keywords": [
+                "会议",
+                "文档",
+                "deadline"
+              ]
+            }
+          ],
+          "project_progress": {
+            "project_a": {
+              "progress": 85,
+              "status": "进行中",
+              "next_milestone": "测试完成"
+            },
+            "project_b": {
+              "progress": 60,
+              "status": "进行中",
+              "next_milestone": "UI优化"
+            },
+            "project_c": {
+              "progress": 95,
+              "status": "收尾",
+              "next_milestone": "上线部署"
+            }
+          }
+        }
+      },
+      {
+        "step": 2,
+        "action": "generate_report",
+        "start_time": "2026-02-23T22:11:00.410106",
+        "end_time": "2026-02-23T22:11:00.411481",
+        "report_file": "C:\\Users\\Administrator\\AI_Workflow_Reports\\weekly_report_20260223_221100.txt"
+      },
+      {
+        "step": 3,
+        "action": "send_email",
+        "start_time": "2026-02-23T22:11:00.411489",
+        "email_sent": false,
+        "recipient": "18228392653@163.",
+        "end_time": "2026-02-23T22:11:21.473718"
+      }
+    ],
+    "result": {
+      "report_generated": true,
+      "report_file": "C:\\Users\\Administrator\\AI_Workflow_Reports\\weekly_report_20260223_221100.txt",
+      "email_sent": true
+    },
+    "end_time": "2026-02-23T22:11:21.473727"
+  },
+  {
+    "workflow_id": "backup_1771856565",
+    "type": "backup_archive",
+    "source_folder": "C:/Users/Administrator/Desktop/高考资料",
+    "target_drive": "D:",
+    "start_time": "2026-02-23T22:22:45.703992",
+    "status": "completed",
+    "steps": [
+      {
+        "step": 1,
+        "action": "check_paths",
+        "start_time": "2026-02-23T22:22:45.706774",
+        "end_time": "2026-02-23T22:22:45.708001",
+        "source_exists": true,
+        "target_created": true
+      },
+      {
+        "step": 2,
+        "action": "compare_files",
+        "start_time": "2026-02-23T22:22:45.708303",
+        "end_time": "2026-02-23T22:22:45.751403",
+        "comparison": {
+          "source_files": 47,
+          "target_files": 0,
+          "files_to_backup": [
+            {
+              "path": "物化生专属错题本.docx",
+              "reason": "new",
+              "size": 44370
+            },
+            {
+              "path": "目录.docx",
+              "reason": "new",
+              "size": 17540
+            },
+            {
+              "path": "高考化学\\高考化学 反应平衡与离子平衡.docx",
+              "reason": "new",
+              "size": 23838
+            },
+            {
+              "path": "高考化学\\高考化学 大π键.docx",
+              "reason": "new",
+              "size": 16222
+            },
+            {
+              "path": "高考化学\\高考化学 铁知识点发散.docx",
+              "reason": "new",
+              "size": 19104
+            },
+            {
+              "path": "高考数学\\高考数学 三角函数公式.docx",
+              "reason": "new",
+              "size": 24325
+            },
+            {
+              "path": "高考数学\\高考数学 三角函数恒等变换的核心维度及各类题型详细解析.docx",
+              "reason": "new",
+              "size": 13010
+            },
+            {
+              "path": "高考数学\\高考数学试题答案解析.docx",
+              "reason": "new",
+              "size": 7251
+            },
+            {
+              "path": "高考物理\\高考物理 冲量与动量定理.docx",
+              "reason": "new",
+              "size": 13429
+            },
+            {
+              "path": "高考生物\\高中生物 三大变异深度解析.docx",
+              "reason": "new",
+              "size": 18396
+            },
+            {
+              "path": "高考生物\\高中生物 元素周期律串联知识点.docx",
+              "reason": "new",
+              "size": 25566
+            },
+            {
+              "path": "高考生物\\高考生物 基因工程与蛋白质工程.docx",
+              "reason": "new",
+              "size": 21479
+            },
+            {
+              "path": "高考生物\\高考生物 遗传病分类.docx",
+              "reason": "new",
+              "size": 5927
+            },
+            {
+              "path": "高考英语\\2025年11月1日-2日维克多英语早报整理.docx",
+              "reason": "new",
+              "size": 14336
+            },
+            {
+              "path": "高考英语\\2025年11月7日-8日维克多英语早报整理.docx",
+              "reason": "new",
+              "size": 10509
+            },
+            {
+              "path": "高考英语\\2025年12月13日-14日维克多英语早报整理.docx",
+              "reason": "new",
+              "size": 15089
+            },
+            {
+              "path": "高考英语\\2025年12月20日-21日维克多英语早报整理.docx",
+              "reason": "new",
+              "size": 18413
+            },
+            {
+              "path": "高考英语\\2026 年 1 月 24 日-25 日维克多英语早报.docx",
+              "reason": "new",
+              "size": 16480
+            },
+            {
+              "path": "高考英语\\2026年1月17日-18日 维克多英语早报.docx",
+              "reason": "new",
+              "size": 18519
+            },
+            {
+              "path": "高考英语\\2026年1月31日-2月1日 维克多英语早报.docx",
+              "reason": "new",
+              "size": 21142
+            },
+            {
+              "path": "高考英语\\2026年2月12日-13日 维克多英语早报.docx",
+              "reason": "new",
+              "size": 11942
+            },
+            {
+              "path": "高考英语\\2026年2月8日（星期日）维克多英语早报.docx",
+              "reason": "new",
+              "size": 17525
+            },
+            {
+              "path": "高考英语\\七选五专项练习.docx",
+              "reason": "new",
+              "size": 27207
+            },
+            {
+              "path": "高考英语\\维克多英语早报 _ 双语热闻（2025年10月18日 星期六）.docx",
+              "reason": "new",
+              "size": 10548
+            },
+            {
+              "path": "高考英语\\维克多英语早报 _ 双语热闻（2025年10月19日 星期日）.docx",
+              "reason": "new",
+              "size": 15814
+            },
+            {
+              "path": "高考英语\\维克多英语早报整理与制作.docx",
+              "reason": "new",
+              "size": 14091
+            },
+            {
+              "path": "高考英语\\英语阅读.docx",
+              "reason": "new",
+              "size": 23118
+            },
+            {
+              "path": "高考英语\\高考英语 写作素材.docx",
+              "reason": "new",
+              "size": 36779
+            },
+            {
+              "path": "高考英语\\高考英语 写作素材（空白版）.docx",
+              "reason": "new",
+              "size": 55147
+            },
+            {
+              "path": "高考语文\\1.诗歌表达技巧-修辞手法辨别与赏析.pptx",
+              "reason": "new",
+              "size": 35672255
+            },
+            {
+              "path": "高考语文\\2.诗歌鉴赏-表达技巧-范浦红-常见表现手法.pptx",
+              "reason": "new",
+              "size": 12257121
+            },
+            {
+              "path": "高考语文\\2026 最具提分价值的论据.pdf",
+              "reason": "new",
+              "size": 20165026
+            },
+            {
+              "path": "高考语文\\2026教考衔接作文—精准对接高考.pdf",
+              "reason": "new",
+              "size": 67188764
+            },
+            {
+              "path": "高考语文\\3.诗歌表达技巧-修辞手法-表达方式分析.pptx",
+              "reason": "new",
+              "size": 7082150
+            },
+            {
+              "path": "高考语文\\4.诗歌表达技巧-表达方式与技巧解析.pptx",
+              "reason": "new",
+              "size": 32190616
+            },
+            {
+              "path": "高考语文\\古诗文填空题（含红色标注答案）.docx",
+              "reason": "new",
+              "size": 10778
+            },
+            {
+              "path": "高考语文\\高考语文 作文标题.docx",
+              "reason": "new",
+              "size": 24726
+            },
+            {
+              "path": "高考语文\\高考语文 作文标题（优化精简版）.docx",
+              "reason": "new",
+              "size": 6898
+            },
+            {
+              "path": "高考语文\\高考语文 作文标题（武侠版）.docx",
+              "reason": "new",
+              "size": 7617
+            },
+            {
+              "path": "高考语文\\高考语文 句子补写.docx",
+              "reason": "new",
+              "size": 733936
+            },
+            {
+              "path": "高考语文\\高考语文 武侠作文.docx",
+              "reason": "new",
+              "size": 15033
+            },
+            {
+              "path": "高考语文\\高考语文 精简生动版高考素材.docx",
+              "reason": "new",
+              "size": 10236
+            },
+            {
+              "path": "高考语文\\高考语文 诗歌鉴赏形象类词语.docx",
+              "reason": "new",
+              "size": 17336
+            },
+            {
+              "path": "高考语文\\高考语文 诗歌鉴赏形象类题型模板.docx",
+              "reason": "new",
+              "size": 21498
+            },
+            {
+              "path": "高考语文\\高考语文 颁奖词格式素材及评分分析.docx",
+              "reason": "new",
+              "size": 22854
+            },
+            {
+              "path": "高考语文\\高考语文 高考作文6大主题高级句式.docx",
+              "reason": "new",
+              "size": 10378
+            },
+            {
+              "path": "高考语文\\高考语文 高考作文高频主题词汇表.docx",
+              "reason": "new",
+              "size": 11794
+            }
+          ],
+          "total_size": 176026132
+        }
+      },
+      {
+        "step": 3,
+        "action": "copy_files",
+        "start_time": "2026-02-23T22:22:45.751415",
+        "end_time": "2026-02-23T22:22:50.138670",
+        "copy_results": {
+          "files_copied": 47,
+          "total_files": 47,
+          "total_size": 176026132
+        }
+      },
+      {
+        "step": 4,
+        "action": "generate_log",
+        "start_time": "2026-02-23T22:22:50.138684",
+        "end_time": "2026-02-23T22:22:50.140472",
+        "log_file": "D:Backups\\备份日志.txt"
+      },
+      {
+        "step": 5,
+        "action": "eject_drive",
+        "start_time": "2026-02-23T22:22:50.140481",
+        "end_time": "2026-02-23T22:22:51.141928",
+        "eject_success": true
+      },
+      {
+        "step": 6,
+        "action": "play_notification",
+        "start_time": "2026-02-23T22:22:51.141939",
+        "end_time": "2026-02-23T22:22:51.142231",
+        "notification_played": true
+      }
+    ],
+    "result": {
+      "files_copied": 47,
+      "total_size": 176026132,
+      "backup_complete": true,
+      "log_file": "D:Backups\\备份日志.txt"
+    },
+    "end_time": "2026-02-23T22:22:51.142237"
+  },
+  {
+    "workflow_id": "weekly_report_1772881982",
+    "type": "weekly_report",
+    "start_time": "2026-03-07T19:13:02.046355",
+    "status": "completed",
+    "steps": [
+      {
+        "step": 1,
+        "action": "collect_data",
+        "start_time": "2026-03-07T19:13:02.046904",
+        "end_time": "2026-03-07T19:13:02.047923",
+        "data_collected": {
+          "date_range": "2026-03-07 周报",
+          "calendar_events": [
+            {
+              "date": "周一",
+              "event": "团队周会",
+              "time": "10:00-11:00"
+            },
+            {
+              "date": "周二",
+              "event": "项目评审",
+              "time": "14:00-16:00"
+            },
+            {
+              "date": "周三",
+              "event": "客户会议",
+              "time": "15:00-16:30"
+            },
+            {
+              "date": "周四",
+              "event": "代码审查",
+              "time": "10:30-12:00"
+            },
+            {
+              "date": "周五",
+              "event": "技术分享",
+              "time": "16:00-17:00"
+            }
+          ],
+          "git_commits": [
+            {
+              "date": "周一",
+              "repo": "project-a",
+              "commits": 3,
+              "message": "修复登录bug"
+            },
+            {
+              "date": "周二",
+              "repo": "project-b",
+              "commits": 5,
+              "message": "添加新功能模块"
+            },
+            {
+              "date": "周三",
+              "repo": "project-a",
+              "commits": 2,
+              "message": "优化性能"
+            },
+            {
+              "date": "周四",
+              "repo": "project-c",
+              "commits": 4,
+              "message": "更新文档"
+            },
+            {
+              "date": "周五",
+              "repo": "project-b",
+              "commits": 1,
+              "message": "修复测试用例"
+            }
+          ],
+          "chat_messages": [
+            {
+              "platform": "微信",
+              "count": 42,
+              "keywords": [
+                "需求",
+                "进度",
+                "问题"
+              ]
+            },
+            {
+              "platform": "钉钉",
+              "count": 28,
+              "keywords": [
+                "会议",
+                "文档",
+                "deadline"
+              ]
+            }
+          ],
+          "project_progress": {
+            "project_a": {
+              "progress": 85,
+              "status": "进行中",
+              "next_milestone": "测试完成"
+            },
+            "project_b": {
+              "progress": 60,
+              "status": "进行中",
+              "next_milestone": "UI优化"
+            },
+            "project_c": {
+              "progress": 95,
+              "status": "收尾",
+              "next_milestone": "上线部署"
+            }
+          }
+        }
+      },
+      {
+        "step": 2,
+        "action": "generate_report",
+        "start_time": "2026-03-07T19:13:02.047930",
+        "end_time": "2026-03-07T19:13:02.052320",
+        "report_file": "C:\\Users\\Administrator\\AI_Workflow_Reports\\weekly_report_20260307_191302.txt"
+      },
+      {
+        "step": 3,
+        "action": "send_email",
+        "start_time": "2026-03-07T19:13:02.052330",
+        "email_sent": false,
+        "note": "未指定收件人邮箱",
+        "end_time": "2026-03-07T19:13:02.052744"
+      }
+    ],
+    "result": {
+      "report_generated": true,
+      "report_file": "C:\\Users\\Administrator\\AI_Workflow_Reports\\weekly_report_20260307_191302.txt",
+      "email_sent": false
+    },
+    "end_time": "2026-03-07T19:13:02.052750"
+  },
+  {
+    "workflow_id": "weekly_report_1774061080",
+    "type": "weekly_report",
+    "start_time": "2026-03-21T10:44:40.658545",
+    "status": "completed",
+    "steps": [
+      {
+        "step": 1,
+        "action": "collect_data",
+        "start_time": "2026-03-21T10:44:40.659917",
+        "end_time": "2026-03-21T10:44:40.660258",
+        "data_collected": {
+          "date_range": "2026-03-21 周报",
+          "calendar_events": [
+            {
+              "date": "周一",
+              "event": "团队周会",
+              "time": "10:00-11:00"
+            },
+            {
+              "date": "周二",
+              "event": "项目评审",
+              "time": "14:00-16:00"
+            },
+            {
+              "date": "周三",
+              "event": "客户会议",
+              "time": "15:00-16:30"
+            },
+            {
+              "date": "周四",
+              "event": "代码审查",
+              "time": "10:30-12:00"
+            },
+            {
+              "date": "周五",
+              "event": "技术分享",
+              "time": "16:00-17:00"
+            }
+          ],
+          "git_commits": [
+            {
+              "date": "周一",
+              "repo": "project-a",
+              "commits": 3,
+              "message": "修复登录bug"
+            },
+            {
+              "date": "周二",
+              "repo": "project-b",
+              "commits": 5,
+              "message": "添加新功能模块"
+            },
+            {
+              "date": "周三",
+              "repo": "project-a",
+              "commits": 2,
+              "message": "优化性能"
+            },
+            {
+              "date": "周四",
+              "repo": "project-c",
+              "commits": 4,
+              "message": "更新文档"
+            },
+            {
+              "date": "周五",
+              "repo": "project-b",
+              "commits": 1,
+              "message": "修复测试用例"
+            }
+          ],
+          "chat_messages": [
+            {
+              "platform": "微信",
+              "count": 42,
+              "keywords": [
+                "需求",
+                "进度",
+                "问题"
+              ]
+            },
+            {
+              "platform": "钉钉",
+              "count": 28,
+              "keywords": [
+                "会议",
+                "文档",
+                "deadline"
+              ]
+            }
+          ],
+          "project_progress": {
+            "project_a": {
+              "progress": 85,
+              "status": "进行中",
+              "next_milestone": "测试完成"
+            },
+            "project_b": {
+              "progress": 60,
+              "status": "进行中",
+              "next_milestone": "UI优化"
+            },
+            "project_c": {
+              "progress": 95,
+              "status": "收尾",
+              "next_milestone": "上线部署"
+            }
+          }
+        }
+      },
+      {
+        "step": 2,
+        "action": "generate_report",
+        "start_time": "2026-03-21T10:44:40.660263",
+        "end_time": "2026-03-21T10:44:40.662259",
+        "report_file": "C:\\Users\\Administrator\\AI_Workflow_Reports\\weekly_report_20260321_104440.txt"
+      },
+      {
+        "step": 3,
+        "action": "send_email",
+        "start_time": "2026-03-21T10:44:40.662267",
+        "email_sent": false,
+        "note": "未指定收件人邮箱",
+        "end_time": "2026-03-21T10:44:40.662753"
+      }
+    ],
+    "result": {
+      "report_generated": true,
+      "report_file": "C:\\Users\\Administrator\\AI_Workflow_Reports\\weekly_report_20260321_104440.txt",
+      "email_sent": false
+    },
+    "end_time": "2026-03-21T10:44:40.662759"
+  },
+  {
+    "workflow_id": "weekly_report_1774710308",
+    "type": "weekly_report",
+    "start_time": "2026-03-28T23:05:08.733175",
+    "status": "completed",
+    "steps": [
+      {
+        "step": 1,
+        "action": "collect_data",
+        "start_time": "2026-03-28T23:05:08.735008",
+        "end_time": "2026-03-28T23:05:08.736288",
+        "data_collected": {
+          "date_range": "2026-03-28 周报",
+          "calendar_events": [
+            {
+              "date": "周一",
+              "event": "团队周会",
+              "time": "10:00-11:00"
+            },
+            {
+              "date": "周二",
+              "event": "项目评审",
+              "time": "14:00-16:00"
+            },
+            {
+              "date": "周三",
+              "event": "客户会议",
+              "time": "15:00-16:30"
+            },
+            {
+              "date": "周四",
+              "event": "代码审查",
+              "time": "10:30-12:00"
+            },
+            {
+              "date": "周五",
+              "event": "技术分享",
+              "time": "16:00-17:00"
+            }
+          ],
+          "git_commits": [
+            {
+              "date": "周一",
+              "repo": "project-a",
+              "commits": 3,
+              "message": "修复登录bug"
+            },
+            {
+              "date": "周二",
+              "repo": "project-b",
+              "commits": 5,
+              "message": "添加新功能模块"
+            },
+            {
+              "date": "周三",
+              "repo": "project-a",
+              "commits": 2,
+              "message": "优化性能"
+            },
+            {
+              "date": "周四",
+              "repo": "project-c",
+              "commits": 4,
+              "message": "更新文档"
+            },
+            {
+              "date": "周五",
+              "repo": "project-b",
+              "commits": 1,
+              "message": "修复测试用例"
+            }
+          ],
+          "chat_messages": [
+            {
+              "platform": "微信",
+              "count": 42,
+              "keywords": [
+                "需求",
+                "进度",
+                "问题"
+              ]
+            },
+            {
+              "platform": "钉钉",
+              "count": 28,
+              "keywords": [
+                "会议",
+                "文档",
+                "deadline"
+              ]
+            }
+          ],
+          "project_progress": {
+            "project_a": {
+              "progress": 85,
+              "status": "进行中",
+              "next_milestone": "测试完成"
+            },
+            "project_b": {
+              "progress": 60,
+              "status": "进行中",
+              "next_milestone": "UI优化"
+            },
+            "project_c": {
+              "progress": 95,
+              "status": "收尾",
+              "next_milestone": "上线部署"
+            }
+          }
+        }
+      },
+      {
+        "step": 2,
+        "action": "generate_report",
+        "start_time": "2026-03-28T23:05:08.736295",
+        "end_time": "2026-03-28T23:05:08.738373",
+        "report_file": "C:\\Users\\Administrator\\AI_Workflow_Reports\\weekly_report_20260328_230508.txt"
+      },
+      {
+        "step": 3,
+        "action": "send_email",
+        "start_time": "2026-03-28T23:05:08.738382",
+        "email_sent": false,
+        "note": "未指定收件人邮箱",
+        "end_time": "2026-03-28T23:05:08.738831"
+      }
+    ],
+    "result": {
+      "report_generated": true,
+      "report_file": "C:\\Users\\Administrator\\AI_Workflow_Reports\\weekly_report_20260328_230508.txt",
+      "email_sent": false
+    },
+    "end_time": "2026-03-28T23:05:08.738838"
+  }
+]

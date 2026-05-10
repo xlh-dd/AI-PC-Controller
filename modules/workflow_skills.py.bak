@@ -1,0 +1,863 @@
+import logging
+import json
+import time
+import re
+import os
+import shutil
+from pathlib import Path
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Tuple, Any
+import threading
+import subprocess
+
+logger = logging.getLogger("WorkflowSkills")
+
+class WorkflowSkills:
+    """工作流技能模块 - 全自动工作流示例"""
+    
+    def __init__(self, config_manager=None, social_skills=None, 
+                 research_skills=None, learning_skills=None,
+                 file_manager=None, wechat_controller=None):
+        self.config_manager = config_manager
+        self.social_skills = social_skills
+        self.research_skills = research_skills
+        self.learning_skills = learning_skills
+        self.file_manager = file_manager
+        self.wechat_controller = wechat_controller
+        
+        self.active_workflows = {}  # 活跃的工作流
+        self.workflow_history = []  # 工作流历史
+        
+        self.load_workflow_data()
+    
+    def load_workflow_data(self):
+        """加载工作流数据"""
+        data_dir = Path(__file__).parent.parent / "knowledge_base" / "data"
+        data_dir.mkdir(parents=True, exist_ok=True)
+        
+        # 加载工作流历史
+        history_file = data_dir / "workflow_history.json"
+        if history_file.exists():
+            try:
+                with open(history_file, 'r', encoding='utf-8') as f:
+                    self.workflow_history = json.load(f)
+                logger.info(f"已加载 {len(self.workflow_history)} 条工作流历史")
+            except Exception as e:
+                logger.error(f"加载工作流历史失败: {e}")
+    
+    def save_workflow_data(self):
+        """保存工作流数据"""
+        data_dir = Path(__file__).parent.parent / "knowledge_base" / "data"
+        data_dir.mkdir(parents=True, exist_ok=True)
+        
+        # 保存工作流历史
+        history_file = data_dir / "workflow_history.json"
+        try:
+            with open(history_file, 'w', encoding='utf-8') as f:
+                json.dump(self.workflow_history, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            logger.error(f"保存工作流历史失败: {e}")
+    
+    def auto_weekly_report(self, recipient_email: str = None, 
+                          cc_email: str = None) -> Dict[str, Any]:
+        """自动生成周报工作流
+        
+        场景一：自动生成周报
+        周一早上8点，AI自动唤醒电脑。
+        读取你这周日程表、Git提交记录、微信/钉钉的工作聊天记录。
+        打开Word，撰写一份包含"项目进度"、"待办事项"、"风险点"的周报。
+        将周报发送邮件给老板，并抄送给自己。
+        """
+        logger.info("开始自动生成周报工作流")
+        
+        workflow_id = f"weekly_report_{int(time.time())}"
+        
+        # 创建工作流记录
+        workflow_record = {
+            "workflow_id": workflow_id,
+            "type": "weekly_report",
+            "start_time": datetime.now().isoformat(),
+            "status": "running",
+            "steps": [],
+            "result": {}
+        }
+        
+        self.active_workflows[workflow_id] = workflow_record
+        
+        # 启动工作流线程
+        workflow_thread = threading.Thread(
+            target=self._weekly_report_worker,
+            args=(workflow_id, recipient_email, cc_email),
+            daemon=True
+        )
+        workflow_thread.start()
+        
+        return {
+            "success": True,
+            "workflow_id": workflow_id,
+            "message": "已启动自动生成周报工作流",
+            "status": "started"
+        }
+    
+    def _weekly_report_worker(self, workflow_id: str, recipient_email: str, cc_email: str):
+        """周报工作流工作线程"""
+        workflow = self.active_workflows[workflow_id]
+        
+        try:
+            # 步骤1: 收集数据
+            workflow["steps"].append({
+                "step": 1,
+                "action": "collect_data",
+                "start_time": datetime.now().isoformat()
+            })
+            
+            # 模拟收集数据
+            collected_data = self._collect_weekly_data()
+            
+            workflow["steps"][-1]["end_time"] = datetime.now().isoformat()
+            workflow["steps"][-1]["data_collected"] = collected_data
+            
+            # 步骤2: 生成周报
+            workflow["steps"].append({
+                "step": 2,
+                "action": "generate_report",
+                "start_time": datetime.now().isoformat()
+            })
+            
+            report_content = self._generate_weekly_report(collected_data)
+            report_file = self._save_report_to_file(report_content, "weekly_report")
+            
+            workflow["steps"][-1]["end_time"] = datetime.now().isoformat()
+            workflow["steps"][-1]["report_file"] = report_file
+            
+            # 步骤3: 发送邮件
+            workflow["steps"].append({
+                "step": 3,
+                "action": "send_email",
+                "start_time": datetime.now().isoformat()
+            })
+            
+            if recipient_email:
+                email_sent = self._send_weekly_report_email(report_content, recipient_email, cc_email)
+                workflow["steps"][-1]["email_sent"] = email_sent
+                workflow["steps"][-1]["recipient"] = recipient_email
+            else:
+                logger.info("未指定收件人邮箱，跳过邮件发送")
+                workflow["steps"][-1]["email_sent"] = False
+                workflow["steps"][-1]["note"] = "未指定收件人邮箱"
+            
+            workflow["steps"][-1]["end_time"] = datetime.now().isoformat()
+            
+            # 完成工作流
+            workflow["status"] = "completed"
+            workflow["end_time"] = datetime.now().isoformat()
+            workflow["result"] = {
+                "report_generated": True,
+                "report_file": report_file,
+                "email_sent": recipient_email is not None
+            }
+            
+            logger.info(f"周报工作流完成：{workflow_id}")
+            
+        except Exception as e:
+            logger.error(f"周报工作流出错: {e}")
+            workflow["status"] = "error"
+            workflow["error"] = str(e)
+            workflow["end_time"] = datetime.now().isoformat()
+        
+        # 保存到历史
+        self.workflow_history.append(workflow)
+        self.save_workflow_data()
+        
+        # 从活跃工作流中移除
+        if workflow_id in self.active_workflows:
+            del self.active_workflows[workflow_id]
+    
+    def _collect_weekly_data(self) -> Dict[str, Any]:
+        """收集周报数据（模拟）"""
+        logger.info("收集周报数据...")
+        
+        # 模拟数据收集
+        data = {
+            "date_range": f"{datetime.now().strftime('%Y-%m-%d')} 周报",
+            "calendar_events": [
+                {"date": "周一", "event": "团队周会", "time": "10:00-11:00"},
+                {"date": "周二", "event": "项目评审", "time": "14:00-16:00"},
+                {"date": "周三", "event": "客户会议", "time": "15:00-16:30"},
+                {"date": "周四", "event": "代码审查", "time": "10:30-12:00"},
+                {"date": "周五", "event": "技术分享", "time": "16:00-17:00"}
+            ],
+            "git_commits": [
+                {"date": "周一", "repo": "project-a", "commits": 3, "message": "修复登录bug"},
+                {"date": "周二", "repo": "project-b", "commits": 5, "message": "添加新功能模块"},
+                {"date": "周三", "repo": "project-a", "commits": 2, "message": "优化性能"},
+                {"date": "周四", "repo": "project-c", "commits": 4, "message": "更新文档"},
+                {"date": "周五", "repo": "project-b", "commits": 1, "message": "修复测试用例"}
+            ],
+            "chat_messages": [
+                {"platform": "微信", "count": 42, "keywords": ["需求", "进度", "问题"]},
+                {"platform": "钉钉", "count": 28, "keywords": ["会议", "文档", "deadline"]}
+            ],
+            "project_progress": {
+                "project_a": {"progress": 85, "status": "进行中", "next_milestone": "测试完成"},
+                "project_b": {"progress": 60, "status": "进行中", "next_milestone": "UI优化"},
+                "project_c": {"progress": 95, "status": "收尾", "next_milestone": "上线部署"}
+            }
+        }
+        
+        return data
+    
+    def _generate_weekly_report(self, data: Dict[str, Any]) -> str:
+        """生成周报内容"""
+        logger.info("生成周报内容...")
+        
+        report = f"""周报 ({data['date_range']})
+
+一、本周工作概览
+本周共参加 {len(data['calendar_events'])} 个会议，提交 {sum(c['commits'] for c in data['git_commits'])} 次代码提交。
+处理工作聊天消息约 {sum(m['count'] for m in data['chat_messages'])} 条。
+
+二、项目进度
+"""
+        
+        for project, info in data["project_progress"].items():
+            report += f"{project}: 进度 {info['progress']}%，状态：{info['status']}，下一步：{info['next_milestone']}\n"
+        
+        report += """
+三、本周会议
+"""
+        for event in data["calendar_events"]:
+            report += f"{event['date']} {event['time']}: {event['event']}\n"
+        
+        report += """
+四、代码提交
+"""
+        for commit in data["git_commits"]:
+            report += f"{commit['date']} {commit['repo']}: {commit['commits']}次提交 - {commit['message']}\n"
+        
+        report += """
+五、待办事项
+1. 完成项目A的测试工作
+2. 准备项目C的上线文档
+3. 安排下周团队培训
+
+六、风险点
+1. 项目B的UI优化进度略有延迟
+2. 部分依赖库存在安全漏洞需要更新
+3. 团队成员下周有请假安排
+
+七、下周计划
+1. 推进各项目按计划进行
+2. 组织技术分享会
+3. 进行代码质量审查
+
+报告生成时间：""" + datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        return report
+    
+    def _save_report_to_file(self, report_content: str, report_type: str) -> str:
+        """保存报告到文件"""
+        reports_dir = Path.home() / "AI_Workflow_Reports"
+        reports_dir.mkdir(exist_ok=True)
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        file_name = f"{report_type}_{timestamp}.txt"
+        file_path = reports_dir / file_name
+        
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(report_content)
+        
+        logger.info(f"报告已保存到：{file_path}")
+        return str(file_path)
+    
+    def _send_weekly_report_email(self, report_content: str, 
+                                 recipient_email: str, cc_email: str = None) -> bool:
+        """发送周报邮件"""
+        if not self.social_skills:
+            logger.warning("社交技能未初始化，无法发送邮件")
+            return False
+        
+        subject = f"周报 - {datetime.now().strftime('%Y年%m月%d日')}"
+        
+        # 添加邮件头
+        email_body = f"""尊敬的领导：
+
+您好！
+
+以下是本周的工作周报，请查阅。
+
+{report_content}
+
+祝好！
+
+此致
+敬礼
+
+AI助手
+{datetime.now().strftime('%Y年%m月%d日')}
+"""
+        
+        try:
+            # 发送邮件
+            success = self.social_skills.send_email(
+                to_address=recipient_email,
+                subject=subject,
+                body=email_body,
+                from_address=self.config_manager.get("email", "from_address") if self.config_manager else None,
+                password=self.config_manager.get("email", "password") if self.config_manager else None
+            )
+            
+            if success and cc_email:
+                # 抄送给自己
+                self.social_skills.send_email(
+                    to_address=cc_email,
+                    subject=f"[抄送] {subject}",
+                    body=email_body,
+                    from_address=self.config_manager.get("email", "from_address") if self.config_manager else None,
+                    password=self.config_manager.get("email", "password") if self.config_manager else None
+                )
+            
+            return success
+            
+        except Exception as e:
+            logger.error(f"发送周报邮件失败: {e}")
+            return False
+    
+    def auto_watch_show(self, show_name: str, platform: str = "auto") -> Dict[str, Any]:
+        """自动追剧/番剧工作流
+        
+        场景二：自动追剧/番剧
+        你对着麦克风说："我想看最新的《X》"。
+        AI打开浏览器，搜索哪里可以看（B站/Netflix/网盘）。
+        如果有版权限制，自动挂载VPN；如果需要会员，提示你扫码（出于安全）。
+        全屏播放，并自动关灯（通过智能家居联动）。
+        """
+        logger.info(f"开始自动追剧工作流：{show_name}")
+        
+        workflow_id = f"watch_show_{int(time.time())}"
+        
+        # 创建工作流记录
+        workflow_record = {
+            "workflow_id": workflow_id,
+            "type": "watch_show",
+            "show_name": show_name,
+            "platform": platform,
+            "start_time": datetime.now().isoformat(),
+            "status": "running",
+            "steps": [],
+            "result": {}
+        }
+        
+        self.active_workflows[workflow_id] = workflow_record
+        
+        # 启动工作流线程
+        workflow_thread = threading.Thread(
+            target=self._watch_show_worker,
+            args=(workflow_id, show_name, platform),
+            daemon=True
+        )
+        workflow_thread.start()
+        
+        return {
+            "success": True,
+            "workflow_id": workflow_id,
+            "message": f"已启动自动追剧工作流：{show_name}",
+            "status": "started"
+        }
+    
+    def _watch_show_worker(self, workflow_id: str, show_name: str, platform: str):
+        """追剧工作流工作线程"""
+        workflow = self.active_workflows[workflow_id]
+        
+        try:
+            # 步骤1: 搜索资源
+            workflow["steps"].append({
+                "step": 1,
+                "action": "search_show",
+                "start_time": datetime.now().isoformat()
+            })
+            
+            search_results = self._search_show_resources(show_name, platform)
+            
+            workflow["steps"][-1]["end_time"] = datetime.now().isoformat()
+            workflow["steps"][-1]["search_results"] = search_results
+            
+            # 步骤2: 检查访问限制
+            workflow["steps"].append({
+                "step": 2,
+                "action": "check_access",
+                "start_time": datetime.now().isoformat()
+            })
+            
+            access_info = self._check_access_restrictions(search_results)
+            
+            workflow["steps"][-1]["end_time"] = datetime.now().isoformat()
+            workflow["steps"][-1]["access_info"] = access_info
+            
+            # 步骤3: 处理访问限制
+            if access_info.get("needs_vpn") or access_info.get("needs_membership"):
+                workflow["steps"].append({
+                    "step": 3,
+                    "action": "handle_restrictions",
+                    "start_time": datetime.now().isoformat()
+                })
+                
+                restriction_handled = self._handle_access_restrictions(access_info)
+                
+                workflow["steps"][-1]["end_time"] = datetime.now().isoformat()
+                workflow["steps"][-1]["restriction_handled"] = restriction_handled
+            
+            # 步骤4: 播放视频
+            workflow["steps"].append({
+                "step": 4 if len(workflow["steps"]) == 3 else 3,
+                "action": "play_video",
+                "start_time": datetime.now().isoformat()
+            })
+            
+            play_success = self._play_video(show_name, search_results, access_info)
+            
+            workflow["steps"][-1]["end_time"] = datetime.now().isoformat()
+            workflow["steps"][-1]["play_success"] = play_success
+            
+            # 步骤5: 智能家居控制（模拟）
+            if play_success:
+                workflow["steps"].append({
+                    "step": 5 if len(workflow["steps"]) == 4 else 4,
+                    "action": "smart_home_control",
+                    "start_time": datetime.now().isoformat()
+                })
+                
+                self._control_smart_home_for_watching()
+                
+                workflow["steps"][-1]["end_time"] = datetime.now().isoformat()
+                workflow["steps"][-1]["smart_home_controlled"] = True
+            
+            # 完成工作流
+            workflow["status"] = "completed"
+            workflow["end_time"] = datetime.now().isoformat()
+            workflow["result"] = {
+                "show_found": len(search_results) > 0,
+                "video_playing": play_success,
+                "access_issues_resolved": access_info.get("needs_vpn", False) or access_info.get("needs_membership", False)
+            }
+            
+            logger.info(f"追剧工作流完成：{workflow_id}")
+            
+        except Exception as e:
+            logger.error(f"追剧工作流出错: {e}")
+            workflow["status"] = "error"
+            workflow["error"] = str(e)
+            workflow["end_time"] = datetime.now().isoformat()
+        
+        # 保存到历史
+        self.workflow_history.append(workflow)
+        self.save_workflow_data()
+        
+        # 从活跃工作流中移除
+        if workflow_id in self.active_workflows:
+            del self.active_workflows[workflow_id]
+    
+    def _search_show_resources(self, show_name: str, platform: str) -> List[Dict[str, str]]:
+        """搜索剧集资源（模拟）"""
+        logger.info(f"搜索剧集资源：{show_name}")
+        time.sleep(1)
+        
+        # 模拟搜索结果
+        platforms = ["B站", "腾讯视频", "爱奇艺", "优酷", "Netflix", "网盘资源"]
+        
+        results = []
+        for p in platforms:
+            if platform == "auto" or platform.lower() in p.lower():
+                results.append({
+                    "platform": p,
+                    "url": f"https://{p.lower().replace(' ', '')}.com/search?q={show_name}",
+                    "available": True,
+                    "quality": "高清" if p in ["B站", "Netflix"] else "标清",
+                    "requires_membership": p in ["腾讯视频", "爱奇艺", "优酷", "Netflix"],
+                    "region_restricted": p == "Netflix"
+                })
+        
+        return results
+    
+    def _check_access_restrictions(self, search_results: List[Dict]) -> Dict[str, Any]:
+        """检查访问限制"""
+        needs_vpn = any(r["region_restricted"] for r in search_results)
+        needs_membership = any(r["requires_membership"] for r in search_results)
+        
+        return {
+            "needs_vpn": needs_vpn,
+            "needs_membership": needs_membership,
+            "available_platforms": [r["platform"] for r in search_results if r["available"]],
+            "free_platforms": [r["platform"] for r in search_results if r["available"] and not r["requires_membership"]]
+        }
+    
+    def _handle_access_restrictions(self, access_info: Dict[str, Any]) -> bool:
+        """处理访问限制"""
+        if access_info.get("needs_vpn"):
+            logger.info("检测到地区限制，尝试连接VPN...")
+            # 模拟VPN连接
+            time.sleep(2)
+            logger.info("VPN连接成功")
+        
+        if access_info.get("needs_membership"):
+            logger.info("需要会员，请扫码支付或使用共享账号")
+            # 这里可以弹出二维码或提示
+            # 出于安全考虑，不自动处理支付
+        
+        return True
+    
+    def _play_video(self, show_name: str, search_results: List[Dict], 
+                   access_info: Dict[str, Any]) -> bool:
+        """播放视频（模拟）"""
+        logger.info(f"开始播放：{show_name}")
+        
+        # 选择最佳平台
+        best_platform = None
+        for result in search_results:
+            if result["available"]:
+                if not result["requires_membership"]:
+                    best_platform = result
+                    break
+                elif best_platform is None:
+                    best_platform = result
+        
+        if not best_platform:
+            logger.error("没有可用的播放平台")
+            return False
+        
+        logger.info(f"选择平台：{best_platform['platform']}")
+        
+        # 模拟打开浏览器播放
+        try:
+            # 这里可以调用系统命令打开浏览器
+            # import webbrowser
+            # webbrowser.open(best_platform['url'])
+            
+            logger.info(f"已打开浏览器播放：{show_name}")
+            time.sleep(2)  # 模拟播放延迟
+            
+            # 模拟全屏播放
+            logger.info("切换到全屏模式")
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"播放视频失败: {e}")
+            return False
+    
+    def _control_smart_home_for_watching(self):
+        """控制智能家居（模拟）"""
+        logger.info("控制智能家居：关灯、调整温度")
+        # 模拟智能家居控制
+        # 这里可以调用智能家居API
+    
+    def auto_backup_archive(self, source_folder: str = None, 
+                          target_drive: str = None) -> Dict[str, Any]:
+        """自动备份与归档工作流
+        
+        场景三：自动备份与归档
+        当你插入移动硬盘，AI识别你的操作意图。
+        自动对比硬盘内容和电脑"工作"文件夹的修改时间。
+        将新增和修改的文件复制过去，并生成一份"备份日志.txt"放在硬盘根目录。
+        备份完成后，安全弹出硬件并播放提示音。
+        """
+        logger.info("开始自动备份与归档工作流")
+        
+        workflow_id = f"backup_{int(time.time())}"
+        
+        # 确定源文件夹和目标驱动器
+        if not source_folder:
+            source_folder = str(Path.home() / "工作")
+        
+        if not target_drive:
+            # 尝试查找可移动驱动器
+            target_drive = self._find_removable_drive()
+            if not target_drive:
+                return {
+                    "success": False,
+                    "error": "未找到可移动驱动器，请插入U盘或移动硬盘"
+                }
+        
+        # 创建工作流记录
+        workflow_record = {
+            "workflow_id": workflow_id,
+            "type": "backup_archive",
+            "source_folder": source_folder,
+            "target_drive": target_drive,
+            "start_time": datetime.now().isoformat(),
+            "status": "running",
+            "steps": [],
+            "result": {}
+        }
+        
+        self.active_workflows[workflow_id] = workflow_record
+        
+        # 启动工作流线程
+        workflow_thread = threading.Thread(
+            target=self._backup_archive_worker,
+            args=(workflow_id, source_folder, target_drive),
+            daemon=True
+        )
+        workflow_thread.start()
+        
+        return {
+            "success": True,
+            "workflow_id": workflow_id,
+            "message": f"已启动自动备份工作流：{source_folder} -> {target_drive}",
+            "status": "started"
+        }
+    
+    def _backup_archive_worker(self, workflow_id: str, source_folder: str, target_drive: str):
+        """备份工作流工作线程"""
+        workflow = self.active_workflows[workflow_id]
+        
+        try:
+            # 步骤1: 检查文件夹和驱动器
+            workflow["steps"].append({
+                "step": 1,
+                "action": "check_paths",
+                "start_time": datetime.now().isoformat()
+            })
+            
+            source_path = Path(source_folder)
+            target_path = Path(target_drive) / "Backups" / datetime.now().strftime("%Y%m%d")
+            
+            if not source_path.exists():
+                raise FileNotFoundError(f"源文件夹不存在：{source_folder}")
+            
+            target_path.mkdir(parents=True, exist_ok=True)
+            
+            workflow["steps"][-1]["end_time"] = datetime.now().isoformat()
+            workflow["steps"][-1]["source_exists"] = source_path.exists()
+            workflow["steps"][-1]["target_created"] = target_path.exists()
+            
+            # 步骤2: 对比文件
+            workflow["steps"].append({
+                "step": 2,
+                "action": "compare_files",
+                "start_time": datetime.now().isoformat()
+            })
+            
+            file_comparison = self._compare_files(source_path, target_path)
+            
+            workflow["steps"][-1]["end_time"] = datetime.now().isoformat()
+            workflow["steps"][-1]["comparison"] = file_comparison
+            
+            # 步骤3: 复制文件
+            workflow["steps"].append({
+                "step": 3,
+                "action": "copy_files",
+                "start_time": datetime.now().isoformat()
+            })
+            
+            copy_results = self._copy_files(file_comparison, source_path, target_path)
+            
+            workflow["steps"][-1]["end_time"] = datetime.now().isoformat()
+            workflow["steps"][-1]["copy_results"] = copy_results
+            
+            # 步骤4: 生成备份日志
+            workflow["steps"].append({
+                "step": 4,
+                "action": "generate_log",
+                "start_time": datetime.now().isoformat()
+            })
+            
+            log_file = self._generate_backup_log(file_comparison, copy_results, target_path)
+            
+            workflow["steps"][-1]["end_time"] = datetime.now().isoformat()
+            workflow["steps"][-1]["log_file"] = log_file
+            
+            # 步骤5: 安全弹出（模拟）
+            workflow["steps"].append({
+                "step": 5,
+                "action": "eject_drive",
+                "start_time": datetime.now().isoformat()
+            })
+            
+            eject_success = self._safely_eject_drive(target_drive)
+            
+            workflow["steps"][-1]["end_time"] = datetime.now().isoformat()
+            workflow["steps"][-1]["eject_success"] = eject_success
+            
+            # 步骤6: 播放提示音（模拟）
+            workflow["steps"].append({
+                "step": 6,
+                "action": "play_notification",
+                "start_time": datetime.now().isoformat()
+            })
+            
+            self._play_backup_completion_sound()
+            
+            workflow["steps"][-1]["end_time"] = datetime.now().isoformat()
+            workflow["steps"][-1]["notification_played"] = True
+            
+            # 完成工作流
+            workflow["status"] = "completed"
+            workflow["end_time"] = datetime.now().isoformat()
+            workflow["result"] = {
+                "files_copied": copy_results["files_copied"],
+                "total_size": copy_results["total_size"],
+                "backup_complete": True,
+                "log_file": log_file
+            }
+            
+            logger.info(f"备份工作流完成：{workflow_id}")
+            
+        except Exception as e:
+            logger.error(f"备份工作流出错: {e}")
+            workflow["status"] = "error"
+            workflow["error"] = str(e)
+            workflow["end_time"] = datetime.now().isoformat()
+        
+        # 保存到历史
+        self.workflow_history.append(workflow)
+        self.save_workflow_data()
+        
+        # 从活跃工作流中移除
+        if workflow_id in self.active_workflows:
+            del self.active_workflows[workflow_id]
+    
+    def _find_removable_drive(self) -> Optional[str]:
+        """查找可移动驱动器（模拟）"""
+        # 模拟查找驱动器
+        drives = ["D:", "E:", "F:", "G:"]
+        
+        for drive in drives:
+            drive_path = Path(drive)
+            if drive_path.exists():
+                # 简单判断是否为可移动驱动器
+                try:
+                    # 这里可以检查驱动器属性
+                    return str(drive_path)
+                except:
+                    continue
+        
+        return None
+    
+    def _compare_files(self, source_path: Path, target_path: Path) -> Dict[str, Any]:
+        """对比文件"""
+        logger.info("对比文件...")
+        
+        source_files = []
+        for item in source_path.rglob("*"):
+            if item.is_file():
+                source_files.append({
+                    "path": str(item.relative_to(source_path)),
+                    "size": item.stat().st_size,
+                    "modified": item.stat().st_mtime,
+                    "full_path": str(item)
+                })
+        
+        target_files = []
+        if target_path.exists():
+            for item in target_path.rglob("*"):
+                if item.is_file():
+                    target_files.append({
+                        "path": str(item.relative_to(target_path)),
+                        "size": item.stat().st_size,
+                        "modified": item.stat().st_mtime,
+                        "full_path": str(item)
+                    })
+        
+        # 找出需要备份的文件
+        files_to_backup = []
+        for src_file in source_files:
+            target_file = next((t for t in target_files if t["path"] == src_file["path"]), None)
+            
+            if not target_file:
+                # 新文件
+                files_to_backup.append({
+                    "path": src_file["path"],
+                    "reason": "new",
+                    "size": src_file["size"]
+                })
+            elif src_file["modified"] > target_file["modified"]:
+                # 修改过的文件
+                files_to_backup.append({
+                    "path": src_file["path"],
+                    "reason": "modified",
+                    "size": src_file["size"]
+                })
+        
+        return {
+            "source_files": len(source_files),
+            "target_files": len(target_files),
+            "files_to_backup": files_to_backup,
+            "total_size": sum(f["size"] for f in files_to_backup)
+        }
+    
+    def _copy_files(self, comparison: Dict[str, Any], 
+                   source_path: Path, target_path: Path) -> Dict[str, Any]:
+        """复制文件"""
+        logger.info("复制文件...")
+        
+        files_copied = 0
+        total_size = 0
+        
+        for file_info in comparison["files_to_backup"]:
+            src_file = source_path / file_info["path"]
+            dst_file = target_path / file_info["path"]
+            
+            # 创建目标目录
+            dst_file.parent.mkdir(parents=True, exist_ok=True)
+            
+            # 复制文件
+            try:
+                shutil.copy2(src_file, dst_file)
+                files_copied += 1
+                total_size += file_info["size"]
+                logger.debug(f"已复制：{file_info['path']}")
+            except Exception as e:
+                logger.error(f"复制文件失败 {file_info['path']}: {e}")
+        
+        return {
+            "files_copied": files_copied,
+            "total_files": len(comparison["files_to_backup"]),
+            "total_size": total_size
+        }
+    
+    def _generate_backup_log(self, comparison: Dict[str, Any], 
+                           copy_results: Dict[str, Any], target_path: Path) -> str:
+        """生成备份日志"""
+        log_content = f"""备份日志
+生成时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+备份统计：
+- 源文件数量：{comparison['source_files']}
+- 目标文件数量：{comparison['target_files']}
+- 需要备份的文件：{len(comparison['files_to_backup'])}
+- 实际复制的文件：{copy_results['files_copied']}
+- 总数据量：{comparison['total_size'] / 1024 / 1024:.2f} MB
+
+备份详情："""
+        
+        for file_info in comparison["files_to_backup"]:
+            log_content += f"\n- {file_info['path']} ({file_info['reason']}, {file_info['size']} bytes)"
+        
+        log_file = target_path.parent / "备份日志.txt"
+        with open(log_file, 'w', encoding='utf-8') as f:
+            f.write(log_content)
+        
+        logger.info(f"备份日志已生成：{log_file}")
+        return str(log_file)
+    
+    def _safely_eject_drive(self, drive_path: str) -> bool:
+        """安全弹出驱动器（模拟）"""
+        logger.info(f"安全弹出驱动器：{drive_path}")
+        # 模拟安全弹出
+        time.sleep(1)
+        logger.info("驱动器已安全弹出")
+        return True
+    
+    def _play_backup_completion_sound(self):
+        """播放备份完成提示音（模拟）"""
+        logger.info("播放备份完成提示音")
+        # 可以调用系统声音或播放音频文件
+    
+    def get_active_workflows(self) -> Dict[str, Dict]:
+        """获取活跃的工作流"""
+        return self.active_workflows
+    
+    def get_workflow_history(self, limit: int = 10) -> List[Dict]:
+        """获取工作流历史"""
+        return self.workflow_history[-limit:] if self.workflow_history else []

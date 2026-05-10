@@ -1,0 +1,14 @@
+{
+  "商务邀约": {
+    "subject": "合作邀约 - {company_name}",
+    "body": "尊敬的{recipient_name}：\n\n您好！\n\n我是{your_name}，来自{company_name}。我们注意到贵公司在{industry}领域的卓越成就，希望能够与您探讨潜在的合作机会。\n\n我们公司专注于{your_business}，在{past_achievement}方面有着丰富的经验。我们相信，通过双方的合作，可以为彼此带来更大的价值。\n\n如您方便，可否安排一次简短的线上会议，进一步交流合作的可能性？\n\n期待您的回复！\n\n此致\n敬礼\n\n{your_name}\n{your_position}\n{company_name}\n{contact_info}"
+  },
+  "会议纪要": {
+    "subject": "{meeting_topic} 会议纪要 - {date}",
+    "body": "会议纪要\n\n会议主题：{meeting_topic}\n会议时间：{meeting_time}\n参会人员：{participants}\n主持人：{host}\n\n会议内容：\n1. {agenda_item_1}\n2. {agenda_item_2}\n3. {agenda_item_3}\n\n会议决议：\n1. {decision_1}\n2. {decision_2}\n\n下一步行动：\n1. {action_item_1} - 负责人：{owner_1} - 截止时间：{deadline_1}\n2. {action_item_2} - 负责人：{owner_2} - 截止时间：{deadline_2}\n\n如有任何疑问，请随时联系。\n\n{your_name}"
+  },
+  "请假申请": {
+    "subject": "请假申请 - {your_name} - {date_range}",
+    "body": "尊敬的{manager_name}：\n\n您好！\n\n因{reason}，我需要请假 {days} 天，具体时间为 {date_range}。\n\n请假期间，我的工作安排如下：\n1. {work_arrangement_1}\n2. {work_arrangement_2}\n\n紧急联系人：{emergency_contact}\n联系电话：{contact_phone}\n\n望批准为盼！\n\n此致\n敬礼\n\n{your_name}\n{department}\n{date}"
+  }
+}

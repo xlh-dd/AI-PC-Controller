@@ -1,0 +1,14 @@
+{
+  "consultation_general": {
+    "subject": "回复：{original_subject}",
+    "body": "尊敬的{recipient_name}：\n\n您好！\n\n感谢您的咨询。我们已经收到您关于\"{query_topic}\"的问题。\n\n根据我们的知识库，相关建议如下：\n{faq_answer}\n\n如果您需要进一步的帮助或有其他问题，请随时回复此邮件。\n\n祝好！\n\n{your_name}\n{company_name}"
+  },
+  "consultation_no_faq": {
+    "subject": "回复：{original_subject}",
+    "body": "尊敬的{recipient_name}：\n\n您好！\n\n感谢您的咨询。我们已经收到您关于\"{query_topic}\"的问题。\n\n我们已经将您的问题记录并转交给相关部门。我们的团队将在24小时内给您详细的回复。\n\n感谢您的耐心等待！\n\n祝好！\n\n{your_name}\n{company_name}"
+  },
+  "urgent_acknowledgment": {
+    "subject": "已收到您的紧急邮件：{original_subject}",
+    "body": "尊敬的{recipient_name}：\n\n您好！\n\n我们已经收到您的紧急邮件，并已将其标记为高优先级。\n\n我们的团队将尽快处理您的问题，并在2小时内给您回复。\n\n感谢您的理解！\n\n祝好！\n\n{your_name}\n{company_name}"
+  }
+}

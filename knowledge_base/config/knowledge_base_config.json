@@ -1,0 +1,17 @@
+{
+  "download_folders": [
+    "C:\\Users\\Administrator\\Downloads",
+    "C:\\Users\\Administrator\\Desktop"
+  ],
+  "browser_history_paths": [
+    "C:\\Users\\Administrator\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\History",
+    "C:\\Users\\Administrator\\AppData\\Local\\Microsoft\\Edge\\User Data\\Default\\History"
+  ],
+  "min_stay_time": 120,
+  "notion": {
+    "enabled": false,
+    "api_key": "",
+    "database_id": "",
+    "sync_interval": 300
+  }
+}
