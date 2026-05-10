@@ -72,3 +72,9 @@ $RECYCLE.BIN/
 *.temp
 ~$*
 _*.py
+
+# Database files (tracked via knowledge_base config)
+*.db
+
+# Backup files
+*.bak
