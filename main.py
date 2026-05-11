@@ -776,7 +776,6 @@ class AIPCHelperV8:
     def _update_file_info(self):
         """更新文件信息显示"""
         try:
-            import os
             folder = self.current_folder
             if os.path.exists(folder):
                 files = os.listdir(folder)
@@ -1004,7 +1003,6 @@ class AIPCHelperV8:
         """线程安全的消息显示方法"""
         try:
             # 检查是否在主线程中
-            import threading
             if threading.current_thread() is not threading.main_thread():
                 # 非主线程，通过 after 调度到主线程
                 self.root.after(0, lambda: self._say(who, what))
@@ -2996,7 +2994,6 @@ class AIPCHelperV8:
                     current_triggers = ["￥", "¥"]
                 triggers_text.insert("1.0", "\n".join(current_triggers))
             except Exception as e:
-                import logging
                 logger = logging.getLogger("AIPCHelper")
                 logger.error(f"触发词插入失败: {e}")
         
@@ -3625,7 +3622,6 @@ class AIPCHelperV8:
     def execute_system_command(self, command):
         """供AI智能体使用的命令执行器"""
         try:
-            import subprocess
             result = subprocess.run(
                 command,
                 shell=True,
@@ -3660,7 +3656,6 @@ class AIPCHelperV8:
                         return
                     # 等待微信打开
                     self.say("系统", "⏳ 等待微信启动...")
-                    import time
                     time.sleep(5)
                     if not self.wechat_controller.is_wechat_window_visible():
                         self.say("系统", "❌ 微信启动失败，请手动打开微信。")
@@ -3730,7 +3725,6 @@ class AIPCHelperV8:
         triggers = self._get_command_triggers()
         
         # 调试：记录触发词列表
-        import logging
         logger = logging.getLogger("AIPCHelper")
         logger.debug(f"提取命令: 原始文本='{text}', 触发词列表={triggers}")
         
@@ -3807,7 +3801,6 @@ class AIPCHelperV8:
         
         # 调试：记录标准化前后的差异
         if original != text:
-            import logging
             logger = logging.getLogger("AIPCHelper")
             logger.debug(f"文本标准化: '{original}' -> '{text}'")
         
@@ -3815,7 +3808,6 @@ class AIPCHelperV8:
 
     def wechat_listener_loop(self):
         import random
-        import time
         processing = False
         consecutive_failures = 0
         max_consecutive_failures = 5
