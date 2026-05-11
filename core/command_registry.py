@@ -3,6 +3,7 @@
 将 99 个命令动作拆分为独立的处理器函数
 """
 import logging
+import subprocess
 from typing import Dict, Callable, Any, Optional
 from functools import wraps
 
@@ -101,7 +102,6 @@ def _register_builtin_commands():
     # 2. open_file
     def cmd_open_file(context, cmd_data):
         """打开文件"""
-        import subprocess
         file_path = cmd_data.get("file_path")
         if file_path:
             try:
@@ -116,7 +116,6 @@ def _register_builtin_commands():
     # 3. open_folder
     def cmd_open_folder(context, cmd_data):
         """打开文件夹"""
-        import subprocess
         folder_path = cmd_data.get("folder_path")
         if folder_path:
             try:
