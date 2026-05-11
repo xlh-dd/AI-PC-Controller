@@ -217,7 +217,6 @@ class ConfigManager:
     def save_config(self):
         """保存配置文件（原子写入）"""
         import tempfile
-        import os
         
         with self._lock:
             try:
