@@ -173,6 +173,57 @@ def check_logs():
     return all_ok
 
 
+# ===== 代码质量 =====
+def check_code_quality():
+    check_section("代码质量")
+    import ast
+    from collections import Counter
+    try:
+        all_ok = True
+        issue_files = 0
+        total_dup_imports = 0
+        total_long_funcs = 0
+        for dp, dn, fns in os.walk(PROJECT_ROOT):
+            dp_path = Path(dp)
+            if any(p in dp_path.parts for p in ('__pycache__', 'venv', '.venv', '.git', 'env')):
+                continue
+            for fn in fns:
+                if not fn.endswith('.py'):
+                    continue
+                filepath = dp_path / fn
+                try:
+                    source = filepath.read_text(encoding='utf-8', errors='replace')
+                    tree = ast.parse(source)
+                except (SyntaxError, Exception):
+                    continue
+                # 重复导入
+                imp_counter = Counter()
+                for node in ast.walk(tree):
+                    if isinstance(node, ast.ImportFrom) and node.module:
+                        key = f"{node.module}.{','.join(a.name for a in node.names)}"
+                        imp_counter[key] += 1
+                    elif isinstance(node, ast.Import):
+                        key = ','.join(a.name for a in node.names)
+                        imp_counter[key] += 1
+                dup_count = sum(v - 1 for v in imp_counter.values() if v > 1)
+                if dup_count > 0:
+                    total_dup_imports += dup_count
+                    issue_files += 1
+                # 超长函数 (>100行)
+                for node in ast.walk(tree):
+                    if isinstance(node, ast.FunctionDef) and hasattr(node, 'end_lineno'):
+                        length = node.end_lineno - node.lineno
+                        if length > 100:
+                            total_long_funcs += 1
+        all_ok &= status(f"重复导入", total_dup_imports == 0,
+                         f"{total_dup_imports} 处" if total_dup_imports else "无")
+        all_ok &= status(f"超长函数 (>100行)", total_long_funcs == 0,
+                         f"{total_long_funcs} 个" if total_long_funcs else "无")
+        return all_ok
+    except Exception as e:
+        return status("代码质量检查", False, str(e)[:50])
+
+
 # ===== 磁盘空间 =====
 def check_disk():
     check_section("磁盘空间")
@@ -208,6 +259,7 @@ def main():
     results.append(("配置文件", check_configs()))
     results.append(("WSL/Hermes", check_wsl()))
     results.append(("日志文件", check_logs()))
+    results.append(("代码质量", check_code_quality()))
     results.append(("磁盘空间", check_disk()))
 
     passed = sum(1 for _, ok in results if ok)
