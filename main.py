@@ -8,6 +8,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from datetime import datetime
+import re
 
 # 导入模块化组件
 from utils.config import ConfigManager
@@ -1351,7 +1352,6 @@ class AIPCHelperV8:
 
     def _get_quick_patterns(self):
         if self._quick_patterns is None:
-            import re
             self._quick_patterns = {
                 'cancel_shutdown': re.compile(r"(?:取消关机|撤销关机|停止关机)"),
                 'restart': re.compile(r"(?:重启|重新启动)"),
@@ -1415,7 +1415,6 @@ class AIPCHelperV8:
 
     def _parse_time_to_minutes(self, time_str):
         """将时间字符串转换为分钟"""
-        import re
         time_str = time_str.lower()
         num_match = re.search(r"(\d+)", time_str)
         if not num_match:
@@ -1612,7 +1611,6 @@ class AIPCHelperV8:
             self.execute_ai_command({"action": "open_settings"})
         elif any(k in msg_lower for k in ["复制到剪贴板", "复制文本", "复制内容"]):
             # 尝试提取要复制的文本
-            import re
             match = re.search(r'复制(?:文本|内容)?[:：]\s*(.+)', msg)
             if match:
                 text = match.group(1).strip()
@@ -1625,13 +1623,11 @@ class AIPCHelperV8:
             self.execute_ai_command({"action": "click_mouse"})
         elif any(k in msg_lower for k in ["滚动", "滚轮", "鼠标滚轮", "上下滚动"]):
             # 尝试提取滚动数量
-            import re
             match = re.search(r'滚动\s*(\d+)', msg_lower)
             amount = int(match.group(1)) if match else 3
             self.execute_ai_command({"action": "scroll", "amount": amount})
         elif any(k in msg_lower for k in ["输入文本", "打字", "模拟输入"]):
             # 尝试提取要输入的文本
-            import re
             match = re.search(r'输入(?:文本)?[:：]\s*(.+)', msg)
             if match:
                 text = match.group(1).strip()
@@ -1640,7 +1636,6 @@ class AIPCHelperV8:
                 self.say("系统", "请指定要输入的文本，例如：输入文本:你好世界")
         elif any(k in msg_lower for k in ["按键", "按键盘", "模拟按键"]):
             # 尝试提取按键
-            import re
             match = re.search(r'按键(?:[:：]|\s*)(\w+)', msg_lower)
             if match:
                 key = match.group(1).strip()
@@ -1649,7 +1644,6 @@ class AIPCHelperV8:
                 self.say("系统", "请指定要按的按键，例如：按键:enter")
         elif any(k in msg_lower for k in ["鼠标移动", "移动鼠标", "移动光标"]):
             # 尝试提取坐标
-            import re
             match = re.search(r'移动到\s*(\d+)\s*[,，]\s*(\d+)', msg_lower)
             if match:
                 x, y = int(match.group(1)), int(match.group(2))
@@ -1658,7 +1652,6 @@ class AIPCHelperV8:
                 self.say("系统", "请指定鼠标坐标，例如：移动到100,200")
         elif any(k in msg_lower for k in ["ping", "网络测试", "连接测试"]):
             # 尝试提取主机
-            import re
             match = re.search(r'ping\s+(\S+)', msg_lower) or re.search(r'测试\s+(\S+)\s*连接', msg_lower)
             if match:
                 host = match.group(1).strip()
@@ -1671,7 +1664,6 @@ class AIPCHelperV8:
             self.execute_ai_command({"action": "connect_network"})
         elif any(k in msg_lower for k in ["删除文件", "移除文件", "删除"]):
             # 尝试提取文件路径
-            import re
             match = re.search(r'删除(?:文件)?[:：]\s*(.+)', msg)
             if match:
                 file_path = match.group(1).strip()
@@ -1680,7 +1672,6 @@ class AIPCHelperV8:
                 self.say("系统", "请指定要删除的文件路径，例如：删除文件:C:\\test.txt")
         elif any(k in msg_lower for k in ["创建文件夹", "新建文件夹", "建立目录"]):
             # 尝试提取文件夹路径
-            import re
             match = re.search(r'创建(?:文件夹)?[:：]\s*(.+)', msg)
             if match:
                 folder_path = match.group(1).strip()
@@ -1689,7 +1680,6 @@ class AIPCHelperV8:
                 self.say("系统", "请指定要创建的文件夹路径，例如：创建文件夹:C:\\new_folder")
         elif any(k in msg_lower for k in ["读取文件", "查看文件", "打开文件"]):
             # 尝试提取文件路径
-            import re
             match = re.search(r'读取(?:文件)?[:：]\s*(.+)', msg)
             if match:
                 file_path = match.group(1).strip()
@@ -1706,7 +1696,6 @@ class AIPCHelperV8:
                 self.execute_ai_command(result)
             else:
                 if any(keyword in msg for keyword in ["给", "发消息", "微信"]):
-                    import re
                     match = re.search(r'给(.+?)发[送]消息[:：]?\s*(.+)', msg)
                     if not match:
                         match = re.search(r'发[送]消息给(.+?)[:：]\s*(.+)', msg)
@@ -3788,7 +3777,6 @@ class AIPCHelperV8:
         text = text.strip()
         
         # 替换常见的不可见字符和零宽字符
-        import re
         # 移除零宽空格、零宽连字符、零宽非连接符等
         text = re.sub(r'[\u200B-\u200D\uFEFF]', '', text)
         
