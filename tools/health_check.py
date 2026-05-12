@@ -275,7 +275,8 @@ def main():
         print(f"  {Colors.WARN(f'⚠ {len(failed)} 项未通过:')}")
         for name, _ in failed:
             print(f"    - {name}")
-        print(f"\n  建议运行: {Colors.INFO('python tools/fix_hermes.py')} 修复 Hermes 问题")
+        print(f"\n  建议运行: {Colors.INFO('python tools/disk_cleanup.py')} 清理磁盘")
+        print(f"    {Colors.INFO('python tools/fix_hermes.py')} 修复 Hermes 问题")
         print(f"  或查看: {Colors.INFO('tools/ 目录')} 下的其他修复脚本")
 
     return 0 if passed == total else 1
