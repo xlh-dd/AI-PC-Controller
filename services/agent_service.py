@@ -10,6 +10,7 @@ AgentService - 统一 AI 决策入口
 """
 
 import logging
+import re
 import threading
 import time
 import json
@@ -301,7 +302,6 @@ class AgentService:
             return json.loads(response)
         except json.JSONDecodeError:
             # 尝试提取 JSON 块
-            import re
             match = re.search(r'```(?:json)?\s*(.*?)\s*```', response, re.DOTALL)
             if match:
                 try:
@@ -377,7 +377,6 @@ class AgentService:
 
     def _local_parse(self, text: str) -> Dict[str, Any]:
         text_lower = text.lower().strip()
-        import re
         
         if any(kw in text_lower for kw in ["关机", "shutdown"]):
             m = re.search(r'(\d+)\s*分', text)
