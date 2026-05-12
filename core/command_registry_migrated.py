@@ -5,6 +5,12 @@ import os
 import subprocess
 from tkinter import messagebox
 
+from modules.ai_agent import AIAgent
+import psutil
+import shutil
+from datetime import datetime
+from PIL import ImageGrab
+import webbrowser
 def _register_migrated_commands(registry):
     """迁移自 main.py execute_ai_command 的 elif 链"""
 
@@ -221,7 +227,6 @@ def _register_migrated_commands(registry):
         pid = cmd_data.get("pid")
         if process_name:
             try:
-                from modules.ai_agent import AIAgent
                 agent = context._create_ai_agent()
                 result = agent.manage_processes(action="kill_by_name", process_name=process_name)
                 if result.get("success"):
@@ -232,7 +237,6 @@ def _register_migrated_commands(registry):
                 context.say("系统", f"❌ 结束进程失败：{str(e)}")
         elif pid:
             try:
-                from modules.ai_agent import AIAgent
                 agent = context._create_ai_agent()
                 result = agent.manage_processes(action="kill", pid=pid)
                 if result.get("success"):
@@ -250,7 +254,6 @@ def _register_migrated_commands(registry):
         window_title = cmd_data.get("window_title")
         if window_title:
             try:
-                from modules.ai_agent import AIAgent
                 agent = context._create_ai_agent()
                 result = agent.manage_windows(action="minimize", title_pattern=window_title)
                 if result.get("success"):
@@ -268,7 +271,6 @@ def _register_migrated_commands(registry):
         window_title = cmd_data.get("window_title")
         if window_title:
             try:
-                from modules.ai_agent import AIAgent
                 agent = context._create_ai_agent()
                 result = agent.manage_windows(action="maximize", title_pattern=window_title)
                 if result.get("success"):
@@ -286,7 +288,6 @@ def _register_migrated_commands(registry):
         window_title = cmd_data.get("window_title")
         if window_title:
             try:
-                from modules.ai_agent import AIAgent
                 agent = context._create_ai_agent()
                 result = agent.manage_windows(action="close", title_pattern=window_title)
                 if result.get("success"):
@@ -304,7 +305,6 @@ def _register_migrated_commands(registry):
         window_title = cmd_data.get("window_title")
         if window_title:
             try:
-                from modules.ai_agent import AIAgent
                 agent = context._create_ai_agent()
                 result = agent.manage_windows(action="activate", title_pattern=window_title)
                 if result.get("success"):
@@ -321,7 +321,6 @@ def _register_migrated_commands(registry):
         """volume_up"""
         steps = cmd_data.get("steps", 5)
         try:
-            from modules.ai_agent import AIAgent
             agent = context._create_ai_agent()
             result = agent.control_volume(action="up", steps=steps)
             if result.get("success"):
@@ -336,7 +335,6 @@ def _register_migrated_commands(registry):
         """volume_down"""
         steps = cmd_data.get("steps", 5)
         try:
-            from modules.ai_agent import AIAgent
             agent = context._create_ai_agent()
             result = agent.control_volume(action="down", steps=steps)
             if result.get("success"):
@@ -351,7 +349,6 @@ def _register_migrated_commands(registry):
         """set_volume"""
         level = cmd_data.get("level", 50)
         try:
-            from modules.ai_agent import AIAgent
             agent = context._create_ai_agent()
             result = agent.control_volume(action="set", level=level)
             if result.get("success"):
@@ -365,7 +362,6 @@ def _register_migrated_commands(registry):
     def cmd_toggle_mute(context, cmd_data):
         """toggle_mute"""
         try:
-            from modules.ai_agent import AIAgent
             agent = context._create_ai_agent()
             result = agent.control_volume(action="toggle_mute")
             if result.get("success"):
@@ -380,7 +376,6 @@ def _register_migrated_commands(registry):
         """take_screenshot"""
         save_path = cmd_data.get("save_path")
         try:
-            from modules.ai_agent import AIAgent
             agent = context._create_ai_agent()
             result = agent.take_screenshot(save_path=save_path)
             if result.get("success"):
@@ -394,7 +389,6 @@ def _register_migrated_commands(registry):
     def cmd_get_clipboard(context, cmd_data):
         """get_clipboard"""
         try:
-            from modules.ai_agent import AIAgent
             agent = context._create_ai_agent()
             result = agent.control_clipboard(action="get")
             if result.get("success"):
@@ -413,7 +407,6 @@ def _register_migrated_commands(registry):
         content = cmd_data.get("content")
         if content:
             try:
-                from modules.ai_agent import AIAgent
                 agent = context._create_ai_agent()
                 result = agent.control_clipboard(action="set", content=content)
                 if result.get("success"):
@@ -429,7 +422,6 @@ def _register_migrated_commands(registry):
     def cmd_get_system_info(context, cmd_data):
         """get_system_info"""
         try:
-            from modules.ai_agent import AIAgent
             agent = context._create_ai_agent()
             result = agent.get_system_info()
             if result.get("success"):
@@ -445,7 +437,6 @@ def _register_migrated_commands(registry):
     def cmd_hibernate(context, cmd_data):
         """hibernate"""
         try:
-            from modules.ai_agent import AIAgent
             agent = context._create_ai_agent()
             result = agent._system_controller.hibernate() if agent._system_controller else None
             if result and result.get("success"):
@@ -459,7 +450,6 @@ def _register_migrated_commands(registry):
     def cmd_turn_off_display(context, cmd_data):
         """turn_off_display"""
         try:
-            from modules.ai_agent import AIAgent
             agent = context._create_ai_agent()
             result = agent._system_controller.turn_off_display() if agent._system_controller else None
             if result and result.get("success"):
@@ -474,7 +464,6 @@ def _register_migrated_commands(registry):
         """list_processes"""
         filter_str = cmd_data.get("filter", "")
         try:
-            from modules.ai_agent import AIAgent
             agent = context._create_ai_agent()
             result = agent.manage_processes(action="list", filter_str=filter_str)
             if result.get("success"):
@@ -493,7 +482,6 @@ def _register_migrated_commands(registry):
         """list_windows"""
         filter_str = cmd_data.get("filter", "")
         try:
-            from modules.ai_agent import AIAgent
             agent = context._create_ai_agent()
             result = agent.manage_windows(action="list", filter_str=filter_str)
             if result.get("success"):
@@ -512,7 +500,6 @@ def _register_migrated_commands(registry):
     def cmd_get_network_info(context, cmd_data):
         """get_network_info"""
         try:
-            from modules.ai_agent import AIAgent
             agent = context._create_ai_agent()
             result = agent.control_network(action="get_info")
             if result.get("success"):
@@ -531,7 +518,6 @@ def _register_migrated_commands(registry):
         """toggle_wifi"""
         enable = cmd_data.get("enable")
         try:
-            from modules.ai_agent import AIAgent
             agent = context._create_ai_agent()
             result = agent.control_network(action="toggle_wifi", enable=enable)
             if result.get("success"):
@@ -547,7 +533,6 @@ def _register_migrated_commands(registry):
         text = cmd_data.get("text")
         if text:
             try:
-                from modules.ai_agent import AIAgent
                 agent = context._create_ai_agent()
                 result = agent.speak_text(text=text)
                 if result.get("success"):
@@ -576,7 +561,6 @@ def _register_migrated_commands(registry):
         destination = cmd_data.get("destination")
         if source and destination:
             try:
-                import shutil
                 shutil.move(source, destination)
                 context.say("系统", f"✅ 已移动文件：{source} → {destination}")
             except Exception as e:
@@ -591,7 +575,6 @@ def _register_migrated_commands(registry):
         destination = cmd_data.get("destination")
         if source and destination:
             try:
-                import shutil
                 shutil.copy2(source, destination)
                 context.say("系统", f"✅ 已复制文件：{source} → {destination}")
             except Exception as e:
@@ -605,7 +588,6 @@ def _register_migrated_commands(registry):
         folder_path = cmd_data.get("folder_path")
         if folder_path:
             try:
-                import os
                 os.makedirs(folder_path, exist_ok=True)
                 context.say("系统", f"✅ 已创建文件夹：{folder_path}")
             except Exception as e:
@@ -619,7 +601,6 @@ def _register_migrated_commands(registry):
         folder_path = cmd_data.get("folder_path")
         if folder_path:
             try:
-                import shutil
                 if os.path.exists(folder_path):
                     shutil.rmtree(folder_path)
                     context.say("系统", f"✅ 已删除文件夹：{folder_path}")
@@ -664,7 +645,6 @@ def _register_migrated_commands(registry):
         """open_browser"""
         url = cmd_data.get("url", "https://www.baidu.com")
         try:
-            import webbrowser
             webbrowser.open(url)
             context.say("系统", f"✅ 已打开浏览器：{url}")
         except Exception as e:
@@ -685,7 +665,6 @@ def _register_migrated_commands(registry):
         url = cmd_data.get("url")
         if url:
             try:
-                import webbrowser
                 webbrowser.open(url)
                 context.say("系统", f"✅ 已打开：{url}")
             except Exception as e:
@@ -715,7 +694,6 @@ def _register_migrated_commands(registry):
     def cmd_get_cpu_usage(context, cmd_data):
         """get_cpu_usage"""
         try:
-            import psutil
             cpu = psutil.cpu_percent(interval=1)
             context.say("系统", f"💻 CPU使用率：{cpu}%")
         except Exception as e:
@@ -725,7 +703,6 @@ def _register_migrated_commands(registry):
     def cmd_get_memory_usage(context, cmd_data):
         """get_memory_usage"""
         try:
-            import psutil
             mem = psutil.virtual_memory()
             context.say("系统", f"💾 内存使用率：{mem.percent}% (已用：{mem.used/1024/1024/1024:.1f}GB/总计：{mem.total/1024/1024/1024:.1f}GB)")
         except Exception as e:
@@ -736,7 +713,6 @@ def _register_migrated_commands(registry):
         """get_disk_usage"""
         drive = cmd_data.get("drive", "C")
         try:
-            import psutil
             disk = psutil.disk_usage(f"{drive}:/")
             context.say("系统", f"💽 {drive}盘使用率：{disk.percent}% (已用：{disk.used/1024/1024/1024:.1f}GB/总计：{disk.total/1024/1024/1024:.1f}GB)")
         except Exception as e:
@@ -746,7 +722,6 @@ def _register_migrated_commands(registry):
     def cmd_get_battery(context, cmd_data):
         """get_battery"""
         try:
-            import psutil
             battery = psutil.sensors_battery()
             if battery:
                 context.say("系统", f"🔋 电池：{battery.percent}% {'正在充电' if battery.power_plugged else '使用电池中'}")
@@ -857,14 +832,12 @@ def _register_migrated_commands(registry):
 
     def cmd_get_current_time(context, cmd_data):
         """get_current_time"""
-        from datetime import datetime
         now = datetime.now().strftime("%H:%M:%S")
         context.say("系统", f"🕐 当前时间：{now}")
     registry.register_handler("get_current_time", cmd_get_current_time, "get_current_time")
 
     def cmd_get_current_date(context, cmd_data):
         """get_current_date"""
-        from datetime import datetime
         today = datetime.now().strftime("%Y年%m月%d日 %A")
         context.say("系统", f"📅 今天是：{today}")
     registry.register_handler("get_current_date", cmd_get_current_date, "get_current_date")
@@ -961,7 +934,6 @@ def _register_migrated_commands(registry):
         if not save_path:
             save_path = f"C:/Users/{os.getenv('USERNAME', 'Administrator')}/Desktop/photo.jpg"
         try:
-            import subprocess
             subprocess.run(["powershell", "-Command", f"Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Screen]::PrimaryScreen; Start-Process microsoft.windows.camera:"])
             context.say("系统", f"📷 请在相机应用中拍照，保存路径：{save_path}")
         except Exception as e:
@@ -980,14 +952,12 @@ def _register_migrated_commands(registry):
             context._recording_writer.release()
             context._recording_writer = None
         import cv2, numpy as np
-        from PIL import ImageGrab
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         screen = ImageGrab.grab()
         w, h = screen.size
         writer = cv2.VideoWriter(save_path, fourcc, 10.0, (w, h))
         context._recording_writer = writer
         def do_record():
-            from PIL import ImageGrab
             start = time.time()
             while time.time() - start < duration:
                 frame = cv2.cvtColor(np.array(ImageGrab.grab()), cv2.COLOR_RGB2BGR)
