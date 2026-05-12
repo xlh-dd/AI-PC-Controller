@@ -26,6 +26,13 @@ except ImportError:
     YAGMAIL_AVAILABLE = False
     logging.warning("yagmail模块未安装，邮件发送功能受限")
 
+try:
+    import keyring
+    KEYRING_AVAILABLE = True
+except ImportError:
+    KEYRING_AVAILABLE = False
+    logger.warning("keyring not installed")
+
 logger = logging.getLogger("EmailClassifier")
 
 class EmailClassifier:
@@ -132,7 +139,6 @@ class EmailClassifier:
     def _get_password(email_address):
         """安全获取密码：优先 keyring，回退到 config 明文"""
         try:
-            import keyring
             pwd = keyring.get_password("AIPCHelper_Email", email_address)
             if pwd:
                 return pwd
@@ -144,7 +150,6 @@ class EmailClassifier:
     def _set_password(email_address, password):
         """安全存储密码到 keyring"""
         try:
-            import keyring
             keyring.set_password("AIPCHelper_Email", email_address, password)
             return True
         except ImportError:
@@ -1175,7 +1180,6 @@ class EmailClassifier:
         
         try:
             if YAGMAIL_AVAILABLE:
-                import yagmail
                 yag = yagmail.SMTP(from_address, password, host=self.smtp_server, port=self.smtp_port)
                 
                 # yagmail自动处理附件
@@ -1215,11 +1219,9 @@ class EmailClassifier:
                             with open(attachment_path, 'rb') as f:
                                 if main_type == 'text':
                                     # 文本文件
-                                    from email.mime.text import MIMEText
                                     attachment = MIMEText(f.read().decode('utf-8', errors='ignore'), _subtype=sub_type, _charset='utf-8')
                                 else:
                                     # 二进制文件
-                                    from email.mime.base import MIMEBase
                                     attachment = MIMEBase(main_type, sub_type)
                                     attachment.set_payload(f.read())
                                 
@@ -1229,7 +1231,6 @@ class EmailClassifier:
                             
                             # 对于非文本文件，需要编码
                             if main_type != 'text':
-                                from email import encoders
                                 encoders.encode_base64(attachment)
                             
                             msg.attach(attachment)
