@@ -14,6 +14,7 @@ import time
 import queue
 from typing import Optional, Dict, Any
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
+import base64
 
 logger = logging.getLogger("HermesBridge")
 
@@ -137,7 +138,6 @@ class HermesProcessPool:
             process = proc_info['process']
             
             # 使用 base64 编码避免转义问题
-            import base64
             message_b64 = base64.b64encode(message.encode('utf-8')).decode('ascii')
             
             # 发送命令
@@ -351,7 +351,6 @@ class HermesBridgeOptimized:
         
         # 回退到普通模式
         try:
-            import base64
             task_bytes = message.encode('utf-8')
             task_b64 = base64.b64encode(task_bytes).decode('ascii')
             

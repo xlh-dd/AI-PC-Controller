@@ -15,6 +15,7 @@ import threading
 from typing import Dict, List, Optional, Callable
 from dataclasses import dataclass
 from pathlib import Path
+import re
 
 logger = logging.getLogger("CodeAIBridge")
 
@@ -136,7 +137,6 @@ class CodeAIBridge:
 
     def _parse_review_text(self, text: str, file_path: str, lang: str) -> Dict:
         """解析文本格式的审查结果"""
-        import re
         result = {"file": file_path, "language": lang, "score": 0, "bug_count": 0,
                   "issues": [], "optimizations": [], "security": [], "summary": text}
         
@@ -383,7 +383,6 @@ priority: 1=核心文件(先生成), 2=依赖文件, 3=辅助文件
 
     def _clean_code_block(self, text: str) -> str:
         """清理markdown代码块,提取代码内容"""
-        import re
 
         # 策略1: 匹配 ```lang\ncode\n``` 格式
         pattern = r'^```[\w]*\n(.*?)\n```$'

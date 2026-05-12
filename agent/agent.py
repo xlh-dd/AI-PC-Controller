@@ -11,6 +11,7 @@ from dataclasses import dataclass, field, asdict
 from typing import Any, Callable, Dict, List, Optional, Type
 from enum import Enum
 from datetime import datetime
+import subprocess
 
 logger = logging.getLogger("Agent")
 
@@ -375,7 +376,6 @@ class RunCommandSkill(BaseSkill):
     }
 
     def execute(self, context: AgentContext, **params) -> SkillResult:
-        import subprocess
         try:
             result = subprocess.run(
                 params["command"],
@@ -425,7 +425,6 @@ class SearchSkill(BaseSkill):
     def execute(self, context: AgentContext, **params) -> SkillResult:
         # 复用 prosearch 脚本
         try:
-            import subprocess
             script = r"D:\AI\Qclaw\resources\openclaw\config\skills\online-search\scripts\prosearch.cjs"
             result = subprocess.run(
                 ["node", script, json.dumps({"keyword": params["query"], "cnt": params.get("max_results", 5)})],

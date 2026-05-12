@@ -191,7 +191,6 @@ class AIHelper:
         
         if resp:
             try:
-                import re
                 json_str = re.search(r'(\{.*\})', resp, re.DOTALL)
                 if json_str:
                     data = json.loads(json_str.group(1))
