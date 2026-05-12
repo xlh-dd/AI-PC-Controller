@@ -87,6 +87,9 @@ except ImportError:
     TESSERACT_AVAILABLE = False
     logger.warning("pytesseract未安装，OCR功能不可用")
 
+import socket
+from comtypes import CLSCTX_ALL
+from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 
 class SystemController:
     """系统控制器 - 提供各种系统级控制功能"""
@@ -110,8 +113,6 @@ class SystemController:
             return {"success": False, "error": "需要pywin32库"}
         
         try:
-            from comtypes import CLSCTX_ALL
-            from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
             
             devices = AudioUtilities.GetSpeakers()
             interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
@@ -130,8 +131,6 @@ class SystemController:
             # 备选方案：使用Windows API
             try:
                 # 使用Windows API获取音量
-                import ctypes
-                from ctypes import wintypes
                 
                 # 定义函数和常量
                 user32 = ctypes.windll.user32
@@ -164,9 +163,6 @@ class SystemController:
         try:
             # 尝试使用pycaw进行精确音量设置
             try:
-                from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
-                from comtypes import CLSCTX_ALL
-                import pythoncom
                 
                 pythoncom.CoInitialize()
                 devices = AudioUtilities.GetSpeakers()
@@ -196,7 +192,6 @@ class SystemController:
                 if not PYAUTOGUI_AVAILABLE:
                     return {"success": False, "error": "需要pyautogui库"}
                 
-                import time
                 
                 # 获取当前音量
                 current_info = self.get_volume()
@@ -327,8 +322,6 @@ class SystemController:
             包含网络信息的字典
         """
         try:
-            import socket
-            import psutil
             
             net_info = []
             
@@ -959,8 +952,6 @@ class SystemController:
         try:
             # 使用Windows API关闭显示器
             if WIN32_AVAILABLE:
-                import win32gui
-                import win32con
                 
                 # 发送关闭显示器的消息
                 win32gui.SendMessage(win32con.HWND_BROADCAST, win32con.WM_SYSCOMMAND, 
@@ -1042,7 +1033,6 @@ class SystemController:
         
         try:
             from PIL import Image
-            import pytesseract
             
             image = Image.open(image_path)
             text = pytesseract.image_to_string(image, lang=lang)
@@ -1083,7 +1073,6 @@ class SystemController:
             
             # 删除临时文件
             try:
-                import os
                 os.remove(image_path)
             except:
                 pass
@@ -1234,7 +1223,6 @@ class SystemController:
         """
         try:
             import platform
-            import socket
             
             # 基本信息
             system_info = {
