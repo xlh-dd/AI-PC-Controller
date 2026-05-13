@@ -844,48 +844,38 @@ class AIAgent:
             保存结果
         """
         try:
-            # 1. 搜索信息
             search_result = self.search_and_collect(query, max_results)
-            
             if not search_result.get("success"):
                 return search_result
-            
-            # 检查是否有note字段（备用方案：浏览器已打开）
-            if "note" in search_result:
-                note = search_result.get("note", "")
-                content = f"# {query}\n\n"
-                content += f"*搜索时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*\n\n"
-                content += f"## 说明\n\n{note}\n\n"
-                content += f"**提示**: 由于未安装duckduckgo_search库，已直接在浏览器中打开搜索页面。\n"
-                content += f"请查看搜索结果后，手动保存需要的信息。\n\n"
-                content += f"搜索链接: https://www.bing.com/search?q={quote_plus(query)}\n"
-                return self.save_document(save_path, content)
-            
+
+            note = search_result.get("note")
             results = search_result.get("results", [])
-            
-            if not results:
-                # 没有搜索结果
-                content = f"# {query}\n\n"
-                content += f"*搜索时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*\n\n"
-                content += "## 搜索结果\n\n未找到相关结果。\n\n"
-                content += f"**搜索关键词**: {query}\n"
-                return self.save_document(save_path, content)
-            
-            # 2. 使用AI整理信息
-            if self.ai_helper:
-                # 构建整理提示
-                summarize_prompt = f"""请整理以下搜索结果，提取关键信息，生成一份简洁的摘要。
+
+            # AI summary
+            ai_summary = None
+            if results and self.ai_helper:
+                ai_summary = self.ai_helper.ai_query(
+                    self._build_summarize_prompt(query, results))
+
+            content = self._build_collect_content(query, results, ai_summary, note)
+            return self.save_document(save_path, content)
+        except Exception as e:
+            logger.error(f"收集并保存失败: {e}")
+            return {"success": False, "error": str(e)}
+
+    def _build_summarize_prompt(self, query, results):
+        """构建AI摘要提示"""
+        prompt = f"""请整理以下搜索结果，提取关键信息，生成一份简洁的摘要。
 
 搜索关键词：{query}
 
 搜索结果：
 """
-                for i, r in enumerate(results, 1):
-                    summarize_prompt += f"\n{i}. {r.get('title', '')}\n"
-                    summarize_prompt += f"   来源: {r.get('url', '')}\n"
-                    summarize_prompt += f"   内容: {r.get('snippet', '')}\n"
-                
-                summarize_prompt += """
+        for i, r in enumerate(results, 1):
+            prompt += f"\n{i}. {r.get("title", "")}\n"
+            prompt += f"   来源: {r.get("url", "")}\n"
+            prompt += f"   内容: {r.get("snippet", "")}\n"
+        prompt += """
 
 请生成一份结构化的摘要，包括：
 1. 概述（用一句话概括搜索主题）
@@ -894,45 +884,46 @@ class AIAgent:
 4. 相关链接列表
 
 请用中文回复。"""
-                
-                # 调用AI整理
-                summary = self.ai_helper.ai_query(summarize_prompt)
-                
-                # 3. 保存文档
-                if summary:
-                    content = f"# {query}\n\n"
-                    content += f"*搜索时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*\n\n"
-                    content += summary
-                    content += "\n\n---\n\n"
-                    content += "## 参考来源\n\n"
-                    for r in results:
-                        content += f"- [{r.get('title', '无标题')}]({r.get('url', '')})\n"
-                    
-                    return self.save_document(save_path, content)
-                else:
-                    # 如果AI整理失败，保存原始结果
-                    content = f"# {query} - 搜索结果\n\n"
-                    content += f"*搜索时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*\n\n"
-                    for i, r in enumerate(results, 1):
-                        content += f"## {i}. {r.get('title', '无标题')}\n"
-                        content += f"来源: {r.get('url', '')}\n\n"
-                        content += f"{r.get('snippet', '')}\n\n"
-                    
-                    return self.save_document(save_path, content)
-            else:
-                # 没有AI helper，保存原始结果
-                content = f"# {query} - 搜索结果\n\n"
-                content += f"*搜索时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*\n\n"
-                for i, r in enumerate(results, 1):
-                    content += f"## {i}. {r.get('title', '无标题')}\n"
-                    content += f"来源: {r.get('url', '')}\n\n"
-                    content += f"{r.get('snippet', '')}\n\n"
-                
-                return self.save_document(save_path, content)
-                
-        except Exception as e:
-            logger.error(f"收集并保存失败: {e}")
-            return {"success": False, "error": str(e)}
+        return prompt
+
+    def _build_collect_content(self, query, results, ai_summary=None, note=None):
+        """构建收集结果的文档内容"""
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+        if note:
+            content = f"# {query}\n\n"
+            content += f"*搜索时间: {timestamp}*\n\n"
+            content += f"## 说明\n\n{note}\n\n"
+            content += "**提示**: 由于未安装duckduckgo_search库，已直接在浏览器中打开搜索页面。\n"
+            content += "请查看搜索结果后，手动保存需要的信息。\n\n"
+            content += f"搜索链接: https://www.bing.com/search?q={quote_plus(query)}\n"
+            return content
+
+        if not results:
+            content = f"# {query}\n\n"
+            content += f"*搜索时间: {timestamp}*\n\n"
+            content += "## 搜索结果\n\n未找到相关结果。\n\n"
+            content += f"**搜索关键词**: {query}\n"
+            return content
+
+        if ai_summary:
+            content = f"# {query}\n\n"
+            content += f"*搜索时间: {timestamp}*\n\n"
+            content += ai_summary
+            content += "\n\n---\n\n"
+            content += "## 参考来源\n\n"
+            for r in results:
+                content += f"- [{r.get("title", "无标题")}]({r.get("url", "")})\n"
+            return content
+
+        # Raw results without AI summary
+        content = f"# {query} - 搜索结果\n\n"
+        content += f"*搜索时间: {timestamp}*\n\n"
+        for i, r in enumerate(results, 1):
+            content += f"## {i}. {r.get("title", "无标题")}\n"
+            content += f"来源: {r.get("url", "")}\n\n"
+            content += f"{r.get("snippet", "")}\n\n"
+        return content
 
     def send_wechat_message(self, target, message):
         """发送微信消息"""
