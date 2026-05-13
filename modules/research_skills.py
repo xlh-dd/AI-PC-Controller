@@ -11,6 +11,7 @@ import queue
 
 logger = logging.getLogger("ResearchSkills")
 
+import random
 class ResearchSkills:
     """研究技能模块 - 信息搜集、竞品调研、比价购物、抢票等功能"""
     
@@ -432,8 +433,6 @@ class ResearchSkills:
     
     def _check_current_price(self, product_name: str) -> Dict[str, Any]:
         """检查当前价格（模拟）"""
-        # 模拟价格波动
-        import random
         
         platforms = ["淘宝", "京东", "拼多多"]
         prices = {}
@@ -565,8 +564,6 @@ class ResearchSkills:
         target_date = ticket_info["target_date"]
         max_price = ticket_info["max_price"]
         
-        # 模拟概率性有票
-        import random
         if random.random() < 0.3:  # 30%概率有票
             tickets = []
             ticket_types = ["普通票", "VIP票", "学生票"]
@@ -609,8 +606,6 @@ class ResearchSkills:
         logger.info(f"尝试购买票务：{selected_ticket['type']}，价格：{selected_ticket['price']}元")
         time.sleep(2)  # 模拟购买延迟
         
-        # 模拟购买结果（80%成功率）
-        import random
         success = random.random() < 0.8
         
         if success:

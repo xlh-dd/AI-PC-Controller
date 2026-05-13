@@ -5,6 +5,7 @@ import re
 import os
 import subprocess
 import logging
+import traceback
 
 logger = logging.getLogger("WeChatController")
 
@@ -490,7 +491,6 @@ class WeChatController:
 
         except Exception as e:
             logger.error(f"OCR获取消息失败：{e}")
-            import traceback
             logger.error(traceback.format_exc())
             return None
 
@@ -593,7 +593,6 @@ class WeChatController:
                         logger.info(f"第 {idx+1} 次尝试内容为空或太短，内容长度: {len(full_text) if full_text else 0}")
                 except Exception as e:
                     logger.info(f"第 {idx+1} 次尝试异常: {e}")
-                    import traceback
                     logger.debug(traceback.format_exc())
 
             if not full_text or len(full_text) <= 2:
@@ -614,7 +613,6 @@ class WeChatController:
         except Exception as e:
             logger.error(f"剪贴板方案获取消息失败：{e}")
             self.last_error = f"获取消息异常: {str(e)}"
-            import traceback
             logger.error(traceback.format_exc())
             return None
         finally:

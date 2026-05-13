@@ -1,5 +1,6 @@
 import logging
 import re
+import random
 import json
 import time
 import os
@@ -179,7 +180,6 @@ class SocialSkills:
         # 检查完全匹配的关键词
         for keyword, responses in self.keyword_responses.items():
             if keyword.lower() in message_lower:
-                import random
                 response = random.choice(responses)
                 
                 # 替换模板变量
@@ -193,7 +193,6 @@ class SocialSkills:
             keyword_lower = keyword.lower()
             # 检查是否包含关键词中的主要字符（长度大于2）
             if len(keyword_lower) > 2 and keyword_lower in message_lower:
-                import random
                 response = random.choice(responses)
                 response = response.replace("{current_time}", datetime.now().strftime("%H:%M:%S"))
                 response = response.replace("{current_date}", datetime.now().strftime("%Y年%m月%d日"))
@@ -350,7 +349,6 @@ class SocialSkills:
         body = template.get("body", "")
         
         # 使用正则表达式提取所有 {variable} 格式的变量
-        import re
         variables = re.findall(r'\{(\w+)\}', subject + body)
         return list(set(variables))  # 去重
     
@@ -373,7 +371,6 @@ class SocialSkills:
         template_vars = {}
         
         # 尝试提取姓名
-        import re
         name_match = re.search(r'[我|叫|是]\s*([\u4e00-\u9fa5]{2,4})', speech_text)
         if name_match:
             template_vars["your_name"] = name_match.group(1)

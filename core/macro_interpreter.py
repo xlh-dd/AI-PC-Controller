@@ -27,6 +27,13 @@ logger = logging.getLogger("MacroInterpreter")
 
 # ── 虚拟机 ───────────────────────────────────────────────────────────────────
 
+try:
+    import pyautogui
+    PYAUTOGUI_AVAILABLE = True
+except ImportError:
+    pyautogui = None
+    PYAUTOGUI_AVAILABLE = False
+
 class MacroValue:
     """宏变量"""
     def __init__(self, value: Any, vtype: str = "str"):
@@ -131,7 +138,6 @@ class BaseMacroBuiltIn:
                 raise RuntimeError(f"未找到图像: {image}")
         if x is not None and y is not None:
             try:
-                import pyautogui
                 pyautogui.click(x, y)
             except Exception as e:
                 raise RuntimeError(f"点击失败: {e}")
@@ -141,7 +147,6 @@ class BaseMacroBuiltIn:
         """输入文本"""
         resolved = self.ctx.resolve(text)
         try:
-            import pyautogui
             pyautogui.write(resolved, **kwargs)
         except Exception as e:
             raise RuntimeError(f"输入失败: {e}")
@@ -150,7 +155,6 @@ class BaseMacroBuiltIn:
     def press(self, key: str, **kwargs) -> MacroValue:
         """按键"""
         try:
-            import pyautogui
             pyautogui.press(key)
         except Exception as e:
             raise RuntimeError(f"按键失败: {e}")
@@ -183,8 +187,6 @@ class BaseMacroBuiltIn:
     def _find_image(self, template_name: str) -> Optional[Tuple[int, int]]:
         """查找图像位置"""
         try:
-            import pyautogui
-            import os
             macro_dir = Path(__file__).parent.parent / "macros"
             template_path = str(macro_dir / "screenshots" / template_name)
             if not os.path.exists(template_path):
