@@ -12,6 +12,12 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 from enum import Enum
 from collections import defaultdict
 
+try:
+    import openai
+except ImportError:
+    openai = None
+
+
 logger = logging.getLogger("ModelPool")
 
 # ── 任务类型枚举 ─────────────────────────────────────────────────────────────
@@ -89,7 +95,6 @@ class OllamaClient(BaseModelClient):
     def _get_client(self):
         if self._client is None:
             try:
-                import openai
                 self._client = openai.OpenAI(
                     base_url=self.config.api_base,
                     api_key="ollama",  # Ollama 不需要真实 key
@@ -102,7 +107,6 @@ class OllamaClient(BaseModelClient):
 
     def chat(self, messages: List[Dict], stream_callback=None, stop_event=None,
              temperature=None, max_tokens=None) -> AIResponse:
-        import openai
         client = self._get_client()
         if not client:
             return AIResponse(content="[Ollama不可用]", model=self.config.name)
@@ -154,7 +158,6 @@ class OpenAICompatibleClient(BaseModelClient):
     def _get_client(self):
         if self._client is None:
             try:
-                import openai
                 self._client = openai.OpenAI(
                     base_url=self.config.api_base,
                     api_key=self.config.api_key,
@@ -166,7 +169,6 @@ class OpenAICompatibleClient(BaseModelClient):
 
     def chat(self, messages: List[Dict], stream_callback=None, stop_event=None,
              temperature=None, max_tokens=None) -> AIResponse:
-        import openai
         client = self._get_client()
         if not client:
             return AIResponse(content="[API客户端不可用]", model=self.config.name)

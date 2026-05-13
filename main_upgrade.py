@@ -459,7 +459,6 @@ class UpgradeGUI:
             
             # 密码存 keyring
             if pwd:
-                from modules.email_classifier import EmailClassifier
                 EmailClassifier._set_password(email, pwd)
             
             email_classifier.save_config()
@@ -552,8 +551,6 @@ class UpgradeGUI:
 
     def _scan_download_folder(self):
         """扫描下载文件夹并添加到知识库"""
-        import os
-        from pathlib import Path
         
         download_path = Path.home() / "Downloads"
         if not download_path.exists():
@@ -614,7 +611,6 @@ class UpgradeGUI:
             
             # 启动后台线程
             def _monitor():
-                import time
                 while kb._monitoring:
                     try:
                         # 这里可以添加实际的监控逻辑
