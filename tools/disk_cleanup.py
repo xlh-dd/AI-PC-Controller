@@ -35,6 +35,7 @@ def format_size(mb):
 
 
 def main():
+    auto_yes = '--yes' in sys.argv or '-y' in sys.argv
     print("  🧹 AI电脑管家 磁盘清理")
     print(f"  项目路径: {PROJECT_ROOT}")
     print()
@@ -89,20 +90,22 @@ def main():
         print("  系统干净，无需清理。")
         return
 
-    choice = input("  是否清理? [y/N]: ").strip().lower()
-    if choice not in ('y', 'yes'):
-        print("  取消。")
-        return
-
-    # 选择项
     names = list(stats.keys())
-    if len(names) > 1:
-        print("\n  选择要清理的项 (多个用空格分隔，回车清理全部):")
-        for i, name in enumerate(names, 1):
-            print(f"  {i}. {name} ({format_size(stats[name][1])})")
-        sel = input("  > ").strip()
-    else:
+
+    if auto_yes:
+        print("  🔧 自动模式：清理全部")
         sel = ''
+    else:
+        choice = input("  是否清理? [y/N]: ").strip().lower()
+        if choice not in ('y', 'yes'):
+            print("  取消。")
+            return
+
+        if len(names) > 1:
+            print("\n  选择要清理的项 (多个用空格分隔，回车清理全部):")
+            for i, name in enumerate(names, 1):
+                print(f"  {i}. {name} ({format_size(stats[name][1])})")
+        sel = input("  > ").strip()
 
     if sel:
         targets = set()
