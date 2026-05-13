@@ -963,7 +963,6 @@ class AIAgent:
                 return {"success": False, "error": str(e)}
         else:
             try:
-                import subprocess
                 result = subprocess.run(
                     command,
                     shell=True,
@@ -1129,7 +1128,6 @@ class AIAgent:
 
     def http_request(self, url, method="GET", data=None):
         """发送HTTP请求"""
-        import requests
         try:
             if method.upper() == "GET":
                 response = requests.get(url, timeout=30)
@@ -1462,6 +1460,17 @@ class AIAgent:
 
 class BrowserAutomation:
     """浏览器自动化模块 - 增强版"""
+import subprocess
+
+try:
+    from selenium import webdriver
+    from selenium.webdriver.chrome.service import Service
+    from webdriver_manager.chrome import ChromeDriverManager
+except ImportError:
+    webdriver = None
+    Service = None
+    ChromeDriverManager = None
+
 
     def __init__(self):
         self.search_results = []
@@ -1471,7 +1480,6 @@ class BrowserAutomation:
     def _check_selenium(self):
         if self._selenium_available is None:
             try:
-                from selenium import webdriver
                 self._selenium_available = True
             except ImportError:
                 self._selenium_available = False
@@ -1501,9 +1509,6 @@ class BrowserAutomation:
         if not self._check_selenium():
             raise ImportError("Selenium未安装，请运行: pip install selenium webdriver-manager")
 
-        from selenium import webdriver
-        from selenium.webdriver.chrome.service import Service
-        from webdriver_manager.chrome import ChromeDriverManager
 
         driver = None
         try:
@@ -1551,10 +1556,6 @@ class BrowserAutomation:
     def extract_page_content(self, url):
         """提取网页内容（需要安装selenium）"""
         try:
-            from selenium import webdriver
-            from selenium.webdriver.chrome.service import Service
-            from webdriver_manager.chrome import ChromeDriverManager
-            from bs4 import BeautifulSoup
 
             with self.selenium_session() as driver:
                 driver.get(url)
@@ -1659,7 +1660,6 @@ class TaskExecutor:
     def execute_command(self, command):
         """执行系统命令"""
         try:
-            import subprocess
             result = subprocess.run(
                 command,
                 shell=True,

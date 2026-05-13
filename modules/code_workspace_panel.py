@@ -20,6 +20,15 @@ from pathlib import Path
 from typing import Optional, Callable
 
 
+import subprocess
+try:
+    import pyperclip
+except ImportError:
+    pyperclip = None
+
+from services.code_project_monitor import get_code_project_monitor, MonitorAction
+from services.project_templates import ProjectTemplates
+
 class CodeWorkspacePanel:
     """编程工作区面板"""
     
@@ -173,7 +182,6 @@ class CodeWorkspacePanel:
         template_frame.pack(fill=tk.X, pady=5)
         ttk.Label(template_frame, text="快速模板:").pack(side=tk.LEFT)
         self.template_var = tk.StringVar(value="")
-        from services.project_templates import ProjectTemplates
         templates = ProjectTemplates.list_templates()
         template_names = [""] + [f"{t['name']} ({t['language']})" for t in templates]
         self.template_ids = [""] + [t['id'] for t in templates]
@@ -422,13 +430,11 @@ class CodeWorkspacePanel:
     
     def _start_monitor(self):
         try:
-            from services.code_project_monitor import get_code_project_monitor
             self.monitor = get_code_project_monitor(
                 project_path=self.path_var.get(),
                 config_manager=self.app.config_manager if hasattr(self.app, 'config_manager') else None
             )
             
-            from services.code_project_monitor import MonitorAction
             self.monitor.auto_action = MonitorAction(self.action_var.get())
             
             self.monitor.on_change(self._on_file_change)
@@ -465,7 +471,6 @@ class CodeWorkspacePanel:
     def _scan_project(self):
         def do_scan():
             try:
-                from services.code_project_monitor import get_code_project_monitor
                 monitor = get_code_project_monitor(project_path=self.path_var.get())
                 health = monitor.scan_project()
                 self.app.root.after(0, lambda: self._update_health_display(health))
@@ -571,7 +576,6 @@ class CodeWorkspacePanel:
         
         def do_review():
             try:
-                from services.code_project_monitor import get_code_project_monitor
                 monitor = get_code_project_monitor(project_path=path)
                 
                 # 扫描所有代码文件
@@ -615,7 +619,6 @@ class CodeWorkspacePanel:
         
         def do_generate():
             try:
-                from services.project_templates import ProjectTemplates
                 result = ProjectTemplates.generate(template_id, out)
                 
                 if result["success"]:
@@ -716,7 +719,6 @@ class CodeWorkspacePanel:
         data = self._snippets.get(name)
         if data:
             try:
-                import pyperclip
                 pyperclip.copy(data['code'])
                 self._log(f"📋 已复制片段: {name}")
             except ImportError:
@@ -756,7 +758,6 @@ class CodeWorkspacePanel:
     def _git_status(self):
         def do_status():
             try:
-                import subprocess
                 result = subprocess.run(
                     ["git", "-C", self.path_var.get(), "status", "-sb"],
                     capture_output=True, text=True, timeout=10
@@ -770,7 +771,6 @@ class CodeWorkspacePanel:
     def _git_add_all(self):
         def do_add():
             try:
-                import subprocess
                 result = subprocess.run(
                     ["git", "-C", self.path_var.get(), "add", "."],
                     capture_output=True, text=True, timeout=10
@@ -790,7 +790,6 @@ class CodeWorkspacePanel:
         
         def do_commit():
             try:
-                import subprocess
                 result = subprocess.run(
                     ["git", "-C", self.path_var.get(), "commit", "-m", msg],
                     capture_output=True, text=True, timeout=10
@@ -804,7 +803,6 @@ class CodeWorkspacePanel:
     def _git_push(self):
         def do_push():
             try:
-                import subprocess
                 result = subprocess.run(
                     ["git", "-C", self.path_var.get(), "push"],
                     capture_output=True, text=True, timeout=30
@@ -819,7 +817,6 @@ class CodeWorkspacePanel:
         """AI生成提交信息"""
         def do_generate():
             try:
-                import subprocess
                 # 获取git diff
                 diff_result = subprocess.run(
                     ["git", "-C", self.path_var.get(), "diff", "--cached", "--stat"],
@@ -1063,7 +1060,6 @@ class CodeWorkspacePanel:
     def _copy_assistant_result(self):
         """复制结果到剪贴板"""
         try:
-            import pyperclip
             result = self.assistant_result.get("1.0", tk.END)
             pyperclip.copy(result)
             self._assistant_log("📋 已复制到剪贴板")
