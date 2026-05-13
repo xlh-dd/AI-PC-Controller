@@ -1,6 +1,7 @@
 import sys
 import os
 import sqlite3
+from modules.conversation_memory import ConversationMemory
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 print("=" * 60)
@@ -12,7 +13,6 @@ results = []
 # 测试对话记忆数据库
 print("\n1. 测试对话记忆数据库 (ConversationMemory)")
 try:
-    from modules.conversation_memory import ConversationMemory
     cm = ConversationMemory()
     
     # 检查数据库文件
@@ -112,7 +112,6 @@ except Exception as e:
 # 测试基本CRUD操作
 print("\n4. 测试对话记忆CRUD操作")
 try:
-    from modules.conversation_memory import ConversationMemory
     cm = ConversationMemory()
     
     # 测试添加消息

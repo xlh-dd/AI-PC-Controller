@@ -27,6 +27,20 @@ from modules.email_classifier import EmailClassifier
 from modules.ui_manager import init_ui_manager
 # Hermes 桥接 (已优化, 旧版本 hermes_bridge.py 已移除)
 from modules.hermes_bridge_optimized import get_hermes_bridge_optimized, get_hermes_ai_helper_optimized
+import traceback
+
+try:
+    import win32api
+    import win32con
+except ImportError:
+    win32api = None
+    win32con = None
+
+try:
+    import pygetwindow as gw
+except ImportError:
+    gw = None
+
 
 # 静默注册可选依赖（失败不打印警告）
 _optional_deps = [
@@ -1139,7 +1153,6 @@ class AIPCHelperV8:
                 self._chat_with_deepseek(msg, conv)
         except Exception as e:
             print(f"send_msg异常：{e}")
-            import traceback
             traceback.print_exc()
             self.say("系统", f"❌ 发送消息时发生错误：{str(e)}")
 
@@ -3198,8 +3211,6 @@ class AIPCHelperV8:
 
         def start_calibration():
             try:
-                import win32api
-                import win32con
 
                 self.calibrating = True
                 self.calibration_step.set("校准模式已激活！请点击微信窗口中的最后一条消息")
@@ -3213,7 +3224,6 @@ class AIPCHelperV8:
                             
                             # 获取微信窗口信息
                             try:
-                                import pygetwindow as gw
                                 windows = gw.getWindowsWithTitle('微信')
                                 if not windows:
                                     windows = gw.getWindowsWithTitle('WeChat')
@@ -3314,7 +3324,6 @@ class AIPCHelperV8:
                 
                 # 获取微信窗口信息，尝试转换为比例坐标
                 try:
-                    import pygetwindow as gw
                     windows = gw.getWindowsWithTitle('微信')
                     if not windows:
                         windows = gw.getWindowsWithTitle('WeChat')
@@ -3416,8 +3425,6 @@ class AIPCHelperV8:
 
         def start_calibration():
             try:
-                import win32api
-                import win32con
 
                 self.search_calibrating = True
                 self.search_calibration_step.set("校准模式已激活！请点击微信窗口中的搜索框")
@@ -3959,7 +3966,6 @@ class AIPCHelperV8:
                              f"- 上次错误: {diagnostic_info.get('last_error', '无')}")
             except Exception as e:
                 self.say("系统", f"❌ 诊断过程异常: {str(e)}")
-                import traceback
                 traceback.print_exc()
         
         threading.Thread(target=run_diagnosis, daemon=True).start()
