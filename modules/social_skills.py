@@ -35,14 +35,7 @@ class SocialSkills:
             except Exception as e:
                 logger.error(f"加载关键词回复预设失败: {e}")
         else:
-            # 创建默认关键词回复
-            self.keyword_responses = {
-                "你好": ["你好！", "您好，有什么可以帮您？", "Hi！"],
-                "在吗": ["在的，请说", "我在，有什么需要帮助的吗？"],
-                "谢谢": ["不客气！", "很高兴能帮到您", "您太客气了"],
-                "价格": ["关于价格，请查看我们的官网或联系客服", "价格信息需要具体查询，您想了解哪个产品的价格？"],
-                "时间": ["现在是{current_time}", "今天日期是{current_date}"]
-            }
+            self.keyword_responses = self._default_keyword_responses()
             self.save_keyword_responses()
             
         # 加载邮件模板
@@ -55,11 +48,25 @@ class SocialSkills:
             except Exception as e:
                 logger.error(f"加载邮件模板失败: {e}")
         else:
-            # 创建默认邮件模板
-            self.email_templates = {
-                "商务邀约": {
-                    "subject": "合作邀约 - {company_name}",
-                    "body": """尊敬的{recipient_name}：
+            self.email_templates = self._default_email_templates()
+            self.save_email_templates()
+
+    def _default_keyword_responses(self):
+        """默认关键词回复预设"""
+        return {
+            "你好": ["你好！", "您好，有什么可以帮您？", "Hi！"],
+            "在吗": ["在的，请说", "我在，有什么需要帮助的吗？"],
+            "谢谢": ["不客气！", "很高兴能帮到您", "您太客气了"],
+            "价格": ["关于价格，请查看我们的官网或联系客服", "价格信息需要具体查询，您想了解哪个产品的价格？"],
+            "时间": ["现在是{current_time}", "今天日期是{current_date}"]
+        }
+
+    def _default_email_templates(self):
+        """默认邮件模板"""
+        return {
+            "商务邀约": {
+                "subject": "合作邀约 - {company_name}",
+                "body": """尊敬的{recipient_name}：
 
 您好！
 
@@ -78,10 +85,10 @@ class SocialSkills:
 {your_position}
 {company_name}
 {contact_info}"""
-                },
-                "会议纪要": {
-                    "subject": "{meeting_topic} 会议纪要 - {date}",
-                    "body": """会议纪要
+            },
+            "会议纪要": {
+                "subject": "{meeting_topic} 会议纪要 - {date}",
+                "body": """会议纪要
 
 会议主题：{meeting_topic}
 会议时间：{meeting_time}
@@ -104,10 +111,10 @@ class SocialSkills:
 如有任何疑问，请随时联系。
 
 {your_name}"""
-                },
-                "请假申请": {
-                    "subject": "请假申请 - {your_name} - {date_range}",
-                    "body": """尊敬的{manager_name}：
+            },
+            "请假申请": {
+                "subject": "请假申请 - {your_name} - {date_range}",
+                "body": """尊敬的{manager_name}：
 
 您好！
 
@@ -128,10 +135,9 @@ class SocialSkills:
 {your_name}
 {department}
 {date}"""
-                }
             }
-            self.save_email_templates()
-    
+        }
+
     def save_keyword_responses(self):
         """保存关键词回复预设"""
         presets_dir = Path(__file__).parent.parent / "knowledge_base" / "presets"
