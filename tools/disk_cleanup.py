@@ -34,15 +34,12 @@ def format_size(mb):
     return f"{mb:.1f}M"
 
 
-def main():
-    auto_yes = '--yes' in sys.argv or '-y' in sys.argv
-    print("  🧹 AI电脑管家 磁盘清理")
-    print(f"  项目路径: {PROJECT_ROOT}")
-    print()
 
+
+def _collect_cleanup_stats():
+    """扫描可清理项，返回 stats 字典"""
     freed_total = 0
     stats = {}
-
     # 1. pip cache
     try:
         result = subprocess.run(
@@ -75,6 +72,17 @@ def main():
         except Exception:
             pass
 
+    return stats
+
+
+def main():
+    auto_yes = '--yes' in sys.argv or '-y' in sys.argv
+    print("  🧹 AI电脑管家 磁盘清理")
+    print(f"  项目路径: {PROJECT_ROOT}")
+    print()
+
+
+    stats = _collect_cleanup_stats()
     # 首页
     print("  ---- 可清理项 ----")
     total = 0
@@ -163,7 +171,3 @@ def main():
     usage = shutil.disk_usage(PROJECT_ROOT)
     print(f"  磁盘剩余: {usage.free / (1024**3):.1f}G/{usage.total / (1024**3):.0f}G "
           f"({usage.free / usage.total * 100:.0f}%)")
-
-
-if __name__ == '__main__':
-    main()
