@@ -44,6 +44,78 @@ class AIAgent:
     支持依赖注入，允许传入自定义的 ai_helper 实例
     """
 
+
+    _TOOL_CATEGORIES = {
+        "搜索与信息收集": {
+            "keywords": ["搜索", "查找", "查询", "搜索", "google", "bing", "百度", "查找信息", "搜索资料"],
+            "tools": [
+                "search_browser - 在浏览器中搜索信息",
+                "search_and_collect - 搜索并收集信息，返回结构化数据",
+                "collect_and_save - ★推荐★ 搜索、整理并保存为文档"
+            ]
+        },
+        "文档与文件操作": {
+            "keywords": ["保存", "文档", "文件", "写入", "创建", "编辑", "整理", "笔记", "记事本"],
+            "tools": [
+                "save_document - 保存文档到指定位置",
+                "file_operation - 执行文件操作（复制/移动/删除）"
+            ]
+        },
+        "通信与社交": {
+            "keywords": ["微信", "发送", "消息", "通知", "提醒", "聊天", "沟通", "邮件"],
+            "tools": [
+                "send_wechat - 发送微信消息",
+                "speak_text - 语音合成(文本转语音)"
+            ]
+        },
+        "系统控制与自动化": {
+            "keywords": ["执行", "运行", "命令", "自动化", "宏", "录制", "播放", "定时", "计划"],
+            "tools": [
+                "execute_command - 执行系统命令",
+                "play_macro - 播放录制的宏",
+                "record_macro - 开始录制宏",
+                "schedule_task - 创建定时任务"
+            ]
+        },
+        "应用程序管理": {
+            "keywords": ["打开", "启动", "应用", "程序", "软件", "窗口", "最小化", "激活", "关闭"],
+            "tools": [
+                "open_app - 打开应用程序",
+                "manage_windows - 管理应用程序窗口",
+                "manage_processes - 管理系统进程"
+            ]
+        },
+        "多媒体与界面": {
+            "keywords": ["截图", "屏幕", "图像", "点击", "识别", "文字", "OCR", "音量", "声音", "静音"],
+            "tools": [
+                "take_screenshot - 截取屏幕",
+                "click_image - 在屏幕上查找并点击图像",
+                "ocr_screen - 识别屏幕区域的文字(OCR)",
+                "control_volume - 控制电脑音量"
+            ]
+        },
+        "网络与通信": {
+            "keywords": ["网络", "wifi", "连接", "HTTP", "请求", "API", "访问", "网站"],
+            "tools": [
+                "control_network - 控制网络连接",
+                "http_request - 发送HTTP请求"
+            ]
+        },
+        "系统信息": {
+            "keywords": ["信息", "状态", "CPU", "内存", "磁盘", "系统", "剪贴板", "配置"],
+            "tools": [
+                "system_info - 获取系统信息",
+                "control_clipboard - 控制剪贴板"
+            ]
+        },
+        "编程与代码": {
+            "keywords": ["python", "代码", "编程", "运行代码", "脚本", "执行代码"],
+            "tools": [
+                "run_python - 执行Python代码"
+            ]
+        }
+    }
+
     def __init__(self, ai_helper=None, config_manager=None, ollama_url=None, model=None, event_bus=None, **kwargs):
         """初始化 AI 智能体
         
@@ -454,76 +526,7 @@ class AIAgent:
     def _build_planning_prompt(self, user_command):
         """构建任务规划提示词，根据用户指令动态选择相关工具"""
         # 定义工具类别和关键字映射
-        tool_categories = {
-            "搜索与信息收集": {
-                "keywords": ["搜索", "查找", "查询", "搜索", "google", "bing", "百度", "查找信息", "搜索资料"],
-                "tools": [
-                    "search_browser - 在浏览器中搜索信息",
-                    "search_and_collect - 搜索并收集信息，返回结构化数据",
-                    "collect_and_save - ★推荐★ 搜索、整理并保存为文档"
-                ]
-            },
-            "文档与文件操作": {
-                "keywords": ["保存", "文档", "文件", "写入", "创建", "编辑", "整理", "笔记", "记事本"],
-                "tools": [
-                    "save_document - 保存文档到指定位置",
-                    "file_operation - 执行文件操作（复制/移动/删除）"
-                ]
-            },
-            "通信与社交": {
-                "keywords": ["微信", "发送", "消息", "通知", "提醒", "聊天", "沟通", "邮件"],
-                "tools": [
-                    "send_wechat - 发送微信消息",
-                    "speak_text - 语音合成(文本转语音)"
-                ]
-            },
-            "系统控制与自动化": {
-                "keywords": ["执行", "运行", "命令", "自动化", "宏", "录制", "播放", "定时", "计划"],
-                "tools": [
-                    "execute_command - 执行系统命令",
-                    "play_macro - 播放录制的宏",
-                    "record_macro - 开始录制宏",
-                    "schedule_task - 创建定时任务"
-                ]
-            },
-            "应用程序管理": {
-                "keywords": ["打开", "启动", "应用", "程序", "软件", "窗口", "最小化", "激活", "关闭"],
-                "tools": [
-                    "open_app - 打开应用程序",
-                    "manage_windows - 管理应用程序窗口",
-                    "manage_processes - 管理系统进程"
-                ]
-            },
-            "多媒体与界面": {
-                "keywords": ["截图", "屏幕", "图像", "点击", "识别", "文字", "OCR", "音量", "声音", "静音"],
-                "tools": [
-                    "take_screenshot - 截取屏幕",
-                    "click_image - 在屏幕上查找并点击图像",
-                    "ocr_screen - 识别屏幕区域的文字(OCR)",
-                    "control_volume - 控制电脑音量"
-                ]
-            },
-            "网络与通信": {
-                "keywords": ["网络", "wifi", "连接", "HTTP", "请求", "API", "访问", "网站"],
-                "tools": [
-                    "control_network - 控制网络连接",
-                    "http_request - 发送HTTP请求"
-                ]
-            },
-            "系统信息": {
-                "keywords": ["信息", "状态", "CPU", "内存", "磁盘", "系统", "剪贴板", "配置"],
-                "tools": [
-                    "system_info - 获取系统信息",
-                    "control_clipboard - 控制剪贴板"
-                ]
-            },
-            "编程与代码": {
-                "keywords": ["python", "代码", "编程", "运行代码", "脚本", "执行代码"],
-                "tools": [
-                    "run_python - 执行Python代码"
-                ]
-            }
-        }
+        tool_categories = self._TOOL_CATEGORIES
         
         # 根据用户指令确定相关工具类别
         user_command_lower = user_command.lower()
