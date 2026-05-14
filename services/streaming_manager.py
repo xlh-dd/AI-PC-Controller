@@ -120,40 +120,10 @@ class StreamingManager:
                     pass
             self.root.after(0, _update)
         
-        def _animate():
-            if self._cancel_event.is_set() or not self._active:
-                return
-            elapsed = self.elapsed
-            frames = ["⟳", "⏳", "⏱", "⟲"]
-            idx = int(elapsed * 2) % len(frames)
-            
-            if elapsed < gs:
-                color = "#a6e3a1"      # 绿色
-            elif elapsed < os_:
-                color = "#fab387"      # 橙色
-            elif elapsed < ys:
-                color = "#f9e2af"      # 黄色
-            else:
-                color = "#f38ba8"      # 红色
-            
-            # 动态时间格式：<60s 用秒，>=60s 用分:秒
-            if elapsed >= 60:
-                m, s = divmod(int(elapsed), 60)
-                timer = f"{m}:{s:02d}"
-            else:
-                timer = f"{elapsed:.0f}s"
-            self._update_status(f"{frames[idx]} {header_label} {status_prefix}... {timer}", color)
-            
-            if self._active and not self._cancel_event.is_set():
-                # 修复：通过 after(0) 原子化设置 timer_id 防竞态
-                def _schedule():
-                    self._timer_id = self.root.after(500, _animate)
-                self.root.after(0, _schedule)
-        
         def _run():
             try:
                 # 启动动画 & 取消按钮
-                self.root.after(0, _animate)
+                self.root.after(0, lambda: self._animate_status(gs, os_, ys, header_label, status_prefix))
                 if self._on_cancel_button:
                     self.root.after(0, lambda: self._on_cancel_button(True))
                 
@@ -183,6 +153,33 @@ class StreamingManager:
                 self._finalize(StreamError.ERROR, str(e))
         
         threading.Thread(target=_run, daemon=True).start()
+
+    def _animate_status(self, gs: int, os_: int, ys: int, header_label: str, status_prefix: str):
+        """流式状态栏动画（提取自 start()）"""
+        if self._cancel_event.is_set() or not self._active:
+            return
+        elapsed = self.elapsed
+        frames = ["⟳", "⏳", "⏱", "⟲"]
+        idx = int(elapsed * 2) % len(frames)
+        
+        if elapsed < gs:
+            color = "#a6e3a1"
+        elif elapsed < os_:
+            color = "#fab387"
+        elif elapsed < ys:
+            color = "#f9e2af"
+        else:
+            color = "#f38ba8"
+        
+        if elapsed >= 60:
+            m, s = divmod(int(elapsed), 60)
+            timer = f"{m}:{s:02d}"
+        else:
+            timer = f"{elapsed:.0f}s"
+        self._update_status(f"{frames[idx]} {header_label} {status_prefix}... {timer}", color)
+        
+        if self._active and not self._cancel_event.is_set():
+            self._timer_id = self.root.after(500, lambda: self._animate_status(gs, os_, ys, header_label, status_prefix))
     
     # ── 内部方法 ────────────────────────────────────────────────────────────────────
     
