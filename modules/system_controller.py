@@ -1107,64 +1107,7 @@ class SystemController:
                 try:
                     key = winreg.OpenKey(hive, path, 0, winreg.KEY_READ | winreg.KEY_WOW64_64KEY if hive == winreg.HKEY_LOCAL_MACHINE else winreg.KEY_READ)
                     paths_accessed += 1
-                    i = 0
-                    while True:
-                        try:
-                            subkey_name = winreg.EnumKey(key, i)
-                            try:
-                                subkey = winreg.OpenKey(key, subkey_name, 0, winreg.KEY_READ)
-                                
-                                # 获取软件信息
-                                software = {}
-                                try:
-                                    software["name"] = winreg.QueryValueEx(subkey, "DisplayName")[0]
-                                except:
-                                    software["name"] = subkey_name
-                                
-                                try:
-                                    software["version"] = winreg.QueryValueEx(subkey, "DisplayVersion")[0]
-                                except:
-                                    software["version"] = "未知"
-                                
-                                try:
-                                    software["publisher"] = winreg.QueryValueEx(subkey, "Publisher")[0]
-                                except:
-                                    software["publisher"] = "未知"
-                                
-                                try:
-                                    software["install_date"] = winreg.QueryValueEx(subkey, "InstallDate")[0]
-                                except:
-                                    software["install_date"] = "未知"
-                                
-                                try:
-                                    software["install_location"] = winreg.QueryValueEx(subkey, "InstallLocation")[0]
-                                except:
-                                    software["install_location"] = ""
-                                
-                                try:
-                                    software["uninstall_string"] = winreg.QueryValueEx(subkey, "UninstallString")[0]
-                                except:
-                                    software["uninstall_string"] = ""
-                                
-                                # 只添加有DisplayName的软件（避免系统组件）
-                                if "name" in software and software["name"] and not software["name"].startswith("{"):
-                                    software_list.append(software)
-                                
-                                winreg.CloseKey(subkey)
-                            except PermissionError as pe:
-                                warnings.append(f"权限不足，无法访问 {display_path}\\{subkey_name}: {pe}")
-                                logger.warning(f"权限不足，无法访问注册表子键 {path}\\{subkey_name}: {pe}")
-                            except Exception as e:
-                                warnings.append(f"读取 {display_path}\\{subkey_name} 失败: {e}")
-                                logger.warning(f"读取软件信息失败: {e}")
-                            i += 1
-                        except OSError:
-                            # 没有更多子键
-                            break
-                        except Exception as e:
-                            warnings.append(f"枚举 {display_path} 子键失败: {e}")
-                            logger.warning(f"枚举注册表子键失败: {e}")
-                            break
+                    self._enumerate_registry_subkeys(key, path, display_path, software_list, warnings)
                     winreg.CloseKey(key)
                 except PermissionError as pe:
                     warnings.append(f"权限不足，无法访问注册表路径 {display_path}: {pe}")
@@ -1212,6 +1155,68 @@ class SystemController:
             return result
         except Exception as e:
             return {"success": False, "error": f"获取已安装软件列表失败: {str(e)}"}
+
+    def _enumerate_registry_subkeys(self, key, path, display_path, software_list, warnings):
+        """枚举注册表子键并读取软件信息"""
+        import winreg
+        i = 0
+        while True:
+            try:
+                subkey_name = winreg.EnumKey(key, i)
+                try:
+                    subkey = winreg.OpenKey(key, subkey_name, 0, winreg.KEY_READ)
+
+                    # 获取软件信息
+                    software = {}
+                    try:
+                        software["name"] = winreg.QueryValueEx(subkey, "DisplayName")[0]
+                    except:
+                        software["name"] = subkey_name
+
+                    try:
+                        software["version"] = winreg.QueryValueEx(subkey, "DisplayVersion")[0]
+                    except:
+                        software["version"] = "未知"
+
+                    try:
+                        software["publisher"] = winreg.QueryValueEx(subkey, "Publisher")[0]
+                    except:
+                        software["publisher"] = "未知"
+
+                    try:
+                        software["install_date"] = winreg.QueryValueEx(subkey, "InstallDate")[0]
+                    except:
+                        software["install_date"] = "未知"
+
+                    try:
+                        software["install_location"] = winreg.QueryValueEx(subkey, "InstallLocation")[0]
+                    except:
+                        software["install_location"] = ""
+
+                    try:
+                        software["uninstall_string"] = winreg.QueryValueEx(subkey, "UninstallString")[0]
+                    except:
+                        software["uninstall_string"] = ""
+
+                    # 只添加有DisplayName的软件（避免系统组件）
+                    if "name" in software and software["name"] and not software["name"].startswith("{"):
+                        software_list.append(software)
+
+                    winreg.CloseKey(subkey)
+                except PermissionError as pe:
+                    warnings.append(f"权限不足，无法访问 {display_path}\\{subkey_name}: {pe}")
+                    logger.warning(f"权限不足，无法访问注册表子键 {path}\\{subkey_name}: {pe}")
+                except Exception as e:
+                    warnings.append(f"读取 {display_path}\\{subkey_name} 失败: {e}")
+                    logger.warning(f"读取软件信息失败: {e}")
+                i += 1
+            except OSError:
+                # 没有更多子键
+                break
+            except Exception as e:
+                warnings.append(f"枚举 {display_path} 子键失败: {e}")
+                logger.warning(f"枚举注册表子键失败: {e}")
+                break
     
     # ===== 综合功能 =====
     
