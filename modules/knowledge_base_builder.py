@@ -173,27 +173,30 @@ class DatabaseManager:
             )
             ''')
             
-            cursor.execute('''
-            CREATE INDEX IF NOT EXISTS idx_articles_url ON articles(url)
-            ''')
-            cursor.execute('''
-            CREATE INDEX IF NOT EXISTS idx_articles_categories ON articles(categories)
-            ''')
-            cursor.execute('''
-            CREATE INDEX IF NOT EXISTS idx_browser_history_url ON browser_history(url)
-            ''')
-            cursor.execute('''
-            CREATE INDEX IF NOT EXISTS idx_browser_history_processed ON browser_history(processed)
-            ''')
-            cursor.execute('''
-            CREATE INDEX IF NOT EXISTS idx_downloads_processed ON downloads(processed)
-            ''')
-            cursor.execute('''
-            CREATE INDEX IF NOT EXISTS idx_page_visits_url ON page_visits(url)
-            ''')
-            
+            self._create_indexes(cursor)
             conn.commit()
     
+    def _create_indexes(self, cursor):
+        """创建数据库索引"""
+        cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_articles_url ON articles(url)
+        ''')
+        cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_articles_categories ON articles(categories)
+        ''')
+        cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_browser_history_url ON browser_history(url)
+        ''')
+        cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_browser_history_processed ON browser_history(processed)
+        ''')
+        cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_downloads_processed ON downloads(processed)
+        ''')
+        cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_page_visits_url ON page_visits(url)
+        ''')
+
     def _migrate_tables(self, cursor):
         """数据库迁移 - 添加缺失的列"""
         migrations = [
