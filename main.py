@@ -3396,65 +3396,48 @@ class AIPCHelperV8:
         win.geometry("550x450")
         win.configure(bg="#1e1e2e")
         win.transient(self.root)
-
         ttk.Label(win, text="🔍 搜索框坐标校准", font=("微软雅黑", 14, "bold")).pack(pady=10)
-
         info_text = """校准步骤:
 1. 确保微信窗口已打开并可见
 2. 点击「进入校准模式」
 3. 此时请点击微信窗口中的「搜索框」位置
 4. 点击后自动记录坐标
 5. 点击「保存坐标」保存到配置
-
 提示:校准后可以精确定位搜索框"""
         ttk.Label(win, text=info_text, justify=tk.LEFT).pack(pady=10)
-
         self.search_calibration_step = tk.StringVar(value="就绪")
         step_label = ttk.Label(win, textvariable=self.search_calibration_step, font=("微软雅黑", 12), foreground="orange")
         step_label.pack(pady=5)
-
         coords_label = ttk.Label(win, text="当前坐标: 未获取", font=("微软雅黑", 10))
         coords_label.pack(pady=5)
-
         saved_coords = self.config_manager.get("search_pos", None)
         if saved_coords:
             coords_label.config(text=f"已保存: {saved_coords}")
-
         self.search_calibrating = False
         self.search_calibration_coords = None
-
         def start_calibration():
             try:
-
                 self.search_calibrating = True
                 self.search_calibration_step.set("校准模式已激活!请点击微信窗口中的搜索框")
-
                 def monitor_click():
                     while self.search_calibrating:
                         if win32api.GetKeyState(win32con.VK_LBUTTON) < 0:
                             x, y = win32api.GetCursorPos()
                             self.search_calibration_coords = (x, y)
-
                             def update_ui():
                                 coords_label.config(text=f"获取坐标成功: ({x}, {y})")
                                 self.search_calibration_step.set("坐标已获取!请点击保存")
-
                             self.root.after(0, update_ui)
-
                             self.search_calibrating = False
                             break
                         time.sleep(0.05)
-
                 threading.Thread(target=monitor_click, daemon=True).start()
-
             except ImportError:
                 coords_label.config(text="请先安装 pywin32")
                 messagebox.showerror("错误", "需要先安装 pywin32\n运行: pip install pywin32")
-
         def stop_calibration():
             self.search_calibrating = False
             self.search_calibration_step.set("校准已停止")
-
         btn_frame = ttk.Frame(win)
         btn_frame.pack(pady=15)
 
