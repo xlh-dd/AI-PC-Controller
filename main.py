@@ -3972,50 +3972,39 @@ class AIPCHelperV8:
         win.configure(bg="#1e1e2e")
         win.transient(self.root)
         win.grab_set()
-
         main_frame = ttk.Frame(win)
         main_frame.pack(fill=tk.BOTH, expand=True)
-
         canvas = tk.Canvas(main_frame, bg="#1e1e2e", highlightthickness=0)
         scrollbar = ttk.Scrollbar(main_frame, orient="vertical", command=canvas.yview)
         content_frame = ttk.Frame(canvas, style='TFrame')
-
         content_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
         canvas.create_window((0, 0), window=content_frame, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
-
         canvas.pack(side="left", fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
         def on_mousewheel(event):
             canvas.yview_scroll(int(-1*(event.delta/120)), "units")
         canvas.bind_all("<MouseWheel>", on_mousewheel)
-
         ttk.Label(content_frame, text="📱 定时微信消息", font=("微软雅黑", 14, "bold")).pack(pady=10)
         ttk.Label(content_frame, text="关闭窗口后任务继续运行,到时间自动发送", foreground="gray").pack(pady=(0, 10))
-
         ttk.Label(content_frame, text="目标好友/群聊名称:", font=("微软雅黑", 11)).pack(pady=5)
         target_entry = ttk.Entry(content_frame, font=("微软雅黑", 12), width=40)
         target_entry.pack(pady=5)
-
         ttk.Label(content_frame, text="消息内容:", font=("微软雅黑", 11)).pack(pady=5)
         msg_text = scrolledtext.ScrolledText(
             content_frame, font=("微软雅黑", 11), height=6, width=40,
             bg="#313244", fg="#cdd6f4"
         )
         msg_text.pack(pady=5)
-
         ttk.Label(content_frame, text="发送方式:", font=("微软雅黑", 11)).pack(pady=5)
         send_mode = tk.StringVar(value="immediate")
         frame_mode = ttk.Frame(content_frame)
         frame_mode.pack(pady=5)
         ttk.Radiobutton(frame_mode, text="立即发送", variable=send_mode, value="immediate").pack(side=tk.LEFT, padx=10)
         ttk.Radiobutton(frame_mode, text="定时发送", variable=send_mode, value="scheduled").pack(side=tk.LEFT, padx=10)
-
         ttk.Label(content_frame, text="发送时间(每天执行):", font=("微软雅黑", 11)).pack(pady=5)
         frame_time = ttk.Frame(content_frame)
         frame_time.pack(pady=5)
-
         now = datetime.now()
         hour = now.hour
         minute = now.minute
