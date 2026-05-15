@@ -42,7 +42,7 @@ except ImportError:
     gw = None
 
 
-# 静默注册可选依赖（失败不打印警告）
+# 静默注册可选依赖(失败不打印警告)
 _optional_deps = [
     "pyautogui", "pyperclip", "pygetwindow", "requests", "yagmail",
     "selenium", "pandas", "openpyxl", "speech_recognition", "deep_translator",
@@ -57,7 +57,7 @@ try:
 except ImportError:
     USE_BOOTSTRAP = False
     Style = None
-    logging.warning("ttkbootstrap未安装，将使用ttk主题")
+    logging.warning("ttkbootstrap未安装,将使用ttk主题")
 
 # 配置日志
 log_path = Path.home() / "aipc_helper.log"
@@ -94,8 +94,8 @@ class AIPCHelperV8:
         self.model = self.config_manager.get("model", "qwen2.5:1.5b")
         self.ollama_url = self.config_manager.get("ollama_url", "http://localhost:11434/api/generate")
         self.api_key = None  # 保留向后兼容
-        
-        # ========== 延迟初始化模块（按需加载，加速启动）==========
+
+        # ========== 延迟初始化模块(按需加载,加速启动)==========
         self._wechat_controller = None
         self._task_scheduler = None
         self._social_skills = None
@@ -106,18 +106,18 @@ class AIPCHelperV8:
         self._hermes_bridge = None
         self._hermes_ai = None
         self._agent_service = None
-        self._streaming_manager = None  # 流式输出管理器（懒加载）
-        
-        # 立即初始化核心模块（轻量级）
+        self._streaming_manager = None  # 流式输出管理器(懒加载)
+
+        # 立即初始化核心模块(轻量级)
         self.use_hermes = self.config_manager.get("use_hermes", False)
-        
+
         # 后台线程加载重模块
         self._init_thread = threading.Thread(target=self._lazy_init_modules, daemon=True)
         self._init_thread.start()
-        
-        # 完成剩余的初始化（主题、UI构建等）
+
+        # 完成剩余的初始化(主题、UI构建等)
         self._finish_init()
-    
+
     def _lazy_init_modules(self):
         """后台线程延迟初始化重模块"""
         try:
@@ -129,14 +129,14 @@ class AIPCHelperV8:
                 config_manager=self.config_manager
             )
             self._conversation_memory.integrate_with_ai_helper(self.ai_helper)
-            
-            # 初始化统一 AgentService（Hermes + Ollama + AIAgentCore）
+
+            # 初始化统一 AgentService(Hermes + Ollama + AIAgentCore)
             try:
                 from services.agent_service import get_agent_service
                 self._agent_service = get_agent_service()
                 self._agent_service.initialize(self.config_manager)
                 status = self._agent_service.get_status()
-                
+
                 if status.get("hermes"):
                     self.use_hermes = True
                     hermes_detail = status.get("hermes_detail", {})
@@ -162,19 +162,19 @@ class AIPCHelperV8:
                     logger.warning("无可用 AI 后端")
                     self.root.after(0, self._safe_status_update,
                         "⚠️ 无可用 AI 后端", "orange")
-                    
+
                 logger.info(
-                    f"AgentService 已初始化，后端: {self._agent_service.get_preferred_backend()}"
+                    f"AgentService 已初始化,后端: {self._agent_service.get_preferred_backend()}"
                 )
             except Exception as e:
                 logger.warning(f"AgentService 初始化失败: {e}")
-            
+
             logger.info("后台初始化完成")
         except Exception as e:
             logger.error(f"后台初始化失败: {e}")
-    
+
     def _safe_status_update(self, text: str, color: str = "green"):
-        """安全更新状态标签（防止 UI 未就绪时崩溃）"""
+        """安全更新状态标签(防止 UI 未就绪时崩溃)"""
         if hasattr(self, 'status_label') and self.status_label is not None:
             try:
                 self.status_label.config(text=text, foreground=color)
@@ -186,13 +186,13 @@ class AIPCHelperV8:
         if self._hermes_bridge is None:
             self._hermes_bridge = get_hermes_bridge_optimized()
         return self._hermes_bridge
-    
+
     @property
     def hermes_ai(self):
         if self._hermes_ai is None:
             self._hermes_ai = get_hermes_ai_helper_optimized(self.config_manager)
         return self._hermes_ai
-    
+
     @property
     def agent_service(self):
         if self._agent_service is None:
@@ -203,15 +203,15 @@ class AIPCHelperV8:
             except Exception as e:
                 logger.warning(f"AgentService 延迟加载失败: {e}")
         return self._agent_service
-    
+
     @property
     def wechat_controller(self):
         if self._wechat_controller is None:
             self._init_wechat()
         return self._wechat_controller
-    
+
     def _init_wechat(self):
-        """初始化微信控制器（首次使用时调用）"""
+        """初始化微信控制器(首次使用时调用)"""
         self._wechat_controller = WeChatController(
             self.config_manager.get("wechat_contact", "文件传输助手"),
             self.config_manager.get("wechat_check_interval", 10),
@@ -220,7 +220,7 @@ class AIPCHelperV8:
             callback=self.on_wechat_message,
             root=self.root
         )
-        
+
         # 加载保存的坐标
         saved_coords = self.config_manager.get("last_msg_pos", None)
         if saved_coords:
@@ -234,11 +234,11 @@ class AIPCHelperV8:
         tesseract_path = self.config_manager.get("tesseract_cmd", None)
         if tesseract_path:
             self._wechat_controller.tesseract_cmd = tesseract_path
-        
+
         # 同步任务调度器的微信控制器
         if self._task_scheduler:
             self._task_scheduler.wechat_controller = self._wechat_controller
-    
+
     @property
     def task_scheduler(self):
         if self._task_scheduler is None:
@@ -249,7 +249,7 @@ class AIPCHelperV8:
             if self._wechat_controller:
                 self._task_scheduler.wechat_controller = self._wechat_controller
         return self._task_scheduler
-    
+
     @property
     def social_skills(self):
         if self._social_skills is None:
@@ -258,7 +258,7 @@ class AIPCHelperV8:
                 config_manager=self.config_manager
             )
         return self._social_skills
-    
+
     @property
     def knowledge_base_builder(self):
         if self._knowledge_base_builder is None:
@@ -266,7 +266,7 @@ class AIPCHelperV8:
                 config_manager=self.config_manager
             )
         return self._knowledge_base_builder
-    
+
     @property
     def email_classifier(self):
         if self._email_classifier is None:
@@ -276,7 +276,7 @@ class AIPCHelperV8:
                 social_skills=self.social_skills
             )
         return self._email_classifier
-    
+
     @property
     def conversation_memory(self):
         if self._conversation_memory is None:
@@ -285,7 +285,7 @@ class AIPCHelperV8:
             )
             self._conversation_memory.integrate_with_ai_helper(self.ai_helper)
         return self._conversation_memory
-    
+
     @property
     def system_controller(self):
         if self._system_controller is None:
@@ -293,7 +293,7 @@ class AIPCHelperV8:
         return self._system_controller
 
     def _finish_init(self):
-        """完成剩余的初始化工作（在 __init__ 末尾调用）"""
+        """完成剩余的初始化工作(在 __init__ 末尾调用)"""
         # 加载配置
         self.app_paths = self.config_manager.get("app_paths", self.config_manager.get_default_app_paths())
         self.scheduled_tasks = self.config_manager.get("scheduled_tasks", [])
@@ -309,8 +309,8 @@ class AIPCHelperV8:
         # 微信监听相关
         self.wechat_listener_running = False
         self.wechat_listener_thread = None
-        self.listener_lock = threading.Lock()  # 全局锁，用于保护微信监听状态
-        self.command_prefix = self.config_manager.get("command_prefix", "￥")  # 指令前缀
+        self.listener_lock = threading.Lock()  # 全局锁,用于保护微信监听状态
+        self.command_prefix = self.config_manager.get("command_prefix", "¥")  # 指令前缀
         self.listener_paused = False  # 监听暂停标志
 
         # 设置主题
@@ -328,11 +328,11 @@ class AIPCHelperV8:
         # 显示欢迎消息
         self.say("AI管家",
             "━━━ 🖥️ AI电脑管家 · 功能概览 ━━━\n\n"
-            "💬 智能对话 — AI聊天、任务执行、模型切换\n"
-            "📁 文件管理 — 智能整理、查重、大文件扫描\n"
-            "⚙️ 系统控制 — 关机重启、任务管理器、音量调节\n"
-            "📱 微信通讯 — 消息监听、定时发送、远程指令\n"
-            "🤖 自动化 — 宏录制、定时任务、编程工作区\n\n"
+            "💬 智能对话 - AI聊天、任务执行、模型切换\n"
+            "📁 文件管理 - 智能整理、查重、大文件扫描\n"
+            "⚙️ 系统控制 - 关机重启、任务管理器、音量调节\n"
+            "📱 微信通讯 - 消息监听、定时发送、远程指令\n"
+            "🤖 自动化 - 宏录制、定时任务、编程工作区\n\n"
             "━━━ ⚡ 核心引擎 ━━━\n"
             "🧠 模型: DeepSeek V4 Flash/Pro · 智能切换\n"
             "💡 输入自然语言即可操控电脑\n"
@@ -346,9 +346,9 @@ class AIPCHelperV8:
         if USE_BOOTSTRAP:
             self.style = Style(theme="darkly")
         else:
-            # 先设置 Tk 根窗口背景（tk 组件，不受 ttk.Style 控制）
+            # 先设置 Tk 根窗口背景(tk 组件,不受 ttk.Style 控制)
             self.root.configure(bg='#1e1e2e')
-            
+
             self.style = ttk.Style()
             self.style.theme_use('clam')
             self.style.configure('.', background='#1e1e2e', foreground='#cdd6f4')
@@ -422,16 +422,16 @@ class AIPCHelperV8:
     # ---------- 界面构建 ----------
     def build_ui(self):
         """构建主界面 - 采用清晰的模块化布局"""
-        
+
         # ========== 顶部状态栏 ==========
         self._build_status_bar()
-        
-        # ========== 核心功能区（标签页） ==========
+
+        # ========== 核心功能区(标签页) ==========
         self._build_notebook()
-        
+
         # ========== 底部状态栏 ==========
         self._build_bottom_status()
-    
+
     def _build_status_bar(self):
         """构建顶部状态栏"""
         self.status_frame = ttk.Frame(self.root)
@@ -439,8 +439,8 @@ class AIPCHelperV8:
 
         self.status_label = ttk.Label(self.status_frame, text="✅ 就绪", foreground="green", font=("微软雅黑", 10, "bold"))
         self.status_label.pack(side=tk.LEFT)
-        
-        # 取消按钮（Hermes处理时显示）
+
+        # 取消按钮(Hermes处理时显示)
         self._cancel_btn = ttk.Button(
             self.status_frame, text="⏹ 停止", command=self._cancel_hermes,
             width=8
@@ -448,45 +448,45 @@ class AIPCHelperV8:
 
         self.folder_label = ttk.Label(self.status_frame, text=f"📁 {self.current_folder}", foreground="gray", font=("微软雅黑", 9))
         self.folder_label.pack(side=tk.RIGHT)
-    
+
     def _build_notebook(self):
-        """构建标签页 — 仅聊天标签立即构建，其余按需加载"""
+        """构建标签页 - 仅聊天标签立即构建,其余按需加载"""
         self.notebook = ttk.Notebook(self.root)
         self.notebook.pack(padx=10, pady=5, fill=tk.BOTH, expand=True)
-        
+
         # 追踪哪些标签已构建
         self._tab_built = {"file": False, "system": False, "wechat": False, "auto": False}
-        
-        # ===== 标签页1: 智能对话（首屏立即构建）=====
+
+        # ===== 标签页1: 智能对话(首屏立即构建)=====
         self.chat_tab = ttk.Frame(self.notebook)
         self.notebook.add(self.chat_tab, text="💬 智能对话")
         self._build_chat_tab()
-        
-        # ===== 标签页2-5: 仅创建空壳，点击时才构建 =====
+
+        # ===== 标签页2-5: 仅创建空壳,点击时才构建 =====
         self.file_tab = ttk.Frame(self.notebook)
         self.notebook.add(self.file_tab, text="📁 文件管理")
-        
+
         self.system_tab = ttk.Frame(self.notebook)
         self.notebook.add(self.system_tab, text="⚙️ 系统控制")
-        
+
         self.wechat_tab = ttk.Frame(self.notebook)
         self.notebook.add(self.wechat_tab, text="📱 微信通讯")
-        
+
         self.auto_tab = ttk.Frame(self.notebook)
         self.notebook.add(self.auto_tab, text="🤖 自动化")
-        
+
         # 切换标签时按需构建
         self.notebook.bind("<<NotebookTabChanged>>", self._on_tab_changed)
-    
+
     def _on_tab_changed(self, event=None):
-        """标签切换 — 首次点击时构建内容"""
+        """标签切换 - 首次点击时构建内容"""
         idx = self.notebook.index("current")
         tab_names = ["chat", "file", "system", "wechat", "auto"]
         if idx >= len(tab_names):
             return
-        
+
         tab = tab_names[idx]
-        
+
         if tab == "file" and not self._tab_built["file"]:
             self._tab_built["file"] = True
             self._build_file_tab()
@@ -499,35 +499,35 @@ class AIPCHelperV8:
         elif tab == "auto" and not self._tab_built["auto"]:
             self._tab_built["auto"] = True
             self._build_auto_tab()
-        
+
         # 同时绑定 <<Visibility>> 事件确保内容可见
         if tab != "chat":
             target_tab = getattr(self, f"{tab}_tab", None)
             if target_tab:
                 target_tab.bind("<<Visibility>>", lambda e: None, add="+")
-    
+
     def _build_chat_tab(self):
-        """构建智能对话标签页 — 左侧对话列表 + 右侧聊天区"""
+        """构建智能对话标签页 - 左侧对话列表 + 右侧聊天区"""
         # 初始化对话管理器
         from services.conversation_manager import get_conversation_manager
         self._conv_mgr = get_conversation_manager()
-        
+
         # ── 主分割: 侧栏 | 聊天区 ──
         self.chat_paned = tk.PanedWindow(
             self.chat_tab, orient=tk.HORIZONTAL, sashwidth=3,
             bg="#45475a", sashrelief=tk.RAISED
         )
         self.chat_paned.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
-        
+
         # 左侧: 对话列表
         self.conv_panel = ttk.Frame(self.chat_paned)
         self._build_conversation_sidebar()
         self.chat_paned.add(self.conv_panel, minsize=180)
-        
+
         # 右侧: 聊天区
         self.chat_right = ttk.Frame(self.chat_paned)
         self.chat_paned.add(self.chat_right, minsize=400)
-        
+
         # 聊天显示区
         self.chat = scrolledtext.ScrolledText(
             self.chat_right, wrap=tk.WORD, state=tk.DISABLED,
@@ -535,23 +535,23 @@ class AIPCHelperV8:
             relief=tk.FLAT, padx=8, pady=5
         )
         self.chat.pack(fill=tk.BOTH, expand=True)
-        
+
         # 输入区
         input_frame = ttk.Frame(self.chat_right)
         input_frame.pack(fill=tk.X, padx=3, pady=3)
-        
+
         self.input_text = ttk.Entry(input_frame, font=("微软雅黑", 10), foreground="#cdd6f4")
         self.input_text.pack(fill=tk.X, side=tk.LEFT, expand=True, padx=(0, 8), ipady=5)
         self.input_text.bind("<Return>", self.send_msg)
         self.input_text.focus()
-        
+
         send_btn = ttk.Button(input_frame, text="🚀 发送", command=self.send_msg)
         send_btn.pack(side=tk.RIGHT, ipady=3)
-        
+
         # ── 引擎控制栏 ──
         engine_frame = ttk.LabelFrame(self.chat_right, text="引擎控制", padding=5)
         engine_frame.pack(fill=tk.X, padx=3, pady=(0, 2))
-        
+
         self.hermes_toggle_var = tk.BooleanVar(value=getattr(self, 'use_hermes', False))
         self.hermes_toggle_btn = tk.Button(
             engine_frame, text="🤖 Hermes 关闭",
@@ -562,7 +562,7 @@ class AIPCHelperV8:
             relief=tk.RAISED, bd=2, cursor="hand2"
         )
         self.hermes_toggle_btn.pack(side=tk.LEFT, padx=2)
-        
+
         self.model_var = tk.StringVar(value="DeepSeek V4 Flash · 快速")
         self.model_combo = ttk.Combobox(
             engine_frame, textvariable=self.model_var,
@@ -576,7 +576,7 @@ class AIPCHelperV8:
         )
         self.model_combo.bind("<<ComboboxSelected>>", self._on_model_selected)
         self.model_combo.pack(side=tk.LEFT, padx=2)
-        
+
         self.auto_switch_var = tk.BooleanVar(value=True)
         self.auto_switch_btn = tk.Button(
             engine_frame, text="🔄 智能路由",
@@ -587,38 +587,38 @@ class AIPCHelperV8:
             relief=tk.RAISED, bd=1, cursor="hand2"
         )
         self.auto_switch_btn.pack(side=tk.LEFT, padx=2)
-        
+
         ttk.Label(engine_frame, text=" ").pack(side=tk.LEFT, fill=tk.X, expand=True)
         ttk.Button(engine_frame, text="⚙️ 设置", command=self.ai_settings, width=8).pack(side=tk.RIGHT, padx=2)
-        
+
         self._update_hermes_toggle_ui()
-        
+
         # ── 操作栏 ──
         action_frame = ttk.Frame(self.chat_right)
         action_frame.pack(fill=tk.X, padx=3, pady=(0, 3))
-        
+
         ttk.Button(action_frame, text="🗑️ 清空聊天", command=self._clear_chat_display, width=10).pack(side=tk.LEFT, padx=2)
         self._history_label = ttk.Label(action_frame, text="💬 新对话", font=("微软雅黑", 8))
         self._history_label.pack(side=tk.RIGHT, padx=5)
         ttk.Button(action_frame, text="❓ 帮助", command=self.show_help, width=8).pack(side=tk.RIGHT, padx=2)
-        
-        # 初始化：加载当前对话到聊天区
+
+        # 初始化:加载当前对话到聊天区
         self._load_active_conversation()
-    
+
     # ── 对话侧边栏 ─────────────────────────────────────────────────────────
-    
+
     def _build_conversation_sidebar(self):
         """构建对话列表侧边栏"""
         panel = self.conv_panel
-        
+
         header = ttk.Frame(panel)
         header.pack(fill=tk.X, pady=3)
         ttk.Label(header, text="💬 对话", font=("微软雅黑", 10, "bold"), width=18, anchor="w").pack(side=tk.LEFT, padx=3)
         ttk.Button(header, text="≡", width=2, command=self._toggle_conv_sidebar).pack(side=tk.RIGHT, padx=3)
-        
+
         list_frame = ttk.Frame(panel)
         list_frame.pack(fill=tk.BOTH, expand=True, pady=3)
-        
+
         self.conv_listbox = tk.Listbox(
             list_frame, font=("微软雅黑", 9),
             bg="#313244", fg="#cdd6f4",
@@ -629,18 +629,18 @@ class AIPCHelperV8:
         self.conv_listbox.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
         self.conv_listbox.bind("<<ListboxSelect>>", self._on_conv_selected)
         self.conv_listbox.bind("<Double-Button-1>", lambda e: self._rename_conversation())
-        
+
         v_scroll = ttk.Scrollbar(list_frame, command=self.conv_listbox.yview)
         v_scroll.pack(side=tk.RIGHT, fill=tk.Y)
         self.conv_listbox.config(yscrollcommand=v_scroll.set)
-        
+
         btn_frame = ttk.Frame(panel)
         btn_frame.pack(fill=tk.X, pady=3)
-        ttk.Button(btn_frame, text="＋ 新建", command=self._new_conversation, width=9).pack(side=tk.LEFT, padx=2)
+        ttk.Button(btn_frame, text="+ 新建", command=self._new_conversation, width=9).pack(side=tk.LEFT, padx=2)
         ttk.Button(btn_frame, text="🗑", command=self._delete_conversation, width=3).pack(side=tk.RIGHT, padx=2)
-        
+
         self._refresh_conv_listbox()
-    
+
     def _refresh_conv_listbox(self):
         """刷新对话列表"""
         self.conv_listbox.delete(0, tk.END)
@@ -658,7 +658,7 @@ class AIPCHelperV8:
                     self.conv_listbox.selection_set(i)
                     self.conv_listbox.see(i)
                     break
-    
+
     def _on_conv_selected(self, event=None):
         """切换对话"""
         sel = self.conv_listbox.curselection()
@@ -672,7 +672,7 @@ class AIPCHelperV8:
             self._load_active_conversation()
             self._update_conv_label()
             self._refresh_conv_listbox()
-    
+
     def _new_conversation(self):
         """新建对话"""
         conv = self._conv_mgr.create()
@@ -680,7 +680,7 @@ class AIPCHelperV8:
         self._clear_chat_display()
         self._refresh_conv_listbox()
         self._update_conv_label()
-    
+
     def _delete_conversation(self):
         """删除当前对话"""
         active = self._conv_mgr.active_id
@@ -695,19 +695,19 @@ class AIPCHelperV8:
         self._load_active_conversation()
         self._refresh_conv_listbox()
         self._update_conv_label()
-    
+
     def _rename_conversation(self):
         """重命名对话"""
         active = self._conv_mgr.active_id
         conv = self._conv_mgr.get(active)
         if not conv:
             return
-        new_title = simpledialog.askstring("重命名", "输入新标题：", initialvalue=conv.title or "")
+        new_title = simpledialog.askstring("重命名", "输入新标题:", initialvalue=conv.title or "")
         if new_title:
             self._conv_mgr.rename(active, new_title)
             self._refresh_conv_listbox()
             self._update_conv_label()
-    
+
     def _toggle_conv_sidebar(self):
         """折叠/展开对话侧边栏"""
         try:
@@ -718,7 +718,7 @@ class AIPCHelperV8:
                 self.chat_paned.sash_place(0, 0, 0)
         except Exception:
             pass
-    
+
     def _load_active_conversation(self):
         """加载当前对话的历史到聊天区"""
         self._clear_chat_display()
@@ -732,19 +732,19 @@ class AIPCHelperV8:
                 elif role == "assistant":
                     self.say("AI", content)
         self._update_conv_label()
-    
+
     def _update_conv_label(self):
         """更新对话标签"""
         conv = self._conv_mgr.active
         if conv:
             self._history_label.config(text=f"💬 {conv.title[:15]}")
-    
+
     def _clear_chat_display(self):
-        """清空聊天显示（保留对话管理器中的数据）"""
+        """清空聊天显示(保留对话管理器中的数据)"""
         self.chat.config(state=tk.NORMAL)
         self.chat.delete(1.0, tk.END)
         self.chat.config(state=tk.DISABLED)
-    
+
     def _get_active_conversation(self):
         """获取当前对话"""
         return self._conv_mgr.active
@@ -754,39 +754,39 @@ class AIPCHelperV8:
         # 文件操作按钮区
         btn_frame = ttk.LabelFrame(self.file_tab, text="文件操作", padding=10)
         btn_frame.pack(fill=tk.X, padx=10, pady=10)
-        
-        # 第一行：常用操作
+
+        # 第一行:常用操作
         row1 = ttk.Frame(btn_frame)
         row1.pack(fill=tk.X, pady=3)
-        
+
         ttk.Button(row1, text="🗂️ 智能整理", command=self.auto_sort_files, width=15).pack(side=tk.LEFT, padx=3)
         ttk.Button(row1, text="🔍 查找重复", command=self.find_duplicate_files, width=15).pack(side=tk.LEFT, padx=3)
         ttk.Button(row1, text="💽 大文件", command=self.find_large_files, width=15).pack(side=tk.LEFT, padx=3)
         ttk.Button(row1, text="🧹 清理空文件", command=self.clean_empty_files, width=15).pack(side=tk.LEFT, padx=3)
-        
-        # 第二行：目录操作
+
+        # 第二行:目录操作
         row2 = ttk.Frame(btn_frame)
         row2.pack(fill=tk.X, pady=3)
-        
+
         ttk.Button(row2, text="📂 选择目录", command=self.choose_folder, width=15).pack(side=tk.LEFT, padx=3)
         ttk.Button(row2, text="📋 列出文件", command=self.list_files, width=15).pack(side=tk.LEFT, padx=3)
         ttk.Button(row2, text="✏️ 批量重命名", command=lambda: self.rename_folder(""), width=15).pack(side=tk.LEFT, padx=3)
         ttk.Button(row2, text="↶ 撤销", command=self.undo, width=15).pack(side=tk.LEFT, padx=3)
-        
+
         # 当前目录信息
         info_frame = ttk.LabelFrame(self.file_tab, text="目录信息", padding=10)
         info_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        
+
         self.file_info_text = scrolledtext.ScrolledText(
             info_frame, wrap=tk.WORD, state=tk.DISABLED,
             font=("微软雅黑", 9), bg="#1e1e2e", fg="#cdd6f4",
             height=10
         )
         self.file_info_text.pack(fill=tk.BOTH, expand=True)
-        
+
         # 更新目录信息
         self._update_file_info()
-    
+
     def _update_file_info(self):
         """更新文件信息显示"""
         try:
@@ -795,12 +795,12 @@ class AIPCHelperV8:
                 files = os.listdir(folder)
                 file_count = len([f for f in files if os.path.isfile(os.path.join(folder, f))])
                 dir_count = len([f for f in files if os.path.isdir(os.path.join(folder, f))])
-                
+
                 info = f"📁 当前目录: {folder}\n"
                 info += f"📄 文件数: {file_count}\n"
                 info += f"📂 文件夹数: {dir_count}\n"
                 info += f"📊 总计: {len(files)} 项\n"
-                
+
                 # 计算总大小
                 total_size = 0
                 for f in files:
@@ -810,7 +810,7 @@ class AIPCHelperV8:
                             total_size += os.path.getsize(fp)
                     except:
                         pass
-                
+
                 # 格式化大小
                 if total_size > 1024**3:
                     info += f"💾 总大小: {total_size / 1024**3:.2f} GB"
@@ -818,73 +818,73 @@ class AIPCHelperV8:
                     info += f"💾 总大小: {total_size / 1024**2:.2f} MB"
                 else:
                     info += f"💾 总大小: {total_size / 1024:.2f} KB"
-                
+
                 self.file_info_text.config(state=tk.NORMAL)
                 self.file_info_text.delete(1.0, tk.END)
                 self.file_info_text.insert(tk.END, info)
                 self.file_info_text.config(state=tk.DISABLED)
         except Exception as e:
             pass
-    
+
     def _build_system_tab(self):
         """构建系统控制标签页"""
         # 电源控制
         power_frame = ttk.LabelFrame(self.system_tab, text="电源控制", padding=10)
         power_frame.pack(fill=tk.X, padx=10, pady=10)
-        
+
         ttk.Button(power_frame, text="🔴 关机", command=lambda: self.system_operation("关机"), width=12).pack(side=tk.LEFT, padx=5)
         ttk.Button(power_frame, text="🔄 重启", command=lambda: self.system_operation("重启"), width=12).pack(side=tk.LEFT, padx=5)
         ttk.Button(power_frame, text="💤 睡眠", command=lambda: self.system_operation("睡眠"), width=12).pack(side=tk.LEFT, padx=5)
         ttk.Button(power_frame, text="🔒 锁定", command=lambda: self.system_operation("锁定"), width=12).pack(side=tk.LEFT, padx=5)
         ttk.Button(power_frame, text="❌ 取消关机", command=lambda: self.system_operation("取消关机"), width=12).pack(side=tk.LEFT, padx=5)
-        
+
         # 系统工具
         tools_frame = ttk.LabelFrame(self.system_tab, text="系统工具", padding=10)
         tools_frame.pack(fill=tk.X, padx=10, pady=10)
-        
+
         ttk.Button(tools_frame, text="🖥️ 任务管理器", command=lambda: self._safe_execute_command("open_task_manager", "taskmgr"), width=15).pack(side=tk.LEFT, padx=5)
         ttk.Button(tools_frame, text="⚙️ 系统设置", command=lambda: self._safe_execute_command("open_settings", "start ms-settings:"), width=15).pack(side=tk.LEFT, padx=5)
         ttk.Button(tools_frame, text="🖥️ CMD", command=lambda: self._safe_execute_command("open_cmd", "start cmd"), width=15).pack(side=tk.LEFT, padx=5)
         ttk.Button(tools_frame, text="💻 PowerShell", command=lambda: self._safe_execute_command("open_powershell", "start powershell"), width=15).pack(side=tk.LEFT, padx=5)
-        
+
         # 音量控制
         vol_frame = ttk.LabelFrame(self.system_tab, text="音量控制", padding=10)
         vol_frame.pack(fill=tk.X, padx=10, pady=10)
-        
+
         ttk.Button(vol_frame, text="🔊 增大", command=lambda: self.execute_ai_command({"action": "volume_up"}), width=12).pack(side=tk.LEFT, padx=5)
         ttk.Button(vol_frame, text="🔉 减小", command=lambda: self.execute_ai_command({"action": "volume_down"}), width=12).pack(side=tk.LEFT, padx=5)
         ttk.Button(vol_frame, text="🔇 静音", command=lambda: self.execute_ai_command({"action": "toggle_mute"}), width=12).pack(side=tk.LEFT, padx=5)
-        
+
         # 系统信息
         info_frame = ttk.LabelFrame(self.system_tab, text="系统信息", padding=10)
         info_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        
+
         self.system_info_text = scrolledtext.ScrolledText(
             info_frame, wrap=tk.WORD, state=tk.DISABLED,
             font=("微软雅黑", 9), bg="#1e1e2e", fg="#cdd6f4",
             height=8
         )
         self.system_info_text.pack(fill=tk.BOTH, expand=True)
-        
+
         # 刷新按钮
         ttk.Button(self.system_tab, text="🔄 刷新信息", command=self._update_system_info).pack(pady=5)
-        
+
         # 初始化系统信息
         self._update_system_info()
-    
+
     def _update_system_info(self):
         """更新系统信息"""
         try:
             import platform
             import psutil
-            
+
             info = f"🖥️ 系统: {platform.system()} {platform.release()}\n"
             info += f"💻 处理器: {platform.processor()}\n"
             info += f"🧠 内存: {psutil.virtual_memory().percent}% 使用率\n"
             info += f"💾 CPU: {psutil.cpu_percent()}% 使用率\n"
             info += f"📊 磁盘: {psutil.disk_usage('/').percent}% 已用\n"
             info += f"🔋 电池: {psutil.sensors_battery().percent if psutil.sensors_battery() else 'N/A'}%\n"
-            
+
             self.system_info_text.config(state=tk.NORMAL)
             self.system_info_text.delete(1.0, tk.END)
             self.system_info_text.insert(tk.END, info)
@@ -894,80 +894,80 @@ class AIPCHelperV8:
             self.system_info_text.delete(1.0, tk.END)
             self.system_info_text.insert(tk.END, f"获取系统信息失败: {e}")
             self.system_info_text.config(state=tk.DISABLED)
-    
+
     def _build_wechat_tab(self):
         """构建微信通讯标签页"""
         # 微信控制
         ctrl_frame = ttk.LabelFrame(self.wechat_tab, text="微信控制", padding=10)
         ctrl_frame.pack(fill=tk.X, padx=10, pady=10)
-        
+
         self.listener_btn = ttk.Button(ctrl_frame, text="▶️ 开始监听", command=self.toggle_wechat_listener, width=15)
         self.listener_btn.pack(side=tk.LEFT, padx=5)
         ttk.Button(ctrl_frame, text="📱 发送消息", command=self.schedule_wechat_message, width=15).pack(side=tk.LEFT, padx=5)
         ttk.Button(ctrl_frame, text="🔧 诊断", command=self.diagnose_wechat, width=15).pack(side=tk.LEFT, padx=5)
-        
+
         # 定时任务
         task_frame = ttk.LabelFrame(self.wechat_tab, text="定时任务", padding=10)
         task_frame.pack(fill=tk.X, padx=10, pady=10)
-        
+
         ttk.Button(task_frame, text="📋 查看任务", command=self.show_scheduled_tasks, width=15).pack(side=tk.LEFT, padx=5)
         ttk.Button(task_frame, text="➕ 添加任务", command=self.schedule_wechat_message, width=15).pack(side=tk.LEFT, padx=5)
-        
+
         # 微信状态
         status_frame = ttk.LabelFrame(self.wechat_tab, text="状态信息", padding=10)
         status_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        
+
         self.wechat_status_text = scrolledtext.ScrolledText(
             status_frame, wrap=tk.WORD, state=tk.DISABLED,
             font=("微软雅黑", 9), bg="#1e1e2e", fg="#cdd6f4",
             height=8
         )
         self.wechat_status_text.pack(fill=tk.BOTH, expand=True)
-        
+
         # 初始化状态
         self._update_wechat_status()
-    
+
     def _update_wechat_status(self):
         """更新微信状态显示"""
         status = "微信监听: " + ("运行中" if self.wechat_listener_running else "已停止")
         status += f"\n监听间隔: {self.config_manager.get('wechat_check_interval', 3)}秒"
         status += f"\nOCR模式: {'开启' if self.config_manager.get('use_ocr', True) else '关闭'}"
-        
+
         self.wechat_status_text.config(state=tk.NORMAL)
         self.wechat_status_text.delete(1.0, tk.END)
         self.wechat_status_text.insert(tk.END, status)
         self.wechat_status_text.config(state=tk.DISABLED)
-    
+
     def _build_auto_tab(self):
         """构建自动化标签页"""
         # 自动化工具
         tools_frame = ttk.LabelFrame(self.auto_tab, text="自动化工具", padding=10)
         tools_frame.pack(fill=tk.X, padx=10, pady=10)
-        
+
         ttk.Button(tools_frame, text="🎬 宏录制", command=self.show_macro_panel, width=15).pack(side=tk.LEFT, padx=5)
         ttk.Button(tools_frame, text="🔄 自动化任务", command=self.show_automation_panel, width=15).pack(side=tk.LEFT, padx=5)
         ttk.Button(tools_frame, text="🤖 AI智能体", command=self.show_ai_agent_panel, width=15).pack(side=tk.LEFT, padx=5)
         ttk.Button(tools_frame, text="💻 编程工作区", command=self.show_code_workspace, width=15).pack(side=tk.LEFT, padx=5)
-        
+
         # 应用管理
         app_frame = ttk.LabelFrame(self.auto_tab, text="应用管理", padding=10)
         app_frame.pack(fill=tk.X, padx=10, pady=10)
-        
+
         ttk.Button(app_frame, text="➕ 添加应用", command=self.add_custom_app, width=15).pack(side=tk.LEFT, padx=5)
         ttk.Button(app_frame, text="📋 应用列表", command=self.list_custom_apps, width=15).pack(side=tk.LEFT, padx=5)
-        
+
         # 说明
         help_frame = ttk.LabelFrame(self.auto_tab, text="使用说明", padding=10)
         help_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        
+
         help_text = scrolledtext.ScrolledText(
             help_frame, wrap=tk.WORD, state=tk.DISABLED,
             font=("微软雅黑", 9), bg="#1e1e2e", fg="#cdd6f4",
             height=8
         )
         help_text.pack(fill=tk.BOTH, expand=True)
-        
-        help_content = """🎬 宏录制: 录制鼠标键盘操作，可重复播放
+
+        help_content = """🎬 宏录制: 录制鼠标键盘操作,可重复播放
 🔄 自动化任务: 创建定时或条件触发的自动化任务
 🤖 AI智能体: 自动搜索整理信息并保存文档
 💻 编程工作区: 项目监控 + 代码质量 + 批量生成
@@ -977,15 +977,15 @@ class AIPCHelperV8:
         help_text.config(state=tk.NORMAL)
         help_text.insert(tk.END, help_content)
         help_text.config(state=tk.DISABLED)
-    
+
     def _build_bottom_status(self):
         """构建底部状态栏"""
         status_frame = ttk.Frame(self.root)
         status_frame.pack(fill=tk.X, padx=10, pady=3)
-        
-        # Hermes 状态（延迟检查，避免启动时阻塞）
+
+        # Hermes 状态(延迟检查,避免启动时阻塞)
         self.hermes_status_label = ttk.Label(
-            status_frame, 
+            status_frame,
             text="Hermes: ⏳ 检查中...",
             font=("微软雅黑", 8),
             foreground="#888888"
@@ -993,7 +993,7 @@ class AIPCHelperV8:
         self.hermes_status_label.pack(side=tk.LEFT, padx=5)
         # 后台更新 Hermes 状态
         self.root.after(500, self._update_hermes_status)
-        
+
         # AI 引擎状态
         ai_engine = "Hermes" if self.use_hermes else "Ollama"
         self.ai_engine_label = ttk.Label(
@@ -1002,7 +1002,7 @@ class AIPCHelperV8:
             font=("微软雅黑", 8)
         )
         self.ai_engine_label.pack(side=tk.LEFT, padx=5)
-        
+
         # 版本信息
         version_label = ttk.Label(
             status_frame,
@@ -1018,16 +1018,16 @@ class AIPCHelperV8:
         try:
             # 检查是否在主线程中
             if threading.current_thread() is not threading.main_thread():
-                # 非主线程，通过 after 调度到主线程
+                # 非主线程,通过 after 调度到主线程
                 self.root.after(0, lambda: self._say(who, what))
             else:
-                # 主线程，直接执行
+                # 主线程,直接执行
                 self._say(who, what)
         except Exception as e:
-            print(f"say 方法异常：{e}")
+            print(f"say 方法异常:{e}")
 
     def _say(self, who, what):
-        """内部方法：实际更新 UI"""
+        """内部方法:实际更新 UI"""
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self.chat.config(state=tk.NORMAL)
         self.chat.insert(tk.END, f"[{timestamp}] [{who}] {what}\n\n")
@@ -1035,10 +1035,10 @@ class AIPCHelperV8:
         self.chat.see(tk.END)
 
     # ── 任务分类 ────────────────────────────────────────────────────────────
-    
+
     def _classify_task(self, msg: str):
-        """分析任务复杂度，推荐最优模型/超时/路由
-        
+        """分析任务复杂度,推荐最优模型/超时/路由
+
         Returns:
             dict: {type, complexity, model, timeout, reasoning}
         """
@@ -1048,7 +1048,7 @@ class AIPCHelperV8:
             'model': 'ds-v4-flash', 'timeout': 180,
             'reasoning': '默认对话'
         }
-        
+
         # 极短系统消息
         if len(msg) < 10:
             trivial = ['help', '帮助', 'status', '状态', 'clear', 'cls', 'hi', '你好', 'hello', '在吗']
@@ -1057,7 +1057,7 @@ class AIPCHelperV8:
                 return result
             result['reasoning'] = '短消息 → Flash 默认'
             return result
-        
+
         # 代码生成 (优先)
         code_kw = ['写', '生成代码', '代码', '函数', 'def ', 'class ', '实现', '修复bug',
                    'fix bug', 'debug', '重构', 'review', '审查', '爬虫', 'scraper',
@@ -1072,56 +1072,56 @@ class AIPCHelperV8:
                 result.update(type='code', complexity='moderate', model='ds-v4-pro',
                               timeout=300, reasoning='代码生成 → V4 Pro')
             return result
-        
+
         # 搜索/知识查询
         search_kw = ['搜索', '查询', '查找', '怎么', '如何', '为什么', '什么是',
                     '定义', '区别', '对比', '有哪些', '介绍一下']
         if any(k in msg_lower for k in search_kw):
             result.update(type='search', model='ds-v4-flash', reasoning='搜索查询 → Flash')
             return result
-        
+
         # 分析任务
         analysis_kw = ['分析', '诊断', '审核', '评估', '总结', '摘要', '深入分析']
         if any(k in msg_lower for k in analysis_kw):
             result.update(type='analysis', complexity='moderate', model='ds-v4-flash-r',
                           reasoning='分析任务 → Flash 深度思考')
             return result
-        
+
         # 创意任务
         creative_kw = ['创意', '设计', '头脑风暴', '想法', '建议', '推荐', '方案']
         if any(k in msg_lower for k in creative_kw):
             result.update(type='creative', model='ds-v4-flash-r', reasoning='创意 → Flash 深度思考')
             return result
-        
+
         # 命令行/系统操作
         cmd_kw = ['打开', '关闭', '启动', '停止', '重启', '清理', '整理',
                  '下载', '安装', '配置', '检查', '查看']
         if any(k in msg_lower for k in cmd_kw):
             result.update(type='command', timeout=120, reasoning='系统命令 → 快速执行')
             return result
-        
+
         # 长文本 → 深度思考
         if len(msg) > 200:
             result.update(complexity='moderate', model='ds-v4-flash-r',
                           timeout=300, reasoning='长文本 → Flash 深度思考')
-        
+
         return result
 
     # ---------- 发送消息 ----------
     def send_msg(self, event=None):
-        """发送消息 - 主入口（日常对话直达 DeepSeek，复杂任务走 Hermes）"""
+        """发送消息 - 主入口(日常对话直达 DeepSeek,复杂任务走 Hermes)"""
         try:
             msg = self.input_text.get().strip()
             if not msg:
                 return
-            
+
             self.input_text.delete(0, tk.END)
             self.say("你", msg)
-            
+
             # 获取当前对话
             conv = self._get_active_conversation()
-            
-            # 检查是否是命令（以/开头）
+
+            # 检查是否是命令(以/开头)
             if msg.startswith('/'):
                 cmd = msg[1:].strip().lower()
                 if cmd == 'clear' or cmd == 'cls':
@@ -1137,14 +1137,14 @@ class AIPCHelperV8:
                 else:
                     self.say("系统", f"未知命令: /{cmd}")
                 return
-            
+
             # 用户消息保存到对话
             conv.add_message("user", msg)
             self._refresh_conv_listbox()
-            
+
             # ── 路由决策 ──
             task_info = self._classify_task(msg)
-            
+
             if self.use_hermes and task_info.get('complexity') in ('complex', 'heavy'):
                 # 复杂任务 → Hermes 代理
                 self._chat_with_history(msg, task_info=task_info)
@@ -1152,31 +1152,31 @@ class AIPCHelperV8:
                 # 日常对话 → DeepSeek 直连
                 self._chat_with_deepseek(msg, conv)
         except Exception as e:
-            print(f"send_msg异常：{e}")
+            print(f"send_msg异常:{e}")
             traceback.print_exc()
-            self.say("系统", f"❌ 发送消息时发生错误：{str(e)}")
+            self.say("系统", f"❌ 发送消息时发生错误:{str(e)}")
 
     def _chat_with_deepseek(self, msg: str, conv):
-        """使用 DeepSeek API 直连进行对话 — 轻量快速，不走 Hermes/WSL"""
+        """使用 DeepSeek API 直连进行对话 - 轻量快速,不走 Hermes/WSL"""
         from services.deepseek_client import get_deepseek_client
-        
+
         client = get_deepseek_client(config_manager=self.config_manager)
         sm = self._get_streaming_manager()
-        
+
         if not sm.can_start():
-            self.say("系统", "⏳ 正在处理中，请稍候...")
+            self.say("系统", "⏳ 正在处理中,请稍候...")
             return
-        
+
         # 同步模型选择
         model_id = self._current_model_id()
         client.set_model(model_id)
-        
+
         # 构建上下文
         context = conv.get_context(max_messages=10)
-        
+
         # 结果捕获
         result_holder = [None]
-        
+
         def _task(callback, cancel_event):
             result = client.chat(
                 messages=context,
@@ -1185,7 +1185,7 @@ class AIPCHelperV8:
             )
             result_holder[0] = result
             return result
-        
+
         sm.start(
             _task,
             header_label="🤖 DeepSeek",
@@ -1193,15 +1193,15 @@ class AIPCHelperV8:
             color_stops=(10, 25, 40),
             timeout=60
         )
-        
-        # 轮询保存结果（stream.start 不阻塞）
+
+        # 轮询保存结果(stream.start 不阻塞)
         def _check_done():
             if sm.is_active:
                 self.root.after(300, _check_done)
             elif result_holder[0]:
                 conv.add_message("assistant", result_holder[0])
                 self._refresh_conv_listbox()
-        
+
         self.root.after(500, _check_done)
 
     def _current_model_id(self) -> str:
@@ -1216,21 +1216,21 @@ class AIPCHelperV8:
         return MODEL_TABLE.get(display, "ds-v4-flash")
 
     def _chat_with_history(self, msg: str, task_info: dict = None):
-        """多轮对话：流式输出 + Hermes 实时反馈 + 智能模型路由"""
+        """多轮对话:流式输出 + Hermes 实时反馈 + 智能模型路由"""
         from services.agent_service import get_agent_service
-        
+
         agent = get_agent_service(self.config_manager)
         sm = self._get_streaming_manager()
-        
+
         if not sm.can_start():
-            self.say("系统", "⏳ Hermes 正在处理上一轮对话，请稍候...")
+            self.say("系统", "⏳ Hermes 正在处理上一轮对话,请稍候...")
             return
-        
+
         # 任务感知参数
         if task_info is None:
             task_info = {}
         timeout = task_info.get('timeout', 300)
-        
+
         # ── 智能模型路由 ──
         if self.auto_switch_var.get():
             try:
@@ -1243,15 +1243,15 @@ class AIPCHelperV8:
                     self.config_manager.set("hermes_model", recommended.id)
                     logger.info(f"🎯 智能路由: {current.id if current else 'default'} → {recommended.id}")
             except Exception as e:
-                logger.warning(f"智能路由失败，使用当前模型: {e}")
-        
+                logger.warning(f"智能路由失败,使用当前模型: {e}")
+
         def _task(callback, cancel_event):
             return agent.chat_with_history(
                 message=msg,
                 stream_callback=callback,
                 timeout=timeout
             )
-        
+
         # 动态选择状态栏前缀
         task_type = task_info.get('type', 'chat')
         type_labels = {
@@ -1263,7 +1263,7 @@ class AIPCHelperV8:
             'system': ('🤖', '处理中'),
         }
         header_prefix, status_prefix = type_labels.get(task_type, ('🤖', '处理中'))
-        
+
         sm.start(
             _task,
             header_label=f"{header_prefix} AI · {task_info.get('reasoning', '任务')[:10]}",
@@ -1271,21 +1271,21 @@ class AIPCHelperV8:
             color_stops=(30, 60, 120),
             timeout=timeout
         )
-    
+
     def _show_cancel_button(self):
-        """显示取消按钮（Hermes处理时）"""
+        """显示取消按钮(Hermes处理时)"""
         try:
             self._cancel_btn.pack(side=tk.RIGHT, padx=5)
         except Exception:
             pass
-    
+
     def _hide_cancel_button(self):
         """隐藏取消按钮"""
         try:
             self._cancel_btn.pack_forget()
         except Exception:
             pass
-    
+
     def _get_streaming_manager(self):
         """懒加载 StreamingManager 单例"""
         if self._streaming_manager is None:
@@ -1300,9 +1300,9 @@ class AIPCHelperV8:
                 )
             )
         return self._streaming_manager
-    
+
     def _on_stream_complete(self):
-        """流式完成回调 — 更新对话历史状态"""
+        """流式完成回调 - 更新对话历史状态"""
         self._update_history_status()
 
     def _cancel_hermes(self):
@@ -1332,11 +1332,11 @@ class AIPCHelperV8:
             agent = get_agent_service(self.config_manager)
             history = agent.get_history()
             turns = agent.history_turns
-            
+
             if not history:
                 self.say("系统", "📜 对话历史为空")
                 return
-            
+
             summary = f"📜 对话历史 ({turns} 轮)\n" + "─" * 40 + "\n"
             for i, msg in enumerate(history):
                 role = "👤" if msg["role"] == "user" else "🤖"
@@ -1371,7 +1371,7 @@ class AIPCHelperV8:
                 'shutdown_delay': re.compile(r"(\d+)\s*(?:分钟|分|小时|时|秒)"),
                 'sleep': re.compile(r"(?:睡眠|待机|休眠)"),
                 'lock': re.compile(r"(?:锁定|锁屏)"),
-                'wechat_msg': re.compile(r"给(.+?)发[送]消息[:：]?\s*(.+)"),
+                'wechat_msg': re.compile(r"给(.+?)发[送]消息[::]?\s*(.+)"),
                 'open_app1': re.compile(r"打开\s*(.+?)(?:\s|$)"),
                 'open_app2': re.compile(r"启动\s*(.+?)(?:\s|$)"),
                 'open_app3': re.compile(r"运行\s*(.+?)(?:\s|$)"),
@@ -1438,71 +1438,71 @@ class AIPCHelperV8:
         return num
 
     def do_task(self, msg):
-        """处理用户输入的自然语言指令，优先使用AI处理"""
+        """处理用户输入的自然语言指令,优先使用AI处理"""
         msg = msg.strip()
         if not msg:
             return
-        
-        # 首先尝试AI处理（自然语言理解）
+
+        # 首先尝试AI处理(自然语言理解)
         if self.use_ai_features:
             self.say("系统", "🤔 正在理解您的指令...")
-            
-            # 使用AI解析命令 - 在后台线程中执行，避免阻塞GUI
+
+            # 使用AI解析命令 - 在后台线程中执行,避免阻塞GUI
             def ai_process():
                 try:
                     result, clarification = self.ai_helper.parse_command_with_clarification(msg)
-                    
+
                     if result:
                         if self._validate_ai_result(result):
                             # 使用 after 确保在主线程中执行GUI更新
                             self.root.after(0, lambda: self.execute_ai_command(result))
                         else:
-                            # 参数不完整，回退到关键词匹配
+                            # 参数不完整,回退到关键词匹配
                             self.root.after(0, lambda: self._fallback_keyword_parse(msg))
                     else:
-                        # AI无法解析，尝试关键词匹配作为后备
+                        # AI无法解析,尝试关键词匹配作为后备
                         self.root.after(0, lambda: self._fallback_keyword_parse(msg))
                 except Exception as e:
                     logger.error(f"AI处理异常: {e}")
                     self.root.after(0, lambda: self._fallback_keyword_parse(msg))
-            
+
             threading.Thread(target=ai_process, daemon=True).start()
         else:
-            # AI功能未启用，使用关键词匹配
+            # AI功能未启用,使用关键词匹配
             self._fallback_keyword_parse(msg)
-    
+
     def _ask_user_confirmation(self, original_msg, result, clarification):
         """询问用户确认AI的理解是否正确"""
         if not clarification:
-            # 没有不确定的地方，直接执行
+            # 没有不确定的地方,直接执行
             self.execute_ai_command(result)
             return
-        
+
         # 显示AI的理解和不确定的地方
         action = result.get("action", "未知") if result else "未知"
         details = result.get("action_details", "") if result else ""
-        
+
         # 构建确认消息
-        confirm_msg = f"我理解您想：{action}"
+        confirm_msg = f"我理解您想:{action}"
         if details:
-            confirm_msg += f"\n详情：{details}"
-        
+            confirm_msg += f"\n详情:{details}"
+
         if clarification:
-            confirm_msg += f"\n\n⚠️ 但我不太确定：{clarification}"
-        
-        confirm_msg += f"\n\n请问您想执行这个操作吗？"
-        
+            confirm_msg += f"\n\n⚠️ 但我不太确定:{clarification}"
+
+        confirm_msg += f"\n\n请问您想执行这个操作吗?"
+
         # 弹出确认对话框
         from tkinter import messagebox
         if messagebox.askyesno("确认指令", confirm_msg):
-            # 用户确认，执行命令
+            # 用户确认,执行命令
             self.execute_ai_command(result)
         else:
-            # 用户取消，询问更多细节
-            self.say("系统", "请告诉我更多细节，例如：具体要打开什么应用？发给谁？")
-    
+            # 用户取消,询问更多细节
+            self.say("系统", "请告诉我更多细节,例如:具体要打开什么应用?发给谁?")
+
     def _fallback_keyword_parse(self, msg):
-        """关键词匹配解析（作为AI的后备方案）"""
+        """关键词匹配解析(作为AI的后备方案)"""
         quick_result = self.quick_parse_command(msg)
         if quick_result:
             action, params = quick_result
@@ -1536,7 +1536,7 @@ class AIPCHelperV8:
         elif "停止监听" in msg_lower:
             if self.wechat_listener_running:
                 self.toggle_wechat_listener()
-        
+
         # ---------- 新增50条指令支持 ----------
         elif any(k in msg_lower for k in ["截图", "截屏", "屏幕截图"]):
             self.execute_ai_command({"action": "take_screenshot"})
@@ -1622,12 +1622,12 @@ class AIPCHelperV8:
             self.execute_ai_command({"action": "open_settings"})
         elif any(k in msg_lower for k in ["复制到剪贴板", "复制文本", "复制内容"]):
             # 尝试提取要复制的文本
-            match = re.search(r'复制(?:文本|内容)?[:：]\s*(.+)', msg)
+            match = re.search(r'复制(?:文本|内容)?[::]\s*(.+)', msg)
             if match:
                 text = match.group(1).strip()
                 self.execute_ai_command({"action": "set_clipboard", "content": text})
             else:
-                self.say("系统", "请指定要复制的文本，例如：复制文本:你好世界")
+                self.say("系统", "请指定要复制的文本,例如:复制文本:你好世界")
         elif any(k in msg_lower for k in ["从剪贴板粘贴", "粘贴文本", "粘贴内容", "读取剪贴板"]):
             self.execute_ai_command({"action": "get_clipboard"})
         elif any(k in msg_lower for k in ["鼠标点击", "点击鼠标", "单击"]):
@@ -1639,28 +1639,28 @@ class AIPCHelperV8:
             self.execute_ai_command({"action": "scroll", "amount": amount})
         elif any(k in msg_lower for k in ["输入文本", "打字", "模拟输入"]):
             # 尝试提取要输入的文本
-            match = re.search(r'输入(?:文本)?[:：]\s*(.+)', msg)
+            match = re.search(r'输入(?:文本)?[::]\s*(.+)', msg)
             if match:
                 text = match.group(1).strip()
                 self.execute_ai_command({"action": "type_text", "text": text})
             else:
-                self.say("系统", "请指定要输入的文本，例如：输入文本:你好世界")
+                self.say("系统", "请指定要输入的文本,例如:输入文本:你好世界")
         elif any(k in msg_lower for k in ["按键", "按键盘", "模拟按键"]):
             # 尝试提取按键
-            match = re.search(r'按键(?:[:：]|\s*)(\w+)', msg_lower)
+            match = re.search(r'按键(?:[::]|\s*)(\w+)', msg_lower)
             if match:
                 key = match.group(1).strip()
                 self.execute_ai_command({"action": "press_key", "key": key})
             else:
-                self.say("系统", "请指定要按的按键，例如：按键:enter")
+                self.say("系统", "请指定要按的按键,例如:按键:enter")
         elif any(k in msg_lower for k in ["鼠标移动", "移动鼠标", "移动光标"]):
             # 尝试提取坐标
-            match = re.search(r'移动到\s*(\d+)\s*[,，]\s*(\d+)', msg_lower)
+            match = re.search(r'移动到\s*(\d+)\s*[,,]\s*(\d+)', msg_lower)
             if match:
                 x, y = int(match.group(1)), int(match.group(2))
                 self.execute_ai_command({"action": "move_mouse", "x": x, "y": y})
             else:
-                self.say("系统", "请指定鼠标坐标，例如：移动到100,200")
+                self.say("系统", "请指定鼠标坐标,例如:移动到100,200")
         elif any(k in msg_lower for k in ["ping", "网络测试", "连接测试"]):
             # 尝试提取主机
             match = re.search(r'ping\s+(\S+)', msg_lower) or re.search(r'测试\s+(\S+)\s*连接', msg_lower)
@@ -1675,30 +1675,30 @@ class AIPCHelperV8:
             self.execute_ai_command({"action": "connect_network"})
         elif any(k in msg_lower for k in ["删除文件", "移除文件", "删除"]):
             # 尝试提取文件路径
-            match = re.search(r'删除(?:文件)?[:：]\s*(.+)', msg)
+            match = re.search(r'删除(?:文件)?[::]\s*(.+)', msg)
             if match:
                 file_path = match.group(1).strip()
                 self.execute_ai_command({"action": "delete_file", "file_path": file_path})
             else:
-                self.say("系统", "请指定要删除的文件路径，例如：删除文件:C:\\test.txt")
+                self.say("系统", "请指定要删除的文件路径,例如:删除文件:C:\\test.txt")
         elif any(k in msg_lower for k in ["创建文件夹", "新建文件夹", "建立目录"]):
             # 尝试提取文件夹路径
-            match = re.search(r'创建(?:文件夹)?[:：]\s*(.+)', msg)
+            match = re.search(r'创建(?:文件夹)?[::]\s*(.+)', msg)
             if match:
                 folder_path = match.group(1).strip()
                 self.execute_ai_command({"action": "create_folder", "folder_path": folder_path})
             else:
-                self.say("系统", "请指定要创建的文件夹路径，例如：创建文件夹:C:\\new_folder")
+                self.say("系统", "请指定要创建的文件夹路径,例如:创建文件夹:C:\\new_folder")
         elif any(k in msg_lower for k in ["读取文件", "查看文件", "打开文件"]):
             # 尝试提取文件路径
-            match = re.search(r'读取(?:文件)?[:：]\s*(.+)', msg)
+            match = re.search(r'读取(?:文件)?[::]\s*(.+)', msg)
             if match:
                 file_path = match.group(1).strip()
                 self.execute_ai_command({"action": "read_file", "file_path": file_path})
             else:
-                self.say("系统", "请指定要读取的文件路径，例如：读取文件:C:\\test.txt")
+                self.say("系统", "请指定要读取的文件路径,例如:读取文件:C:\\test.txt")
         else:
-            self.say("AI管家", f"🤔 我不太明白\"{msg}\"，请尝试更详细的描述或使用一键操作按钮。")
+            self.say("AI管家", f"🤔 我不太明白\"{msg}\",请尝试更详细的描述或使用一键操作按钮。")
 
     def _process_ai_command(self, msg):
         try:
@@ -1707,9 +1707,9 @@ class AIPCHelperV8:
                 self.execute_ai_command(result)
             else:
                 if any(keyword in msg for keyword in ["给", "发消息", "微信"]):
-                    match = re.search(r'给(.+?)发[送]消息[:：]?\s*(.+)', msg)
+                    match = re.search(r'给(.+?)发[送]消息[::]?\s*(.+)', msg)
                     if not match:
-                        match = re.search(r'发[送]消息给(.+?)[:：]\s*(.+)', msg)
+                        match = re.search(r'发[送]消息给(.+?)[::]\s*(.+)', msg)
                     if match:
                         target = match.group(1).strip()
                         message = match.group(2).strip()
@@ -1717,13 +1717,13 @@ class AIPCHelperV8:
                         if target and message:
                             success = self.wechat_controller.send_wechat_message(target, message)
                             if success:
-                                self.say("系统", f"✅ 已成功给{target}发送消息：{message}")
+                                self.say("系统", f"✅ 已成功给{target}发送消息:{message}")
                             else:
-                                self.say("系统", f"❌ 发送消息失败，请检查微信是否正常运行。")
+                                self.say("系统", f"❌ 发送消息失败,请检查微信是否正常运行。")
                             return
-                self.say("AI管家", "🤔 我不太明白，试试一键操作按钮或输入更明确的指令。")
+                self.say("AI管家", "🤔 我不太明白,试试一键操作按钮或输入更明确的指令。")
         except Exception as e:
-            self.say("系统", f"❌ 解析指令时发生错误：{str(e)}")
+            self.say("系统", f"❌ 解析指令时发生错误:{str(e)}")
 
     def _execute_quick_action(self, action, params):
         """执行快速操作按钮 - 统一通过 CommandRegistry"""
@@ -1734,7 +1734,7 @@ class AIPCHelperV8:
             cmd_data["action"] = action
             execute_command(action, self, cmd_data)
         except KeyError:
-            self.say("AI管家", f"无法执行该操作（未知操作类型：{action}）。")
+            self.say("AI管家", f"无法执行该操作(未知操作类型:{action})。")
         except Exception as e:
             logger.error(f"快速操作执行失败 [{action}]: {e}", exc_info=True)
             self.say("系统", f"❌ 执行失败: {str(e)}")
@@ -1743,7 +1743,7 @@ class AIPCHelperV8:
         """验证AI解析结果是否包含必要参数"""
         if not result or "action" not in result:
             return False
-        
+
         action = result.get("action")
         # 必要参数映射
         required_params = {
@@ -1867,26 +1867,26 @@ class AIPCHelperV8:
             # 语音合成
             "speak_text": ["text"],
         }
-        
+
         if action not in required_params:
-            # 未知动作，视为无效
+            # 未知动作,视为无效
             return False
-        
+
         for param in required_params[action]:
             if param not in result or not result[param]:
                 return False
-        
+
         return True
 
     def execute_ai_command(self, cmd_data):
         action = cmd_data.get("action")
-        
-        # 命令注册表执行（所有命令已迁移到 registry）
+
+        # 命令注册表执行(所有命令已迁移到 registry)
         try:
             from core.command_registry import execute_command
             execute_command(action, self, cmd_data)
         except KeyError:
-            self.say("AI管家", f"无法执行该指令（未知操作类型：{action}）。")
+            self.say("AI管家", f"无法执行该指令(未知操作类型:{action})。")
         except Exception as e:
             logger.error(f"命令执行失败 [{action}]: {e}", exc_info=True)
             self.say("系统", f"❌ 执行失败: {str(e)}")
@@ -1908,21 +1908,21 @@ class AIPCHelperV8:
                 preview = "\n".join([f"• {os.path.relpath(s, self.current_folder)} -> {os.path.relpath(d, target_base)}" for s, d in move_plan[:20]])
                 if len(move_plan) > 20:
                     preview += f"\n... 还有 {len(move_plan)-20} 个文件"
-                self.say("AI管家", f"📊 整理方案预览（共{len(move_plan)}个文件）：\n{preview}")
+                self.say("AI管家", f"📊 整理方案预览(共{len(move_plan)}个文件):\n{preview}")
 
                 # 在主线程中显示确认对话框
                 def confirm_and_execute():
-                    if messagebox.askyesno("确认", "确定执行整理？"):
+                    if messagebox.askyesno("确认", "确定执行整理?"):
                         moved = 0
                         for src, dst in move_plan:
                             if self.file_manager.safe_move(src, dst):
                                 moved += 1
-                        self.say("系统", f"✅ 整理完成，成功移动 {moved}/{len(move_plan)} 个文件。")
+                        self.say("系统", f"✅ 整理完成,成功移动 {moved}/{len(move_plan)} 个文件。")
 
                 self.root.after(0, confirm_and_execute)
             except Exception as e:
                 logger.exception("按类型整理失败")
-                self.say("系统", f"❌ 整理失败：{e}")
+                self.say("系统", f"❌ 整理失败:{e}")
 
         # 启动子线程执行文件整理
         threading.Thread(target=sort_files_thread, daemon=True).start()
@@ -1937,7 +1937,7 @@ class AIPCHelperV8:
                     self.say("AI管家", "没有发现重复文件。")
                     return
 
-                lines = [f"发现 {len(duplicates)} 组重复文件，每组保留第一个，其余将删除："]
+                lines = [f"发现 {len(duplicates)} 组重复文件,每组保留第一个,其余将删除:"]
                 for group in duplicates[:10]:
                     lines.append(f"• {os.path.basename(group[0])} 等 {len(group)} 个文件")
                 if len(duplicates) > 10:
@@ -1946,9 +1946,9 @@ class AIPCHelperV8:
 
                 # 在主线程中显示确认对话框
                 def confirm_and_cleanup():
-                    if self.use_ai_features and messagebox.askyesno("智能清理", "是否让AI分析哪些文件可以安全删除？（否则将删除每组除第一个外的所有副本）"):
+                    if self.use_ai_features and messagebox.askyesno("智能清理", "是否让AI分析哪些文件可以安全删除?(否则将删除每组除第一个外的所有副本)"):
                         self.smart_duplicate_cleanup(duplicates)
-                    elif messagebox.askyesno("确认", "确定删除所有重复文件的副本吗？"):
+                    elif messagebox.askyesno("确认", "确定删除所有重复文件的副本吗?"):
                         deleted = 0
                         for group in duplicates:
                             for path in group[1:]:
@@ -1962,13 +1962,13 @@ class AIPCHelperV8:
                 self.root.after(0, confirm_and_cleanup)
             except Exception as e:
                 logger.exception("查找重复文件失败")
-                self.say("系统", f"❌ 查找重复文件失败：{e}")
+                self.say("系统", f"❌ 查找重复文件失败:{e}")
 
         # 启动子线程执行文件扫描
         threading.Thread(target=find_duplicates_thread, daemon=True).start()
 
     def smart_duplicate_cleanup(self, duplicates):
-        self.say("AI管家", "正在分析重复文件，请稍候...")
+        self.say("AI管家", "正在分析重复文件,请稍候...")
         to_delete = []
         for group in duplicates:
             files_info = []
@@ -1987,7 +1987,7 @@ class AIPCHelperV8:
             preview = "\n".join([f"• {path}" for path in to_delete[:20]])
             if len(to_delete) > 20:
                 preview += f"\n... 还有 {len(to_delete)-20} 个"
-            if messagebox.askyesno("确认", f"AI建议删除以下 {len(to_delete)} 个文件，确定？\n{preview}"):
+            if messagebox.askyesno("确认", f"AI建议删除以下 {len(to_delete)} 个文件,确定?\n{preview}"):
                 deleted = 0
                 for path in to_delete:
                     try:
@@ -1997,7 +1997,7 @@ class AIPCHelperV8:
                         logger.error(f"删除失败 {path}: {e}")
                 self.say("系统", f"✅ 已删除 {deleted} 个文件。")
         else:
-            self.say("系统", "AI未给出有效建议，请手动处理。")
+            self.say("系统", "AI未给出有效建议,请手动处理。")
 
     def clean_empty_files(self):
         def clean_empty_thread():
@@ -2008,7 +2008,7 @@ class AIPCHelperV8:
                     self.say("AI管家", "没有空文件。")
                     return
 
-                lines = [f"发现 {len(empty_files)} 个空文件："]
+                lines = [f"发现 {len(empty_files)} 个空文件:"]
                 for e in empty_files[:20]:
                     lines.append(f"• {os.path.basename(e)}")
                 if len(empty_files) > 20:
@@ -2017,7 +2017,7 @@ class AIPCHelperV8:
 
                 # 在主线程中显示确认对话框
                 def confirm_and_delete():
-                    if messagebox.askyesno("确认", f"确定删除这 {len(empty_files)} 个空文件？"):
+                    if messagebox.askyesno("确认", f"确定删除这 {len(empty_files)} 个空文件?"):
                         deleted = 0
                         for path in empty_files:
                             try:
@@ -2030,7 +2030,7 @@ class AIPCHelperV8:
                 self.root.after(0, confirm_and_delete)
             except Exception as e:
                 logger.exception("清理空文件失败")
-                self.say("系统", f"❌ 清理空文件失败：{e}")
+                self.say("系统", f"❌ 清理空文件失败:{e}")
 
         # 启动子线程执行文件扫描
         threading.Thread(target=clean_empty_thread, daemon=True).start()
@@ -2043,13 +2043,13 @@ class AIPCHelperV8:
                 if not large_files:
                     self.say("AI管家", f"没有大于 {min_size_gb}GB 的文件。")
                     return
-                lines = [f"发现 {len(large_files)} 个大文件（前20）："]
+                lines = [f"发现 {len(large_files)} 个大文件(前20):"]
                 for path, size in large_files[:20]:
                     lines.append(f"• {os.path.basename(path)} ({size/1024**3:.2f} GB)")
                 self.say("AI管家", "\n".join(lines))
             except Exception as e:
                 logger.exception("查找大文件失败")
-                self.say("系统", f"❌ 查找大文件失败：{e}")
+                self.say("系统", f"❌ 查找大文件失败:{e}")
 
         # 启动子线程执行文件扫描
         threading.Thread(target=find_large_files_thread, daemon=True).start()
@@ -2061,16 +2061,16 @@ class AIPCHelperV8:
                 if not folders and not files:
                     self.say("AI管家", "当前目录为空。")
                     return
-                msg = "📁 文件夹：\n" + "\n".join([f"• {f}" for f in folders[:10]])
+                msg = "📁 文件夹:\n" + "\n".join([f"• {f}" for f in folders[:10]])
                 if len(folders) > 10:
                     msg += f"\n... 还有 {len(folders)-10} 个文件夹"
-                msg += "\n\n📄 文件：\n" + "\n".join([f"• {f}" for f in files[:20]])
+                msg += "\n\n📄 文件:\n" + "\n".join([f"• {f}" for f in files[:20]])
                 if len(files) > 20:
                     msg += f"\n... 还有 {len(files)-20} 个文件"
                 self.say("AI管家", msg)
             except Exception as e:
                 logger.exception("列出文件失败")
-                self.say("系统", f"❌ 列出文件失败：{e}")
+                self.say("系统", f"❌ 列出文件失败:{e}")
 
         # 启动子线程执行文件扫描
         threading.Thread(target=list_files_thread, daemon=True).start()
@@ -2085,7 +2085,7 @@ class AIPCHelperV8:
 
             pairs = self.ai_helper.generate_rename_plan(folders, msg)
             if not pairs:
-                self.say("AI管家", "无法理解您的指令，请换个说法。")
+                self.say("AI管家", "无法理解您的指令,请换个说法。")
                 return
 
             valid_pairs = []
@@ -2100,9 +2100,9 @@ class AIPCHelperV8:
                 return
 
             preview = "\n".join([f"{os.path.basename(o)} → {os.path.basename(n)}" for o, n in valid_pairs])
-            self.say("AI管家", f"📊 改名方案：\n{preview}")
+            self.say("AI管家", f"📊 改名方案:\n{preview}")
 
-            if messagebox.askyesno("确认", "执行改名？"):
+            if messagebox.askyesno("确认", "执行改名?"):
                 renamed = 0
                 for o, n in valid_pairs:
                     try:
@@ -2111,27 +2111,27 @@ class AIPCHelperV8:
                         renamed += 1
                     except Exception as e:
                         logger.error(f"改名失败 {o} -> {n}: {e}")
-                self.say("系统", f"✅ 改名完成，成功修改 {renamed}/{len(valid_pairs)} 个文件夹。")
+                self.say("系统", f"✅ 改名完成,成功修改 {renamed}/{len(valid_pairs)} 个文件夹。")
         except Exception as e:
             logger.exception("改名失败")
-            self.say("系统", f"❌ 改名失败：{e}")
+            self.say("系统", f"❌ 改名失败:{e}")
 
     # ---------- 应用管理 ----------
     def detect_app_executable(self, app_name):
         """自动检测应用程序的可执行文件路径
-        
+
         Args:
             app_name: 应用程序名称
-            
+
         Returns:
-            可执行文件路径，如果找不到返回None
+            可执行文件路径,如果找不到返回None
         """
         # 1. 首先检查已配置的应用路径
         if app_name in self.app_paths:
             for path in self.app_paths[app_name]:
                 if os.path.exists(path):
                     return path
-        
+
         # 2. 通过系统控制器获取已安装软件列表
         if hasattr(self, 'system_controller'):
             result = self.system_controller.get_installed_software()
@@ -2147,12 +2147,12 @@ class AIPCHelperV8:
                                 for file in files:
                                     if file.endswith('.exe') and not file.lower().startswith('uninst'):
                                         exe_path = os.path.join(root, file)
-                                        # 检查是否是可执行文件（通过文件名判断）
+                                        # 检查是否是可执行文件(通过文件名判断)
                                         if any(keyword in file.lower() for keyword in [app_name.lower(), soft_name.replace(' ', '').lower()]):
                                             return exe_path
-                            # 如果没有找到，返回安装目录
+                            # 如果没有找到,返回安装目录
                             return install_location
-        
+
         # 3. 搜索常见安装目录
         common_paths = [
             os.environ.get("ProgramFiles", "C:\\Program Files"),
@@ -2161,7 +2161,7 @@ class AIPCHelperV8:
             os.path.expanduser("~\\AppData\\Roaming"),
             "C:\\"
         ]
-        
+
         for base_path in common_paths:
             if not os.path.exists(base_path):
                 continue
@@ -2175,13 +2175,13 @@ class AIPCHelperV8:
                             if any(sys_dir in exe_path.lower() for sys_dir in ['windows', 'system32', 'winsxs']):
                                 continue
                             return exe_path
-        
+
         return None
 
     def open_app(self, msg):
         # 提取应用名称
         app_name = msg.replace("打开", "").replace("启动", "").replace("运行", "").replace("开启", "").strip()
-        
+
         # 1. 首先尝试已配置的应用路径
         for app, paths in self.app_paths.items():
             if app in app_name:
@@ -2195,7 +2195,7 @@ class AIPCHelperV8:
                             logger.error(f"启动 {app} 失败: {e}")
                 self.say("系统", f"❌ 未找到 {app} 的可执行文件")
                 return
-        
+
         # 2. 自动检测应用
         detected_path = self.detect_app_executable(app_name)
         if detected_path and os.path.exists(detected_path):
@@ -2216,11 +2216,11 @@ class AIPCHelperV8:
         else:
             self.say("系统", f"❌ 未找到应用: {app_name}")
             # 建议用户手动添加
-            if messagebox.askyesno("应用未找到", f"未找到应用 '{app_name}'，是否手动添加？"):
+            if messagebox.askyesno("应用未找到", f"未找到应用 '{app_name}',是否手动添加?"):
                 self.add_custom_app()
 
     def add_custom_app(self):
-        app_name = simpledialog.askstring("添加应用", "请输入应用名称：")
+        app_name = simpledialog.askstring("添加应用", "请输入应用名称:")
         if not app_name:
             return
         app_path = filedialog.askopenfilename(title=f"选择 {app_name} 的可执行文件", filetypes=[("可执行文件", "*.exe")])
@@ -2237,20 +2237,20 @@ class AIPCHelperV8:
         if not self.app_paths:
             messagebox.showinfo("应用列表", "暂无自定义应用")
             return
-        
+
         app_list = "📋 已添加的应用:\n\n"
         for name, paths in self.app_paths.items():
             app_list += f"📌 {name}:\n"
             for path in paths:
                 app_list += f"   {path}\n"
             app_list += "\n"
-        
+
         # 创建显示窗口
         win = tk.Toplevel(self.root)
         win.title("应用列表")
         win.geometry("500x400")
         win.configure(bg="#1e1e2e")
-        
+
         text = scrolledtext.ScrolledText(
             win, wrap=tk.WORD, font=("微软雅黑", 10),
             bg="#1e1e2e", fg="#cdd6f4", padx=10, pady=10
@@ -2258,35 +2258,35 @@ class AIPCHelperV8:
         text.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         text.insert(tk.END, app_list)
         text.config(state=tk.DISABLED)
-        
+
         ttk.Button(win, text="关闭", command=win.destroy).pack(pady=10)
 
     # ---------- 系统操作 ----------
     def system_operation(self, msg):
         """处理系统操作指令
-        
+
         Args:
-            msg: 操作描述字符串（如"关机"、"重启"等）
+            msg: 操作描述字符串(如"关机"、"重启"等)
         """
         msg_lower = msg.lower() if isinstance(msg, str) else ""
-        
+
         if "关机" in msg and "取消" not in msg:
-            if messagebox.askyesno("确认", "确定关机？"):
+            if messagebox.askyesno("确认", "确定关机?"):
                 subprocess.run(["shutdown", "/s", "/t", "0"], shell=False)
                 self.say("系统", "🔴 正在关机...")
         elif "重启" in msg:
-            if messagebox.askyesno("确认", "确定重启？"):
+            if messagebox.askyesno("确认", "确定重启?"):
                 subprocess.run(["shutdown", "/r", "/t", "0"], shell=False)
                 self.say("系统", "🔄 正在重启...")
         elif "睡眠" in msg or "休眠" in msg:
-            if messagebox.askyesno("确认", "确定进入睡眠模式？"):
+            if messagebox.askyesno("确认", "确定进入睡眠模式?"):
                 subprocess.run(["rundll32.exe", "powrprof.dll,SetSuspendState", "0,1,0"], shell=False)
                 self.say("系统", "💤 正在进入睡眠模式...")
         elif "锁定" in msg or "锁屏" in msg:
             subprocess.run(["rundll32.exe", "user32.dll,LockWorkStation"], shell=False)
             self.say("系统", "🔒 屏幕已锁定")
         elif "注销" in msg:
-            if messagebox.askyesno("确认", "确定注销？"):
+            if messagebox.askyesno("确认", "确定注销?"):
                 subprocess.run(["shutdown", "/l"], shell=False)
                 self.say("系统", "👋 正在注销...")
         elif "任务管理器" in msg:
@@ -2302,9 +2302,9 @@ class AIPCHelperV8:
         """安全执行系统命令 - 自动处理权限提升"""
         try:
             import ctypes
-            
+
             def elevated_run(executable, args=None):
-                """以管理员权限运行程序（自动提权）"""
+                """以管理员权限运行程序(自动提权)"""
                 try:
                     ctypes.windll.shell32.ShellExecuteW(
                         None, "runas", executable, args or "", None, 1
@@ -2312,7 +2312,7 @@ class AIPCHelperV8:
                     return True
                 except Exception:
                     return False
-            
+
             if action_name == "open_settings":
                 subprocess.Popen(["start", "ms-settings:"], shell=True)
             elif action_name == "open_task_manager":
@@ -2328,9 +2328,9 @@ class AIPCHelperV8:
             self.say("系统", f"✅ 已执行: {action_name}")
         except Exception as e:
             self.say("系统", f"❌ 执行失败: {e}")
-    
+
     def custom_command(self, cmd):
-        """执行自定义命令（白名单模式）"""
+        """执行自定义命令(白名单模式)"""
         # 安全命令白名单
         safe_commands = {
             "shutdown": ["shutdown", "/s", "/t", "0"],
@@ -2341,22 +2341,22 @@ class AIPCHelperV8:
             "notepad": ["notepad"],
             "cmd": ["cmd", "/c", "echo", "Safe command"],
         }
-        
+
         cmd_lower = cmd.strip().lower()
         if cmd_lower in safe_commands:
             try:
                 args = safe_commands[cmd_lower]
                 result = subprocess.run(args, shell=False, capture_output=True, text=True, timeout=10)
                 if result.returncode == 0:
-                    self.say("系统", f"✅ 命令执行成功：\n{result.stdout}")
+                    self.say("系统", f"✅ 命令执行成功:\n{result.stdout}")
                 else:
-                    self.say("系统", f"❌ 命令执行失败：\n{result.stderr}")
+                    self.say("系统", f"❌ 命令执行失败:\n{result.stderr}")
             except subprocess.TimeoutExpired:
                 self.say("系统", "❌ 命令执行超时")
             except Exception as e:
-                self.say("系统", f"❌ 命令执行异常：{e}")
+                self.say("系统", f"❌ 命令执行异常:{e}")
         else:
-            self.say("系统", f"❌ 不允许执行该命令。安全命令列表：{', '.join(safe_commands.keys())}")
+            self.say("系统", f"❌ 不允许执行该命令。安全命令列表:{', '.join(safe_commands.keys())}")
 
     # ---------- AI功能 ----------
     def ai_chat_dialog(self):
@@ -2371,20 +2371,20 @@ class AIPCHelperV8:
         # 标题框架
         title_frame = ttk.Frame(win)
         title_frame.pack(pady=10, fill=tk.X, padx=10)
-        
+
         ttk.Label(title_frame, text="💬 AI助手", font=("微软雅黑", 14, "bold")).pack(side=tk.LEFT)
-        
-        # Hermes 切换按钮（不阻塞检查状态）
+
+        # Hermes 切换按钮(不阻塞检查状态)
         hermes_btn = ttk.Button(
-            title_frame, 
+            title_frame,
             text="Hermes ⏳",
             command=lambda: self.toggle_hermes(hermes_btn)
         )
         hermes_btn.pack(side=tk.RIGHT)
         # 后台更新按钮状态
         self.root.after(500, lambda: self._update_hermes_btn(hermes_btn))
-        
-        # 显示当前使用的 AI 后端（通过 AgentService 自动检测）
+
+        # 显示当前使用的 AI 后端(通过 AgentService 自动检测)
         backend_name = "检测中..."
         try:
             agent_svc = self.agent_service
@@ -2404,22 +2404,22 @@ class AIPCHelperV8:
         )
         text_area.pack(padx=10, pady=5, fill=tk.BOTH, expand=True)
 
-        # 显示历史对话记录（从永久记忆加载） - 只显示用户和AI助手的聊天内容
+        # 显示历史对话记录(从永久记忆加载) - 只显示用户和AI助手的聊天内容
         history = self.conversation_memory.get_conversation_history(
             session_id=self.conversation_memory.current_session_id,
             limit=50,
             role_filter=None
         )
-        # 清空内存历史记录，然后加载数据库中的历史（按时间顺序）
+        # 清空内存历史记录,然后加载数据库中的历史(按时间顺序)
         self.ai_chat_history.clear()
         if history:
-            # history是按时间倒序排列的，需要反转以保持时间顺序
+            # history是按时间倒序排列的,需要反转以保持时间顺序
             history_chronological = list(reversed(history))
             for msg in history_chronological:
-                # 只显示用户和AI助手的聊天内容，过滤掉系统消息等其他内容
+                # 只显示用户和AI助手的聊天内容,过滤掉系统消息等其他内容
                 if msg["role"] not in ["user", "assistant"]:
                     continue
-                # 添加到内存历史记录（用于向后兼容）
+                # 添加到内存历史记录(用于向后兼容)
                 self.ai_chat_history.append({
                     "role": msg["role"],
                     "content": msg["content"]
@@ -2429,7 +2429,7 @@ class AIPCHelperV8:
                 text_area.insert(tk.END, f"{role}: {msg['content']}\n")
             text_area.insert(tk.END, "\n")
         else:
-            text_area.insert(tk.END, "AI: 你好！我是AI助手，有什么可以帮你的吗？\n\n")
+            text_area.insert(tk.END, "AI: 你好!我是AI助手,有什么可以帮你的吗?\n\n")
 
         entry_frame = ttk.Frame(win)
         entry_frame.pack(padx=10, pady=5, fill=tk.X)
@@ -2442,32 +2442,32 @@ class AIPCHelperV8:
             question = entry.get().strip()
             if not question:
                 return
-            
-            # 保存用户消息到历史记录（永久记忆）
+
+            # 保存用户消息到历史记录(永久记忆)
             self.conversation_memory.add_message("user", question)
-            
-            # 同时保存到内存历史记录（用于向后兼容）
+
+            # 同时保存到内存历史记录(用于向后兼容)
             self.ai_chat_history.append({"role": "user", "content": question})
-            
-            # 限制历史长度（最大100条）
+
+            # 限制历史长度(最大100条)
             MAX_HISTORY = 100
             if len(self.ai_chat_history) > MAX_HISTORY:
                 self.ai_chat_history = self.ai_chat_history[-MAX_HISTORY:]
-            
+
             text_area.insert(tk.END, f"你: {question}\n")
             text_area.insert(tk.END, "AI: ")
             text_area.see(tk.END)
             entry.delete(0, tk.END)
-            # 禁用输入框和发送按钮，启用停止按钮
+            # 禁用输入框和发送按钮,启用停止按钮
             entry.config(state=tk.DISABLED)
             send_btn.config(state=tk.DISABLED)
             stop_btn.config(state=tk.NORMAL)
-            
+
             # 创建停止标志和锁
             stop_flag = threading.Event()
-            # 将停止标志存储到容器中，以便stop_generation函数可以访问
+            # 将停止标志存储到容器中,以便stop_generation函数可以访问
             stop_flag_container["flag"] = stop_flag
-            
+
             def stream_callback(chunk):
                 """流式响应回调 - 接收增量内容"""
                 # 检查停止标志
@@ -2475,28 +2475,28 @@ class AIPCHelperV8:
                     return
                 # 直接传递增量内容给UI更新
                 self.root.after(0, lambda: update_ai_response(chunk))
-            
+
             def update_ai_response(chunk):
                 """更新AI回复 - 追加增量内容"""
                 # 直接追加到文本区域末尾
                 text_area.insert(tk.END, chunk)
                 text_area.see(tk.END)
-            
 
-            
+
+
             def ai_response():
                 """AI 响应处理 - 优先通过 AgentService → Hermes"""
                 answer = None
                 error_msg = None
-                
+
                 try:
-                    # 1. 优先使用 AgentService（自动最优后端 + 降级）
+                    # 1. 优先使用 AgentService(自动最优后端 + 降级)
                     agent_svc = self.agent_service
                     if agent_svc and agent_svc.ensure_ready():
                         backend = agent_svc.get_preferred_backend()
-                        
+
                         if backend == "hermes":
-                            # Hermes 全能力模式 —— 流式输出 + 会话持久化
+                            # Hermes 全能力模式 -- 流式输出 + 会话持久化
                             system_prompt = "你是一个友好、有帮助的 AI 助手。请用自然、简洁的中文回答用户问题。"
                             answer = agent_svc.chat(
                                 question,
@@ -2513,7 +2513,7 @@ class AIPCHelperV8:
                                 role = "用户" if msg["role"] == "user" else "助手"
                                 chat_history.append(f"{role}: {msg['content']}")
                             prompt = "\n".join(chat_history) + "\n助手: "
-                            system_prompt = "你是一个友好、有帮助的 AI 助手。请用自然、简洁的中文回答用户问题。不要返回 JSON 格式，直接以对话形式回复。"
+                            system_prompt = "你是一个友好、有帮助的 AI 助手。请用自然、简洁的中文回答用户问题。不要返回 JSON 格式,直接以对话形式回复。"
                             answer = self.ai_helper.ai_query(
                                 prompt,
                                 system_prompt=system_prompt,
@@ -2522,13 +2522,13 @@ class AIPCHelperV8:
                                 timeout=30
                             )
                     else:
-                        # 2. 回退：旧代码
+                        # 2. 回退:旧代码
                         chat_history = []
                         for msg in self.ai_chat_history[-10:]:
                             role = "用户" if msg["role"] == "user" else "助手"
                             chat_history.append(f"{role}: {msg['content']}")
                         prompt = "\n".join(chat_history) + "\n助手: "
-                        system_prompt = "你是一个友好、有帮助的 AI 助手。请用自然、简洁的中文回答用户问题。不要返回 JSON 格式，直接以对话形式回复。"
+                        system_prompt = "你是一个友好、有帮助的 AI 助手。请用自然、简洁的中文回答用户问题。不要返回 JSON 格式,直接以对话形式回复。"
                         answer = self.ai_helper.ai_query(
                             prompt,
                             system_prompt=system_prompt,
@@ -2536,11 +2536,11 @@ class AIPCHelperV8:
                             stop_event=stop_flag,
                             timeout=30
                         )
-                        
+
                 except Exception as e:
                     logger.error(f"AI 调用失败: {e}")
                     error_msg = f"AI 调用失败: {str(e)}"
-                
+
                 # UI 更新
                 if stop_flag.is_set():
                     self.root.after(0, lambda: text_area.insert(tk.END, "\n[已停止]\n\n"))
@@ -2553,37 +2553,37 @@ class AIPCHelperV8:
                         self.ai_chat_history = self.ai_chat_history[-MAX_HISTORY:]
                     self.root.after(0, lambda: text_area.insert(tk.END, "\n\n"))
                 else:
-                    self.root.after(0, lambda: text_area.insert(tk.END, "\nAI 未返回回复，请检查服务状态。\n\n"))
-                
+                    self.root.after(0, lambda: text_area.insert(tk.END, "\nAI 未返回回复,请检查服务状态。\n\n"))
+
                 self.root.after(0, lambda: entry.config(state=tk.NORMAL))
                 self.root.after(0, lambda: send_btn.config(state=tk.NORMAL))
                 self.root.after(0, lambda: stop_btn.config(state=tk.DISABLED))
                 self.root.after(0, lambda: text_area.see(tk.END))
                 stop_flag_container["flag"] = None
-            
 
-            
+
+
             threading.Thread(target=ai_response, daemon=True).start()
 
         # 用于存储停止标志的容器
         stop_flag_container = {"flag": None}
-        
+
         def stop_generation():
             """停止AI生成"""
             if stop_flag_container["flag"]:
                 stop_flag_container["flag"].set()
                 # 重置停止标志容器
                 stop_flag_container["flag"] = None
-                # 禁用停止按钮，启用发送按钮
+                # 禁用停止按钮,启用发送按钮
                 stop_btn.config(state=tk.DISABLED)
                 send_btn.config(state=tk.NORMAL)
                 entry.config(state=tk.NORMAL)
                 text_area.insert(tk.END, "\n[已停止]\n\n")
                 text_area.see(tk.END)
-        
+
         stop_btn = ttk.Button(entry_frame, text="⏹️ 停止", state=tk.DISABLED, command=stop_generation)
         stop_btn.pack(side=tk.RIGHT, padx=(0, 5))
-        
+
         send_btn = ttk.Button(entry_frame, text="发送", command=send_question)
         send_btn.pack(side=tk.RIGHT)
 
@@ -2591,14 +2591,14 @@ class AIPCHelperV8:
         btn_frame.pack(pady=5)
 
         def clear_history():
-            if messagebox.askyesno("确认", "确定清空对话历史？"):
+            if messagebox.askyesno("确认", "确定清空对话历史?"):
                 # 清空内存历史记录
                 self.ai_chat_history.clear()
-                # 开始新的对话会话（旧的对话记录仍然保存在数据库中，但不再显示）
+                # 开始新的对话会话(旧的对话记录仍然保存在数据库中,但不再显示)
                 self.conversation_memory.start_new_session()
                 # 清空文本框
                 text_area.delete(1.0, tk.END)
-                text_area.insert(tk.END, "AI: 你好！我是AI助手，有什么可以帮你的吗？\n\n")
+                text_area.insert(tk.END, "AI: 你好!我是AI助手,有什么可以帮你的吗?\n\n")
                 text_area.see(tk.END)
 
         ttk.Button(btn_frame, text="🗑️ 清空历史", command=clear_history).pack(side=tk.LEFT, padx=5)
@@ -2616,7 +2616,7 @@ class AIPCHelperV8:
                 'echo && '
                 'hermes"'
             )
-            
+
             # 打开新控制台窗口运行 Hermes
             subprocess.Popen(
                 f'start "Hermes Agent" cmd /k {hermes_cmd}',
@@ -2629,7 +2629,7 @@ class AIPCHelperV8:
 
     def _toggle_hermes_switch(self):
         """Hermes 开关按钮点击处理"""
-        # 检查 HermesBridge 可用性，回退检查 AgentService
+        # 检查 HermesBridge 可用性,回退检查 AgentService
         hermes_available = self.hermes_bridge.available or (
             self._agent_service and self._agent_service.get_status().get("hermes")
         )
@@ -2637,20 +2637,20 @@ class AIPCHelperV8:
             messagebox.showwarning("Hermes 不可用",
                 "Hermes 未检测到。\n请确保:\n1. WSL 已安装\n2. Hermes 已安装在 WSL 中")
             return
-        
+
         self.use_hermes = not self.use_hermes
         self.hermes_toggle_var.set(self.use_hermes)
         self.config_manager.set("use_hermes", self.use_hermes)
         self._update_hermes_toggle_ui()
-        
+
         # 同步更新状态栏
         if hasattr(self, 'ai_engine_label'):
             ai_engine = "Hermes" if self.use_hermes else "Ollama"
             self.ai_engine_label.config(text=f"AI引擎: {ai_engine}")
-        
+
         self.say("系统", f"Hermes {'已启用' if self.use_hermes else '已禁用'}")
         logger.info(f"Hermes 切换为: {'启用' if self.use_hermes else '禁用'}")
-    
+
     def _update_hermes_toggle_ui(self):
         """更新 Hermes 开关按钮的显示状态"""
         if self.use_hermes:
@@ -2669,7 +2669,7 @@ class AIPCHelperV8:
             )
             self.model_combo.config(state="disabled")
             self.auto_switch_btn.config(state="disabled")
-    
+
     # 模型显示名 → 内部ID 映射
     MODEL_DISPLAY_MAP = {
         "DeepSeek V4 Flash · 快速": "ds-v4-flash",
@@ -2698,7 +2698,7 @@ class AIPCHelperV8:
                 self.say("系统", f"⚠️ 未找到模型: {display_name}")
             except Exception as e:
                 self.say("系统", f"❌ 模型切换失败: {e}")
-    
+
     def _toggle_auto_switch(self):
         """切换自动模型选择"""
         try:
@@ -2706,23 +2706,23 @@ class AIPCHelperV8:
             switcher = get_model_switcher()
             is_auto = switcher.toggle_auto_switch()
             self.auto_switch_var.set(is_auto)
-            
+
             if is_auto:
                 self.auto_switch_btn.config(
                     text="🔄 自动", bg="#2a5a2a", fg="#a0d0a0"
                 )
                 self.model_combo.config(state="disabled")
-                self.say("系统", "🔄 自动模型选择已开启 — 根据任务复杂度自动匹配最优模型")
+                self.say("系统", "🔄 自动模型选择已开启 - 根据任务复杂度自动匹配最优模型")
             else:
                 self.auto_switch_btn.config(
                     text="🔒 手动", bg="#5a3a2a", fg="#d0a080"
                 )
                 if self.use_hermes:
                     self.model_combo.config(state="readonly")
-                self.say("系统", "🔒 手动模型选择 — 请从下拉框选择模型")
+                self.say("系统", "🔒 手动模型选择 - 请从下拉框选择模型")
         except Exception as e:
             self.say("系统", f"❌ 切换失败: {e}")
-    
+
     def _update_model_display(self):
         """更新模型相关UI显示"""
         try:
@@ -2734,14 +2734,14 @@ class AIPCHelperV8:
                     self.MODEL_ID_TO_DISPLAY.get(current.id, current.name)
                 )
                 self.auto_switch_var.set(switcher.auto_switch_enabled)
-                
+
                 if switcher.auto_switch_enabled:
                     self.auto_switch_btn.config(text="🔄 自动", bg="#2a5a2a", fg="#a0d0a0")
                     self.model_combo.config(state="disabled")
                 else:
                     self.auto_switch_btn.config(text="🔒 手动", bg="#5a3a2a", fg="#d0a080")
-                
-                # 更新模型下拉列表（使用显示名）
+
+                # 更新模型下拉列表(使用显示名)
                 models = [
                     self.MODEL_ID_TO_DISPLAY.get(m.id, m.name)
                     for m in switcher.list_models(enabled_only=False)
@@ -2749,11 +2749,11 @@ class AIPCHelperV8:
                 self.model_combo['values'] = models
         except Exception:
             pass
-    
+
     def _update_hermes_status(self):
-        """后台更新 Hermes 状态显示（含模型信息）"""
+        """后台更新 Hermes 状态显示(含模型信息)"""
         try:
-            # 优先检查 HermesBridge，回退检查 AgentService
+            # 优先检查 HermesBridge,回退检查 AgentService
             if self.hermes_bridge.available:
                 status_text = "Hermes: 🟢 已连接"
             elif self._agent_service and self._agent_service.get_status().get("hermes"):
@@ -2762,7 +2762,7 @@ class AIPCHelperV8:
                 status_text = "Hermes: 🟡 切换中"
             else:
                 status_text = "Hermes: 🔴 未连接"
-            
+
             # 追加模型信息
             try:
                 from services.model_switcher import get_model_switcher
@@ -2773,11 +2773,11 @@ class AIPCHelperV8:
                     status_text += f" | {auto_tag} {current.name}"
             except Exception:
                 pass
-            
+
             self.hermes_status_label.config(text=status_text, foreground="#00ff00" if "🟢" in status_text else "#888888")
         except Exception:
             self.hermes_status_label.config(text="Hermes: ⚪ 未知", foreground="#888888")
-    
+
     def _update_hermes_btn(self, btn):
         """后台更新 Hermes 按钮状态"""
         try:
@@ -2787,36 +2787,36 @@ class AIPCHelperV8:
                 btn.config(text="Hermes 🔴")
         except Exception:
             btn.config(text="Hermes ⚪")
-    
+
     def toggle_hermes(self, btn=None):
-        """切换 Hermes/Ollama AI 引擎（兼容旧接口）"""
+        """切换 Hermes/Ollama AI 引擎(兼容旧接口)"""
         self._toggle_hermes_switch()
-    
+
     def launch_hermes_task(self, task=None):
-        """向 Hermes 发送任务 — 使用 StreamingManager"""
+        """向 Hermes 发送任务 - 使用 StreamingManager"""
         if task is None:
             task = self.input_text.get().strip()
-        
+
         if not task:
             self.say("系统", "⚠️ 请先在输入框中输入任务内容")
             return
-        
+
         self.input_text.delete(0, tk.END)
         self.say("你", task)
-        
+
         # 检查可用性
         agent_svc = self.agent_service
         agent_hermes_ok = agent_svc and agent_svc.ensure_ready() and agent_svc.get_preferred_backend() == "hermes"
         if not agent_hermes_ok and not self.hermes_bridge.available:
-            self.say("系统", "❌ Hermes 不可用，请检查 WSL 和 Hermes 安装")
+            self.say("系统", "❌ Hermes 不可用,请检查 WSL 和 Hermes 安装")
             return
-        
+
         sm = self._get_streaming_manager()
-        
+
         if not sm.can_start():
-            self.say("系统", "⏳ Hermes 正在处理上一轮对话，请稍候...")
+            self.say("系统", "⏳ Hermes 正在处理上一轮对话,请稍候...")
             return
-        
+
         # ── 智能模型路由 ──
         if self.auto_switch_var.get():
             try:
@@ -2829,7 +2829,7 @@ class AIPCHelperV8:
                     self.config_manager.set("hermes_model", recommended.id)
             except Exception as e:
                 logger.warning(f"智能路由失败: {e}")
-        
+
         def _task(callback, cancel_event):
             if agent_svc and agent_svc.ensure_ready() and agent_svc.get_preferred_backend() == "hermes":
                 hermes_svc = agent_svc.hermes
@@ -2841,7 +2841,7 @@ class AIPCHelperV8:
                     return agent_svc.chat(task)
             else:
                 return self.hermes_bridge.send_message(task)
-        
+
         # 任务分类用于动态状态显示
         task_info = self._classify_task(task)
         type_labels = {
@@ -2853,14 +2853,14 @@ class AIPCHelperV8:
             'system': ('🤖', '处理中'),
         }
         header_prefix, status_prefix = type_labels.get(task_info.get('type', 'chat'), ('🤖', '处理中'))
-        
+
         sm.start(
             _task,
             header_label=f"{header_prefix} Hermes",
             status_prefix=status_prefix,
             color_stops=(30, 90, 180)
         )
-    
+
     def _run_ai_agent_task_from_command(self, task):
         """从指令框执行 AI 任务 - 优先通过 AgentService"""
         try:
@@ -2870,9 +2870,9 @@ class AIPCHelperV8:
                 result = agent_svc.execute_task(task)
                 if result.get("success"):
                     output = result.get("output", "")
-                    self.say("系统", f"✅ AI任务完成！\n{output[:200]}" if len(output) > 200 else f"✅ AI任务完成！\n{output}")
+                    self.say("系统", f"✅ AI任务完成!\n{output[:200]}" if len(output) > 200 else f"✅ AI任务完成!\n{output}")
                 else:
-                    self.say("系统", f"❌ AI任务执行失败：{result.get('error', '未知错误')}")
+                    self.say("系统", f"❌ AI任务执行失败:{result.get('error', '未知错误')}")
                 return
 
             # 回退到旧 AIAgent
@@ -2887,14 +2887,14 @@ class AIPCHelperV8:
 
             steps = self.ai_agent.plan_task(task)
             if not steps:
-                self.say("系统", "❌ 任务规划失败，请检查模型服务是否运行")
+                self.say("系统", "❌ 任务规划失败,请检查模型服务是否运行")
                 return
 
             results = self.ai_agent.execute_plan(steps)
             success_count = sum(1 for r in results if r.get("success"))
-            self.say("系统", f"✅ AI任务完成！成功 {success_count}/{len(results)} 个步骤")
+            self.say("系统", f"✅ AI任务完成!成功 {success_count}/{len(results)} 个步骤")
         except Exception as e:
-            self.say("系统", f"❌ AI任务执行失败：{str(e)}")
+            self.say("系统", f"❌ AI任务执行失败:{str(e)}")
 
     def ai_settings(self):
         win = tk.Toplevel(self.root)
@@ -2973,13 +2973,13 @@ class AIPCHelperV8:
         wechat_frame = ttk.LabelFrame(content_frame, text="📱 微信监听", padding=10)
         wechat_frame.pack(fill=tk.X, padx=10, pady=5)
 
-        ocr_status = "✅ OCR可用" if OCR_AVAILABLE else "❌ OCR不可用（请安装Tesseract）"
+        ocr_status = "✅ OCR可用" if OCR_AVAILABLE else "❌ OCR不可用(请安装Tesseract)"
         ocr_status_label = ttk.Label(wechat_frame, text=f"OCR状态: {ocr_status}", foreground="green" if OCR_AVAILABLE else "red")
         ocr_status_label.pack(anchor=tk.W, pady=(0, 5))
 
         # 使用配置值避免触发 wechat_controller 延迟初始化
         var_ocr = tk.BooleanVar(value=self.config_manager.get("use_ocr", True))
-        ttk.Checkbutton(wechat_frame, text="使用OCR识别消息（需Tesseract）", variable=var_ocr).pack(anchor=tk.W)
+        ttk.Checkbutton(wechat_frame, text="使用OCR识别消息(需Tesseract)", variable=var_ocr).pack(anchor=tk.W)
 
         ttk.Label(wechat_frame, text="Tesseract路径:").pack(anchor=tk.W, pady=(10, 0))
         tesseract_entry = ttk.Entry(wechat_frame, width=45)
@@ -2988,28 +2988,28 @@ class AIPCHelperV8:
         ttk.Button(wechat_frame, text="浏览", command=lambda: tesseract_entry.delete(0, tk.END) or tesseract_entry.insert(0, filedialog.askopenfilename(title="选择Tesseract", filetypes=[("exe", "*.exe"), ("所有文件", "*.*")]))).pack(anchor=tk.W)
 
         var_debug = tk.BooleanVar(value=self.config_manager.get("debug_mode", False))
-        ttk.Checkbutton(wechat_frame, text="调试模式（保存截图到用户目录）", variable=var_debug).pack(anchor=tk.W)
+        ttk.Checkbutton(wechat_frame, text="调试模式(保存截图到用户目录)", variable=var_debug).pack(anchor=tk.W)
 
         ttk.Label(wechat_frame, text="检查间隔(秒):").pack(anchor=tk.W)
         interval_entry = ttk.Entry(wechat_frame, width=10)
         interval_entry.pack(anchor=tk.W)
         interval_entry.insert(0, str(self.config_manager.get("wechat_check_interval", 10)))
 
-        ttk.Label(wechat_frame, text="指令触发词（每行一个）:").pack(anchor=tk.W, pady=(5, 0))
+        ttk.Label(wechat_frame, text="指令触发词(每行一个):").pack(anchor=tk.W, pady=(5, 0))
         triggers_text = scrolledtext.ScrolledText(wechat_frame, height=4, width=30, bg="#313244", fg="#cdd6f4", relief=tk.FLAT)
         triggers_text.pack(anchor=tk.W, pady=5)
-        
+
         # 延迟插入确保UI就绪
         def safe_insert_triggers():
             try:
-                current_triggers = self.config_manager.get("command_triggers", ["￥", "¥"])
+                current_triggers = self.config_manager.get("command_triggers", ["¥", "¥"])
                 if not current_triggers:
-                    current_triggers = ["￥", "¥"]
+                    current_triggers = ["¥", "¥"]
                 triggers_text.insert("1.0", "\n".join(current_triggers))
             except Exception as e:
                 logger = logging.getLogger("AIPCHelper")
                 logger.error(f"触发词插入失败: {e}")
-        
+
         triggers_text.after(100, safe_insert_triggers)
 
         def open_ocr_calibration():
@@ -3037,7 +3037,7 @@ class AIPCHelperV8:
             selected_provider = provider_var.get()
             selected_model = model_var.get()
             self.ai_helper.set_config(model=selected_model, provider_id=selected_provider)
-            # 显式设置当前服务商，确保配置被保存
+            # 显式设置当前服务商,确保配置被保存
             self.config_manager.set_current_provider(selected_provider)
             self.config_manager.set("model", selected_model)
             self.config_manager.set("use_ai_features", self.use_ai_features)
@@ -3085,7 +3085,7 @@ class AIPCHelperV8:
         main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
         ttk.Label(main_frame, text="⚙️ API服务商配置", font=("微软雅黑", 14, "bold")).pack(pady=10)
-        ttk.Label(main_frame, text="选择要配置的服务商，填写API密钥和自定义模型", foreground="gray").pack(pady=(0, 10))
+        ttk.Label(main_frame, text="选择要配置的服务商,填写API密钥和自定义模型", foreground="gray").pack(pady=(0, 10))
 
         providers = self.config_manager.get_api_providers()
         provider_ids = list(providers.keys())
@@ -3156,11 +3156,11 @@ class AIPCHelperV8:
             client = get_unified_client(self.config_manager)
             client.load_provider_config(pid)
 
-            test_prompt = "请回复'测试成功'，不要有其他内容。"
+            test_prompt = "请回复'测试成功',不要有其他内容。"
             result = client.query(test_prompt)
 
             if result and "成功" in result:
-                messagebox.showinfo("成功", f"✅ 连接测试成功！\n\n响应: {result[:100]}")
+                messagebox.showinfo("成功", f"✅ 连接测试成功!\n\n响应: {result[:100]}")
             else:
                 messagebox.showerror("失败", f"❌ 连接测试失败\n\n响应: {result}")
 
@@ -3184,14 +3184,14 @@ class AIPCHelperV8:
 
         ttk.Label(win, text="🎯 OCR坐标校准", font=("微软雅黑", 14, "bold")).pack(pady=10)
 
-        info_text = """校准步骤：
+        info_text = """校准步骤:
 1. 确保微信窗口已打开并可见
 2. 点击「进入校准模式」
 3. 此时请点击微信窗口中的「最后一条消息」
 4. 点击后自动记录坐标
 5. 点击「保存坐标」保存到配置
 
-提示：校准后可以提高消息识别准确率"""
+提示:校准后可以提高消息识别准确率"""
         ttk.Label(win, text=info_text, justify=tk.LEFT).pack(pady=10)
 
         self.calibration_step = tk.StringVar(value="就绪")
@@ -3213,63 +3213,63 @@ class AIPCHelperV8:
             try:
 
                 self.calibrating = True
-                self.calibration_step.set("校准模式已激活！请点击微信窗口中的最后一条消息")
+                self.calibration_step.set("校准模式已激活!请点击微信窗口中的最后一条消息")
 
                 def monitor_click():
                     while self.calibrating:
                         # 检查鼠标左键状态
                         if win32api.GetKeyState(win32con.VK_LBUTTON) < 0:
-                            # 左键按下，获取坐标
+                            # 左键按下,获取坐标
                             x, y = win32api.GetCursorPos()
-                            
+
                             # 获取微信窗口信息
                             try:
                                 windows = gw.getWindowsWithTitle('微信')
                                 if not windows:
                                     windows = gw.getWindowsWithTitle('WeChat')
-                                
+
                                 if windows:
                                     win = windows[0]
                                     win_left = win.left
                                     win_top = win.top
                                     win_width = win.width
                                     win_height = win.height
-                                    
-                                    # 计算比例坐标（相对于窗口）
+
+                                    # 计算比例坐标(相对于窗口)
                                     rx = (x - win_left) / win_width if win_width > 0 else 0
                                     ry = (y - win_top) / win_height if win_height > 0 else 0
-                                    
+
                                     # 限制比例在0-1之间
                                     rx = max(0.0, min(1.0, rx))
                                     ry = max(0.0, min(1.0, ry))
-                                    
+
                                     # 存储比例坐标
                                     self.calibration_coords = (rx, ry)
-                                    
+
                                     def update_ui():
                                         coords_label.config(text=f"获取坐标成功: 绝对坐标({x}, {y}) | 比例坐标({rx:.3f}, {ry:.3f})")
-                                        self.calibration_step.set("坐标已获取！请点击保存")
-                                    
+                                        self.calibration_step.set("坐标已获取!请点击保存")
+
                                     self.root.after(0, update_ui)
                                 else:
-                                    # 未找到窗口，不保存坐标，提示用户
+                                    # 未找到窗口,不保存坐标,提示用户
                                     self.calibration_coords = None
-                                    
+
                                     def update_ui():
-                                        coords_label.config(text=f"获取坐标成功: 绝对坐标({x}, {y}) | 未找到微信窗口，请确保微信窗口已打开并重试")
-                                        self.calibration_step.set("微信窗口未找到，请确保微信窗口已打开并重试")
-                                    
+                                        coords_label.config(text=f"获取坐标成功: 绝对坐标({x}, {y}) | 未找到微信窗口,请确保微信窗口已打开并重试")
+                                        self.calibration_step.set("微信窗口未找到,请确保微信窗口已打开并重试")
+
                                     self.root.after(0, update_ui)
                             except Exception as e:
-                                # 出错时不保存坐标，提示用户
+                                # 出错时不保存坐标,提示用户
                                 self.calibration_coords = None
-                                
+
                                 def update_ui():
-                                    coords_label.config(text=f"获取坐标成功: 绝对坐标({x}, {y}) | 计算比例失败: {e}，请重新校准")
-                                    self.calibration_step.set("坐标计算失败，请重新校准")
-                                
+                                    coords_label.config(text=f"获取坐标成功: 绝对坐标({x}, {y}) | 计算比例失败: {e},请重新校准")
+                                    self.calibration_step.set("坐标计算失败,请重新校准")
+
                                 self.root.after(0, update_ui)
-                            
+
                             self.calibrating = False
                             break
                         time.sleep(0.05)
@@ -3290,7 +3290,7 @@ class AIPCHelperV8:
         ttk.Button(btn_frame, text="进入校准模式", command=start_calibration).pack(side=tk.LEFT, padx=5)
         ttk.Button(btn_frame, text="停止", command=stop_calibration).pack(side=tk.LEFT, padx=5)
 
-        ttk.Label(win, text="保存坐标到配置：", font=("微软雅黑", 10)).pack(pady=(15, 5))
+        ttk.Label(win, text="保存坐标到配置:", font=("微软雅黑", 10)).pack(pady=(15, 5))
 
         coord_frame = ttk.Frame(win)
         coord_frame.pack(pady=5)
@@ -3311,32 +3311,32 @@ class AIPCHelperV8:
 
         def save_coords():
             try:
-                # 获取输入值（可能是整数或浮点数）
+                # 获取输入值(可能是整数或浮点数)
                 x_str = x_entry.get().strip()
                 y_str = y_entry.get().strip()
-                
+
                 # 尝试解析为浮点数
                 x = float(x_str)
                 y = float(y_str)
-                
-                # 判断坐标类型：如果值在0-1之间，可能是比例坐标
+
+                # 判断坐标类型:如果值在0-1之间,可能是比例坐标
                 is_likely_ratio = (0.0 <= x <= 1.0) and (0.0 <= y <= 1.0)
-                
-                # 获取微信窗口信息，尝试转换为比例坐标
+
+                # 获取微信窗口信息,尝试转换为比例坐标
                 try:
                     windows = gw.getWindowsWithTitle('微信')
                     if not windows:
                         windows = gw.getWindowsWithTitle('WeChat')
-                    
+
                     if windows:
                         win = windows[0]
                         win_left = win.left
                         win_top = win.top
                         win_width = win.width
                         win_height = win.height
-                        
+
                         if win_width > 0 and win_height > 0:
-                            # 如果输入的是绝对坐标，转换为比例坐标
+                            # 如果输入的是绝对坐标,转换为比例坐标
                             if not is_likely_ratio or (x > 1.0 or y > 1.0):
                                 rx = (x - win_left) / win_width
                                 ry = (y - win_top) / win_height
@@ -3350,18 +3350,18 @@ class AIPCHelperV8:
                                 save_coords = (x, y)
                                 coord_type = "比例坐标"
                         else:
-                            # 窗口尺寸无效，保存原始坐标
+                            # 窗口尺寸无效,保存原始坐标
                             save_coords = (x, y)
-                            coord_type = "原始坐标（窗口尺寸无效）"
+                            coord_type = "原始坐标(窗口尺寸无效)"
                     else:
-                        # 未找到微信窗口，保存原始坐标
+                        # 未找到微信窗口,保存原始坐标
                         save_coords = (x, y)
-                        coord_type = "原始坐标（未找到窗口）"
+                        coord_type = "原始坐标(未找到窗口)"
                 except Exception as e:
                     # 出错时保存原始坐标
                     save_coords = (x, y)
-                    coord_type = f"原始坐标（转换失败: {e}）"
-                
+                    coord_type = f"原始坐标(转换失败: {e})"
+
                 # 保存坐标
                 self.wechat_controller.last_msg_pos = save_coords
                 self.config_manager.set("last_msg_pos", save_coords)
@@ -3399,14 +3399,14 @@ class AIPCHelperV8:
 
         ttk.Label(win, text="🔍 搜索框坐标校准", font=("微软雅黑", 14, "bold")).pack(pady=10)
 
-        info_text = """校准步骤：
+        info_text = """校准步骤:
 1. 确保微信窗口已打开并可见
 2. 点击「进入校准模式」
 3. 此时请点击微信窗口中的「搜索框」位置
 4. 点击后自动记录坐标
 5. 点击「保存坐标」保存到配置
 
-提示：校准后可以精确定位搜索框"""
+提示:校准后可以精确定位搜索框"""
         ttk.Label(win, text=info_text, justify=tk.LEFT).pack(pady=10)
 
         self.search_calibration_step = tk.StringVar(value="就绪")
@@ -3427,7 +3427,7 @@ class AIPCHelperV8:
             try:
 
                 self.search_calibrating = True
-                self.search_calibration_step.set("校准模式已激活！请点击微信窗口中的搜索框")
+                self.search_calibration_step.set("校准模式已激活!请点击微信窗口中的搜索框")
 
                 def monitor_click():
                     while self.search_calibrating:
@@ -3437,7 +3437,7 @@ class AIPCHelperV8:
 
                             def update_ui():
                                 coords_label.config(text=f"获取坐标成功: ({x}, {y})")
-                                self.search_calibration_step.set("坐标已获取！请点击保存")
+                                self.search_calibration_step.set("坐标已获取!请点击保存")
 
                             self.root.after(0, update_ui)
 
@@ -3461,7 +3461,7 @@ class AIPCHelperV8:
         ttk.Button(btn_frame, text="进入校准模式", command=start_calibration).pack(side=tk.LEFT, padx=5)
         ttk.Button(btn_frame, text="停止", command=stop_calibration).pack(side=tk.LEFT, padx=5)
 
-        ttk.Label(win, text="保存坐标到配置：", font=("微软雅黑", 10)).pack(pady=(15, 5))
+        ttk.Label(win, text="保存坐标到配置:", font=("微软雅黑", 10)).pack(pady=(15, 5))
 
         coord_frame = ttk.Frame(win)
         coord_frame.pack(pady=5)
@@ -3513,29 +3513,23 @@ class AIPCHelperV8:
         win.geometry("600x500")
         win.configure(bg="#1e1e2e")
         win.transient(self.root)
-
         ttk.Label(win, text="📷 OCR截图区域校准", font=("微软雅黑", 14, "bold")).pack(pady=10)
-
-        info_text = """说明：
+        info_text = """说明:
 此功能用于调整OCR识别区域的范围。
-区域使用相对于窗口的比例表示（0.0-1.0之间）。
+区域使用相对于窗口的比例表示(0.0-1.0之间)。
 - left: 左侧起始位置比例
-- top: 顶部起始位置比例  
+- top: 顶部起始位置比例
 - width: 区域宽度比例
 - height: 区域高度比例
-
-默认：left=0.3, top=0.1, width=0.65, height=0.75
-
-提示：校准后OCR将使用新的区域进行截图识别。"""
+默认:left=0.3, top=0.1, width=0.65, height=0.75
+提示:校准后OCR将使用新的区域进行截图识别。"""
         ttk.Label(win, text=info_text, justify=tk.LEFT).pack(pady=10)
-
         saved_region = self.config_manager.get("ocr_region", None)
         if saved_region:
             ttk.Label(win, text=f"已保存区域: {saved_region}", foreground="green").pack(pady=5)
         else:
             ttk.Label(win, text="当前使用默认区域", foreground="gray").pack(pady=5)
-
-        ttk.Label(win, text="输入区域比例（相对窗口大小）：", font=("微软雅黑", 11)).pack(pady=(10, 5))
+        ttk.Label(win, text="输入区域比例(相对窗口大小):", font=("微软雅黑", 11)).pack(pady=(10, 5))
 
         region_frame = ttk.Frame(win)
         region_frame.pack(pady=10)
@@ -3590,7 +3584,7 @@ class AIPCHelperV8:
                 height = float(height_entry.get())
 
                 if not (0 <= left < 1 and 0 <= top < 1 and 0 < width <= 1 and 0 < height <= 1):
-                    messagebox.showerror("错误", "比例值必须在 0-1 之间（width和height必须大于0）")
+                    messagebox.showerror("错误", "比例值必须在 0-1 之间(width和height必须大于0)")
                     return
 
                 if left + width > 1 or top + height > 1:
@@ -3616,15 +3610,15 @@ class AIPCHelperV8:
         self.use_ai_features = enabled
 
     def execute_command_with_feedback(self, command):
-        """执行命令并返回执行结果（线程安全版本）"""
+        """执行命令并返回执行结果(线程安全版本)"""
         try:
-            # 直接执行指令，不捕获 UI 输出
+            # 直接执行指令,不捕获 UI 输出
             self.do_task(command)
-            # 等待一小段时间，确保异步任务有机会开始
+            # 等待一小段时间,确保异步任务有机会开始
             time.sleep(1)
-            return f"✅ 指令已执行：{command}"
+            return f"✅ 指令已执行:{command}"
         except Exception as e:
-            return f"❌ 指令执行失败：{str(e)}"
+            return f"❌ 指令执行失败:{str(e)}"
 
     def execute_system_command(self, command):
         """供AI智能体使用的命令执行器"""
@@ -3656,26 +3650,26 @@ class AIPCHelperV8:
             if not self.wechat_listener_running:
                 if not self.wechat_controller.is_wechat_window_visible():
                     # 尝试自动打开微信
-                    self.say("系统", "🔍 微信窗口未找到，尝试自动打开微信...")
+                    self.say("系统", "🔍 微信窗口未找到,尝试自动打开微信...")
                     auto_opened = self._try_auto_open_wechat()
                     if not auto_opened:
-                        self.say("系统", "❌ 无法自动打开微信，请确保微信已安装。")
+                        self.say("系统", "❌ 无法自动打开微信,请确保微信已安装。")
                         return
                     # 等待微信打开
                     self.say("系统", "⏳ 等待微信启动...")
                     time.sleep(5)
                     if not self.wechat_controller.is_wechat_window_visible():
-                        self.say("系统", "❌ 微信启动失败，请手动打开微信。")
+                        self.say("系统", "❌ 微信启动失败,请手动打开微信。")
                         return
-                
-                # 获取最新消息，初始化 last_message_id
+
+                # 获取最新消息,初始化 last_message_id
                 self.wechat_controller.update_last_message_id()
                 self.wechat_listener_running = True
                 self.listener_paused = False  # 确保暂停标志被重置
                 self.root.after(0, lambda: self.listener_btn.config(text="⏸️ 停止监听"))
                 self.wechat_listener_thread = threading.Thread(target=self.wechat_listener_loop, daemon=True)
                 self.wechat_listener_thread.start()
-                self.say("系统", f"已开始监听来自「{self.wechat_controller.contact}」的微信消息，间隔 {self.wechat_controller.check_interval} 秒。")
+                self.say("系统", f"已开始监听来自「{self.wechat_controller.contact}」的微信消息,间隔 {self.wechat_controller.check_interval} 秒。")
             else:
                 self.wechat_listener_running = False
                 self.listener_paused = False  # 重置暂停标志
@@ -3683,7 +3677,7 @@ class AIPCHelperV8:
                 self.say("系统", "已停止监听微信指令。")
 
     def _try_auto_open_wechat(self):
-        """尝试自动打开微信（通过宏或直接启动）"""
+        """尝试自动打开微信(通过宏或直接启动)"""
         try:
             # 首先检查是否有"打开微信"的宏
             macros = get_recorder().list_macros()
@@ -3693,98 +3687,98 @@ class AIPCHelperV8:
                 if "微信" in name and ("打开" in name or "open" in name):
                     open_wechat_macro = macro
                     break
-            
+
             if open_wechat_macro:
                 self.say("系统", f"🎬 正在播放宏: {open_wechat_macro['name']}")
                 get_player().play(open_wechat_macro["file"])
                 return True
-            
-            # 如果没有宏，尝试直接启动微信
-            self.say("系统", "📂 未找到打开微信的宏，尝试直接启动...")
+
+            # 如果没有宏,尝试直接启动微信
+            self.say("系统", "📂 未找到打开微信的宏,尝试直接启动...")
             wechat_paths = [
                 r"C:\Program Files (x86)\Tencent\WeChat\WeChat.exe",
                 r"C:\Program Files\Tencent\WeChat\WeChat.exe",
                 str(Path.home() / "AppData" / "Local" / "Tencent" / "WeChat" / "WeChat.exe")
             ]
-            
+
             for path in wechat_paths:
                 if Path(path).exists():
                     os.startfile(path)
                     self.say("系统", f"✅ 已启动微信: {path}")
                     return True
-            
-            self.say("系统", "⚠️ 未找到微信安装路径，请先录制「打开微信」的宏")
+
+            self.say("系统", "⚠️ 未找到微信安装路径,请先录制「打开微信」的宏")
             return False
-            
+
         except Exception as e:
             logger.error(f"自动打开微信失败: {e}")
             return False
 
     def _get_command_triggers(self):
         """获取指令触发词列表"""
-        return self.config_manager.get("command_triggers", ["￥", "¥"])
+        return self.config_manager.get("command_triggers", ["¥", "¥"])
 
     def _extract_command(self, text):
-        """从消息中提取命令，支持多个触发词"""
+        """从消息中提取命令,支持多个触发词"""
         if not text:
             return None
-            
+
         triggers = self._get_command_triggers()
-        
-        # 调试：记录触发词列表
+
+        # 调试:记录触发词列表
         logger = logging.getLogger("AIPCHelper")
         logger.debug(f"提取命令: 原始文本='{text}', 触发词列表={triggers}")
-        
-        # 预处理：标准化文本一次
+
+        # 预处理:标准化文本一次
         normalized_text = self._normalize_text(text)
         if not normalized_text:
             logger.debug(f"文本标准化后为空")
             return None
-        
+
         logger.debug(f"标准化后文本='{normalized_text}'")
-        
+
         for trigger in triggers:
             if not trigger:
                 continue
-                
+
             # 标准化触发词
             normalized_trigger = self._normalize_text(trigger)
             if not normalized_trigger:
                 continue
-                
+
             logger.debug(f"检查触发词: '{trigger}' -> 标准化: '{normalized_trigger}'")
-                
+
             # 在标准化文本中检查是否以标准化触发词开头
             if normalized_text.startswith(normalized_trigger):
                 logger.debug(f"匹配成功! 触发词: '{trigger}', 标准化触发词: '{normalized_trigger}'")
                 # 从标准化文本中提取命令部分
-                # 标准化后字符数不变，使用标准化触发词长度提取
+                # 标准化后字符数不变,使用标准化触发词长度提取
                 command = normalized_text[len(normalized_trigger):].strip()
                 logger.debug(f"提取到命令: '{command}'")
                 return command
-        
+
         logger.debug(f"未找到匹配的触发词")
         return None
-    
+
     def _normalize_text(self, text):
-        """标准化文本：去除不可见字符，处理全角/半角符号差异"""
+        """标准化文本:去除不可见字符,处理全角/半角符号差异"""
         if not text:
             return ""
-        
+
         # 保存原始文本用于调试
         original = text
-        
+
         # 去除首尾空白字符
         text = text.strip()
-        
+
         # 替换常见的不可见字符和零宽字符
         # 移除零宽空格、零宽连字符、零宽非连接符等
         text = re.sub(r'[\u200B-\u200D\uFEFF]', '', text)
-        
+
         # 处理全角/半角符号映射
         # 货币符号
-        text = text.replace('\uffe5', '\u00a5')  # 全角"￥" -> 半角"¥"
-        
+        text = text.replace('\uffe5', '\u00a5')  # 全角"¥" -> 半角"¥"
+
         # 其他常见全角符号映射
         fullwidth_to_halfwidth = {
             '\uff01': '!',  # 全角感叹号
@@ -3802,15 +3796,15 @@ class AIPCHelperV8:
             '\uff0d': '-',  # 全角连字符
             '\uff5e': '~',  # 全角波浪号
         }
-        
+
         for full, half in fullwidth_to_halfwidth.items():
             text = text.replace(full, half)
-        
-        # 调试：记录标准化前后的差异
+
+        # 调试:记录标准化前后的差异
         if original != text:
             logger = logging.getLogger("AIPCHelper")
             logger.debug(f"文本标准化: '{original}' -> '{text}'")
-        
+
         return text
 
     def wechat_listener_loop(self):
@@ -3827,7 +3821,7 @@ class AIPCHelperV8:
             with self.listener_lock:
                 if not self.wechat_listener_running or not self.running:
                     break
-                # 如果监听被暂停，跳过检查
+                # 如果监听被暂停,跳过检查
                 if self.listener_paused:
                     should_check = False
                 else:
@@ -3848,12 +3842,12 @@ class AIPCHelperV8:
                             logger.info(f"成功提取命令: '{command}'")
                             processing = True
                             consecutive_failures = 0
-                            
+
                             # 暂停监听
                             with self.listener_lock:
                                 self.listener_paused = True
-                                logger.info("检测到命令，暂停微信监听")
-                            
+                                logger.info("检测到命令,暂停微信监听")
+
                             # # 直接执行命令并回复微信
                             def exec_and_reply():
                                 try:
@@ -3874,15 +3868,15 @@ class AIPCHelperV8:
                                     logger.info("微信监听已恢复")
 
                             threading.Thread(target=exec_and_reply, daemon=True).start()
-                            
+
                             processing = False
                         else:
-                            logger.debug("未提取到命令（command为None或空）")
+                            logger.debug("未提取到命令(command为None或空)")
                 except Exception as e:
-                    logger.error(f"监听微信消息异常：{e}")
+                    logger.error(f"监听微信消息异常:{e}")
                     consecutive_failures += 1
                     if consecutive_failures >= max_consecutive_failures:
-                        self.say("系统", f"⚠️ 连续失败 {consecutive_failures} 次，自动停止监听")
+                        self.say("系统", f"⚠️ 连续失败 {consecutive_failures} 次,自动停止监听")
                         with self.listener_lock:
                             self.wechat_listener_running = False
                         self.root.after(0, lambda: self.listener_btn.config(text="▶️ 开始监听"))
@@ -3893,54 +3887,54 @@ class AIPCHelperV8:
     def _process_wechat_command(self, command):
         """处理微信指令的公共方法"""
         try:
-            self.say("系统", f"📨 收到微信指令：{command}")
+            self.say("系统", f"📨 收到微信指令:{command}")
             try:
                 feedback = self.execute_command_with_feedback(command)
                 feedback_contact = self.wechat_controller.contact
-                self.say("系统", f"📤 发送反馈给{feedback_contact}：{feedback}")
+                self.say("系统", f"📤 发送反馈给{feedback_contact}:{feedback}")
                 self.wechat_controller.send_wechat_message(feedback_contact, feedback)
             except Exception as e:
-                error_msg = f"❌ 指令执行失败：{str(e)}"
+                error_msg = f"❌ 指令执行失败:{str(e)}"
                 feedback_contact = self.wechat_controller.contact
-                self.say("系统", f"📤 发送错误反馈给{feedback_contact}：{error_msg}")
+                self.say("系统", f"📤 发送错误反馈给{feedback_contact}:{error_msg}")
                 try:
                     self.wechat_controller.send_wechat_message(feedback_contact, error_msg)
                 except Exception as send_err:
-                    logger.error(f"发送错误反馈失败：{send_err}")
+                    logger.error(f"发送错误反馈失败:{send_err}")
         except Exception as e:
             logger.error(f"处理微信指令异常: {e}")
 
     def on_wechat_message(self, msg_text):
-        """微信新消息回调函数（线程安全，通过root.after调用）"""
+        """微信新消息回调函数(线程安全,通过root.after调用)"""
         msg_text = msg_text.strip()
         if not msg_text:
             return
-        self.say("微信", f"📨 新消息：{msg_text}")
-        
+        self.say("微信", f"📨 新消息:{msg_text}")
+
         # 尝试自动回复
         try:
             auto_reply = self.social_skills.auto_reply_wechat(msg_text)
             if auto_reply:
-                self.say("系统", f"🤖 自动回复：{auto_reply}")
+                self.say("系统", f"🤖 自动回复:{auto_reply}")
                 # 延迟1秒后发送回复
                 self.root.after(1000, lambda: self.wechat_controller.send_wechat_message(target="文件传输助手", message=auto_reply))
         except Exception as e:
             logger.error(f"自动回复失败: {e}")
-        
+
         command = self._extract_command(msg_text)
         if command:
             self._process_wechat_command(command)
 
     def set_wechat_contact(self):
-        contact = simpledialog.askstring("设置联系人", "请输入要监听的微信好友/群聊名称：", initialvalue=self.wechat_controller.contact)
+        contact = simpledialog.askstring("设置联系人", "请输入要监听的微信好友/群聊名称:", initialvalue=self.wechat_controller.contact)
         if contact:
             self.wechat_controller.set_contact(contact)
-            interval = simpledialog.askinteger("检查间隔", "请输入检查间隔（秒，建议5-30）：", minvalue=2, maxvalue=60, initialvalue=self.wechat_controller.check_interval)
+            interval = simpledialog.askinteger("检查间隔", "请输入检查间隔(秒,建议5-30):", minvalue=2, maxvalue=60, initialvalue=self.wechat_controller.check_interval)
             if interval:
                 self.wechat_controller.set_check_interval(interval)
             self.config_manager.set("wechat_contact", contact)
             self.config_manager.set("wechat_check_interval", interval)
-            self.say("系统", f"监听联系人已设置为：{contact}，间隔 {interval} 秒。")
+            self.say("系统", f"监听联系人已设置为:{contact},间隔 {interval} 秒。")
 
     def diagnose_wechat(self):
         """诊断微信连接状态"""
@@ -3948,15 +3942,15 @@ class AIPCHelperV8:
             self.say("系统", "🔍 开始诊断微信连接...")
             try:
                 result = self.wechat_controller.test_wechat_connection()
-                
+
                 if result["success"]:
                     info = "\n".join(result["steps"])
-                    self.say("系统", f"✅ 微信连接诊断通过！\n{info}")
+                    self.say("系统", f"✅ 微信连接诊断通过!\n{info}")
                 else:
                     steps_info = "\n".join(result["steps"]) if result["steps"] else ""
                     error_info = result.get("error", "未知错误")
                     self.say("系统", f"❌ 微信连接诊断失败\n{steps_info}\n错误: {error_info}")
-                    
+
                     diagnostic_info = self.wechat_controller.get_diagnostic_info()
                     self.say("系统", f"📋 诊断信息:\n"
                              f"- OCR可用: {diagnostic_info.get('ocr_available', False)}\n"
@@ -3967,7 +3961,7 @@ class AIPCHelperV8:
             except Exception as e:
                 self.say("系统", f"❌ 诊断过程异常: {str(e)}")
                 traceback.print_exc()
-        
+
         threading.Thread(target=run_diagnosis, daemon=True).start()
 
     # ---------- 定时任务 ----------
@@ -3998,27 +3992,27 @@ class AIPCHelperV8:
         canvas.bind_all("<MouseWheel>", on_mousewheel)
 
         ttk.Label(content_frame, text="📱 定时微信消息", font=("微软雅黑", 14, "bold")).pack(pady=10)
-        ttk.Label(content_frame, text="关闭窗口后任务继续运行，到时间自动发送", foreground="gray").pack(pady=(0, 10))
+        ttk.Label(content_frame, text="关闭窗口后任务继续运行,到时间自动发送", foreground="gray").pack(pady=(0, 10))
 
-        ttk.Label(content_frame, text="目标好友/群聊名称：", font=("微软雅黑", 11)).pack(pady=5)
+        ttk.Label(content_frame, text="目标好友/群聊名称:", font=("微软雅黑", 11)).pack(pady=5)
         target_entry = ttk.Entry(content_frame, font=("微软雅黑", 12), width=40)
         target_entry.pack(pady=5)
 
-        ttk.Label(content_frame, text="消息内容：", font=("微软雅黑", 11)).pack(pady=5)
+        ttk.Label(content_frame, text="消息内容:", font=("微软雅黑", 11)).pack(pady=5)
         msg_text = scrolledtext.ScrolledText(
             content_frame, font=("微软雅黑", 11), height=6, width=40,
             bg="#313244", fg="#cdd6f4"
         )
         msg_text.pack(pady=5)
 
-        ttk.Label(content_frame, text="发送方式：", font=("微软雅黑", 11)).pack(pady=5)
+        ttk.Label(content_frame, text="发送方式:", font=("微软雅黑", 11)).pack(pady=5)
         send_mode = tk.StringVar(value="immediate")
         frame_mode = ttk.Frame(content_frame)
         frame_mode.pack(pady=5)
         ttk.Radiobutton(frame_mode, text="立即发送", variable=send_mode, value="immediate").pack(side=tk.LEFT, padx=10)
         ttk.Radiobutton(frame_mode, text="定时发送", variable=send_mode, value="scheduled").pack(side=tk.LEFT, padx=10)
 
-        ttk.Label(content_frame, text="发送时间（每天执行）：", font=("微软雅黑", 11)).pack(pady=5)
+        ttk.Label(content_frame, text="发送时间(每天执行):", font=("微软雅黑", 11)).pack(pady=5)
         frame_time = ttk.Frame(content_frame)
         frame_time.pack(pady=5)
 
@@ -4026,12 +4020,12 @@ class AIPCHelperV8:
         hour = now.hour
         minute = now.minute
 
-        ttk.Label(frame_time, text="时：").pack(side=tk.LEFT, padx=5)
+        ttk.Label(frame_time, text="时:").pack(side=tk.LEFT, padx=5)
         hour_var = tk.StringVar(value=str(hour).zfill(2))
         hour_combo = ttk.Combobox(frame_time, textvariable=hour_var, values=[str(i).zfill(2) for i in range(0, 24)], width=4, state="readonly")
         hour_combo.pack(side=tk.LEFT, padx=5)
 
-        ttk.Label(frame_time, text="分：").pack(side=tk.LEFT, padx=5)
+        ttk.Label(frame_time, text="分:").pack(side=tk.LEFT, padx=5)
         minute_var = tk.StringVar(value=str(minute).zfill(2))
         minute_combo = ttk.Combobox(frame_time, textvariable=minute_var, values=[str(i).zfill(2) for i in range(0, 60, 5)], width=4, state="readonly")
         minute_combo.pack(side=tk.LEFT, padx=5)
@@ -4043,7 +4037,7 @@ class AIPCHelperV8:
             target = target_entry.get().strip()
             message = msg_text.get("1.0", tk.END).strip()
             if not target or not message:
-                messagebox.showerror("错误", "请填写完整信息！")
+                messagebox.showerror("错误", "请填写完整信息!")
                 return
 
             mode = send_mode.get()
@@ -4052,11 +4046,11 @@ class AIPCHelperV8:
                 def send_with_feedback():
                     success = self.wechat_controller.send_wechat_message(target, message)
                     if success:
-                        self.say("系统", f"✅ 微信消息发送成功！\n目标：{target}\n内容：{message[:20]}...")
+                        self.say("系统", f"✅ 微信消息发送成功!\n目标:{target}\n内容:{message[:20]}...")
                     else:
-                        self.say("系统", f"❌ 微信消息发送失败\n目标：{target}")
+                        self.say("系统", f"❌ 微信消息发送失败\n目标:{target}")
                 threading.Thread(target=send_with_feedback, daemon=True).start()
-                self.say("系统", f"⏳ 正在发送微信消息给：{target}")
+                self.say("系统", f"⏳ 正在发送微信消息给:{target}")
                 win.destroy()
             else:
                 # 定时发送
@@ -4064,15 +4058,15 @@ class AIPCHelperV8:
                     hour = int(hour_var.get())
                     minute = int(minute_var.get())
                     if not (0 <= hour < 24):
-                        messagebox.showerror("错误", "小时必须在 0-23 之间！")
+                        messagebox.showerror("错误", "小时必须在 0-23 之间!")
                         return
                     if not (0 <= minute < 60):
-                        messagebox.showerror("错误", "分钟必须在 0-59 之间！")
+                        messagebox.showerror("错误", "分钟必须在 0-59 之间!")
                         return
                 except ValueError:
-                    messagebox.showerror("错误", "时间格式错误，请重新选择！")
+                    messagebox.showerror("错误", "时间格式错误,请重新选择!")
                     return
-                
+
                 send_time = f"{hour_var.get()}:{minute_var.get()}"
                 self.add_wechat_scheduled_task(target, message, send_time)
                 win.destroy()
@@ -4086,7 +4080,7 @@ class AIPCHelperV8:
         try:
             datetime.strptime(send_time, "%H:%M")
         except ValueError:
-            self.say("系统", "时间格式错误，请使用 HH:MM 格式。")
+            self.say("系统", "时间格式错误,请使用 HH:MM 格式。")
             return
         # 生成任务名称
         name = f"{target}任务{send_time}"
@@ -4098,7 +4092,7 @@ class AIPCHelperV8:
         )
         self.scheduled_tasks = self.task_scheduler.scheduled_tasks
         self.config_manager.set("scheduled_tasks", self.scheduled_tasks)
-        self.say("系统", f"✅ 已添加定时任务：\n目标：{target}\n时间：{send_time}")
+        self.say("系统", f"✅ 已添加定时任务:\n目标:{target}\n时间:{send_time}")
 
     def show_scheduled_tasks(self):
         """显示任务管理器窗口"""
@@ -4114,14 +4108,14 @@ class AIPCHelperV8:
         tree.heading("执行时间/间隔", text="执行时间/间隔")
         tree.heading("状态", text="状态")
         tree.heading("操作", text="操作")
-        
+
         # 设置列宽
         tree.column("类型", width=100)
         tree.column("名称", width=200)
         tree.column("执行时间/间隔", width=150)
         tree.column("状态", width=100)
         tree.column("操作", width=100)
-        
+
         tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         # 添加滚动条
         scrollbar = ttk.Scrollbar(win, orient=tk.VERTICAL, command=tree.yview)
@@ -4132,7 +4126,7 @@ class AIPCHelperV8:
             # 清空现有数据
             for item in tree.get_children():
                 tree.delete(item)
-            
+
             # 显示定时任务
             for task in self.task_scheduler.get_tasks():
                 tree.insert("", tk.END, values=(
@@ -4142,7 +4136,7 @@ class AIPCHelperV8:
                     task.get("status", ""),
                     "查看"
                 ))
-            
+
             # 显示循环任务
             for task in self.task_scheduler.get_loop_tasks():
                 tree.insert("", tk.END, values=(
@@ -4152,7 +4146,7 @@ class AIPCHelperV8:
                     "运行中" if task.get("running") else "已停止",
                     "查看"
                 ))
-        
+
         # 删除按钮的回调
         def delete_task():
             selected = tree.selection()
@@ -4170,7 +4164,7 @@ class AIPCHelperV8:
                 elif values[0] == "循环":
                     self.task_scheduler.stop_loop_task(values[1])
                 refresh_task_list()
-        
+
         # 停止循环任务
         def stop_loop_task():
             selected = tree.selection()
@@ -4186,17 +4180,17 @@ class AIPCHelperV8:
                                 self.task_scheduler.stop_loop_task(task_name)
                                 self.say("系统", f"已停止循环任务: {task_name}")
                             else:
-                                self.say("系统", f"任务 {task_name} 已停止，无法再次停止")
+                                self.say("系统", f"任务 {task_name} 已停止,无法再次停止")
                             break
                     refresh_task_list()
-        
+
         btn_frame = ttk.Frame(win)
         btn_frame.pack(pady=10)
         ttk.Button(btn_frame, text="删除选中", command=delete_task).pack(side=tk.LEFT, padx=5)
         ttk.Button(btn_frame, text="停止任务", command=stop_loop_task).pack(side=tk.LEFT, padx=5)
         ttk.Button(btn_frame, text="刷新", command=refresh_task_list).pack(side=tk.LEFT, padx=5)
         ttk.Button(btn_frame, text="关闭", command=win.destroy).pack(side=tk.LEFT, padx=5)
-        
+
         # 初始加载
         refresh_task_list()
 
@@ -4205,7 +4199,7 @@ class AIPCHelperV8:
         win, content_frame = self.create_scrollable_window("🔄 自动化任务", 650, 600)
 
         ttk.Label(content_frame, text="🔄 自动化任务", font=("微软雅黑", 14, "bold")).pack(pady=10)
-        ttk.Label(content_frame, text="添加定时执行的自动化任务，关闭窗口后任务继续运行", foreground="gray").pack(pady=(0, 10))
+        ttk.Label(content_frame, text="添加定时执行的自动化任务,关闭窗口后任务继续运行", foreground="gray").pack(pady=(0, 10))
 
         notebook = ttk.Notebook(content_frame)
         notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
@@ -4227,15 +4221,15 @@ class AIPCHelperV8:
         ttk.Button(content_frame, text="关闭", command=win.destroy).pack(pady=10)
 
     def _build_command_tab(self, parent):
-        ttk.Label(parent, text="任务名称：").pack(pady=5)
+        ttk.Label(parent, text="任务名称:").pack(pady=5)
         cmd_name_entry = ttk.Entry(parent, width=40)
         cmd_name_entry.pack(pady=5)
 
-        ttk.Label(parent, text="命令内容：").pack(pady=5)
+        ttk.Label(parent, text="命令内容:").pack(pady=5)
         cmd_text = scrolledtext.ScrolledText(parent, width=50, height=5)
         cmd_text.pack(pady=5)
 
-        ttk.Label(parent, text="执行时间：").pack(pady=5)
+        ttk.Label(parent, text="执行时间:").pack(pady=5)
         time_frame = ttk.Frame(parent)
         time_frame.pack(pady=5)
 
@@ -4251,24 +4245,24 @@ class AIPCHelperV8:
             send_time = f"{hour_var.get()}:{minute_var.get()}"
             if name and command:
                 self.task_scheduler.add_command_task(name, command, send_time)
-                self.say("系统", f"✅ 已添加命令任务：{name}，执行时间 {send_time}")
+                self.say("系统", f"✅ 已添加命令任务:{name},执行时间 {send_time}")
             else:
                 messagebox.showwarning("警告", "请填写完整信息")
 
         ttk.Button(parent, text="添加任务", command=add_command_task).pack(pady=10)
 
     def _build_app_tab(self, parent):
-        ttk.Label(parent, text="任务名称：").pack(pady=5)
+        ttk.Label(parent, text="任务名称:").pack(pady=5)
         app_name_entry = ttk.Entry(parent, width=40)
         app_name_entry.pack(pady=5)
 
-        ttk.Label(parent, text="应用路径：").pack(pady=5)
+        ttk.Label(parent, text="应用路径:").pack(pady=5)
         app_path_entry = ttk.Entry(parent, width=40)
         app_path_entry.pack(pady=5)
 
         ttk.Button(parent, text="浏览", command=lambda: app_path_entry.insert(0, filedialog.askopenfilename(title="选择应用"))).pack(pady=5)
 
-        ttk.Label(parent, text="执行时间：").pack(pady=5)
+        ttk.Label(parent, text="执行时间:").pack(pady=5)
         time_frame = ttk.Frame(parent)
         time_frame.pack(pady=5)
 
@@ -4284,24 +4278,24 @@ class AIPCHelperV8:
             send_time = f"{hour_var.get()}:{minute_var.get()}"
             if name and app_path:
                 self.task_scheduler.add_app_task(name, app_path, send_time)
-                self.say("系统", f"✅ 已添加应用任务：{name}，执行时间 {send_time}")
+                self.say("系统", f"✅ 已添加应用任务:{name},执行时间 {send_time}")
             else:
                 messagebox.showwarning("警告", "请填写完整信息")
 
         ttk.Button(parent, text="添加任务", command=add_app_task).pack(pady=10)
 
     def _build_script_tab(self, parent):
-        ttk.Label(parent, text="任务名称：").pack(pady=5)
+        ttk.Label(parent, text="任务名称:").pack(pady=5)
         script_name_entry = ttk.Entry(parent, width=40)
         script_name_entry.pack(pady=5)
 
-        ttk.Label(parent, text="脚本路径：").pack(pady=5)
+        ttk.Label(parent, text="脚本路径:").pack(pady=5)
         script_path_entry = ttk.Entry(parent, width=40)
         script_path_entry.pack(pady=5)
 
         ttk.Button(parent, text="浏览", command=lambda: script_path_entry.insert(0, filedialog.askopenfilename(title="选择脚本", filetypes=[("脚本文件", "*.py *.bat *.ps1"), ("所有文件", "*.*")]))).pack(pady=5)
 
-        ttk.Label(parent, text="执行时间：").pack(pady=5)
+        ttk.Label(parent, text="执行时间:").pack(pady=5)
         time_frame = ttk.Frame(parent)
         time_frame.pack(pady=5)
 
@@ -4317,22 +4311,22 @@ class AIPCHelperV8:
             send_time = f"{hour_var.get()}:{minute_var.get()}"
             if name and script_path:
                 self.task_scheduler.add_script_task(name, script_path, send_time)
-                self.say("系统", f"✅ 已添加脚本任务：{name}，执行时间 {send_time}")
+                self.say("系统", f"✅ 已添加脚本任务:{name},执行时间 {send_time}")
             else:
                 messagebox.showwarning("警告", "请填写完整信息")
 
         ttk.Button(parent, text="添加任务", command=add_script_task).pack(pady=10)
 
     def _build_loop_task_tab(self, parent):
-        ttk.Label(parent, text="任务名称：").pack(pady=5)
+        ttk.Label(parent, text="任务名称:").pack(pady=5)
         loop_name_entry = ttk.Entry(parent, width=40)
         loop_name_entry.pack(pady=5)
 
-        ttk.Label(parent, text="循环间隔（分钟）：").pack(pady=5)
+        ttk.Label(parent, text="循环间隔(分钟):").pack(pady=5)
         interval_var = tk.StringVar(value="60")
         ttk.Combobox(parent, textvariable=interval_var, values=["1", "5", "10", "15", "30", "60", "120", "360"], width=10, state="readonly").pack(pady=5)
 
-        ttk.Label(parent, text="任务类型：").pack(pady=5)
+        ttk.Label(parent, text="任务类型:").pack(pady=5)
         task_type_var = tk.StringVar(value="command")
         type_frame = ttk.Frame(parent)
         type_frame.pack(pady=5)
@@ -4340,11 +4334,11 @@ class AIPCHelperV8:
         ttk.Radiobutton(type_frame, text="启动应用", variable=task_type_var, value="app").pack(side=tk.LEFT, padx=5)
         ttk.Radiobutton(type_frame, text="发送微信", variable=task_type_var, value="wechat").pack(side=tk.LEFT, padx=5)
 
-        ttk.Label(parent, text="命令/应用路径/联系人：").pack(pady=5)
+        ttk.Label(parent, text="命令/应用路径/联系人:").pack(pady=5)
         task_value_entry = ttk.Entry(parent, width=40)
         task_value_entry.pack(pady=5)
 
-        ttk.Label(parent, text="消息内容（仅微信）：").pack(pady=5)
+        ttk.Label(parent, text="消息内容(仅微信):").pack(pady=5)
         msg_entry = ttk.Entry(parent, width=40)
         msg_entry.pack(pady=5)
 
@@ -4360,21 +4354,21 @@ class AIPCHelperV8:
 
             if task_type == "command":
                 self.task_scheduler.add_loop_task(name, "command", interval, params={"command": task_value})
-                self.say("系统", f"✅ 已添加循环命令任务：{name}，间隔 {interval} 分钟")
+                self.say("系统", f"✅ 已添加循环命令任务:{name},间隔 {interval} 分钟")
             elif task_type == "app":
                 self.task_scheduler.add_loop_task(name, "app", interval, params={"app_path": task_value})
-                self.say("系统", f"✅ 已添加循环应用任务：{name}，间隔 {interval} 分钟")
+                self.say("系统", f"✅ 已添加循环应用任务:{name},间隔 {interval} 分钟")
             elif task_type == "wechat":
                 message = msg_entry.get().strip()
                 if not message:
                     messagebox.showwarning("警告", "请填写微信消息内容")
                     return
                 self.task_scheduler.add_loop_task(name, "wechat", interval, params={"target": task_value, "message": message})
-                self.say("系统", f"✅ 已添加循环微信任务：{name}，间隔 {interval} 分钟")
+                self.say("系统", f"✅ 已添加循环微信任务:{name},间隔 {interval} 分钟")
 
         ttk.Button(parent, text="添加任务", command=add_loop_task).pack(pady=10)
 
-        ttk.Label(parent, text="已添加的循环任务：", font=("微软雅黑", 10)).pack(pady=10)
+        ttk.Label(parent, text="已添加的循环任务:", font=("微软雅黑", 10)).pack(pady=10)
         self.loop_task_listbox = tk.Listbox(parent, height=6)
         self.loop_task_listbox.pack(pady=5, fill=tk.X, padx=10)
         self._refresh_loop_tasks()
@@ -4399,7 +4393,7 @@ class AIPCHelperV8:
             if selection[0] < len(tasks):
                 name = tasks[selection[0]].get("name")
                 self.task_scheduler.stop_loop_task(name)
-                self.say("系统", f"⏹ 已停止循环任务：{name}")
+                self.say("系统", f"⏹ 已停止循环任务:{name}")
                 self._refresh_loop_tasks()
 
     def show_macro_panel(self):
@@ -4411,19 +4405,19 @@ class AIPCHelperV8:
         self.is_recording = False
 
         ttk.Label(content_frame, text="🎬 宏录制/回放", font=("微软雅黑", 14, "bold")).pack(pady=10)
-        ttk.Label(content_frame, text="录制鼠标和键盘操作，自动执行重复任务", foreground="gray").pack(pady=(0, 10))
+        ttk.Label(content_frame, text="录制鼠标和键盘操作,自动执行重复任务", foreground="gray").pack(pady=(0, 10))
 
-        ttk.Label(content_frame, text="录制说明：点击「开始录制」后进行操作，完成后点击「停止并保存」", font=("微软雅黑", 9), foreground="orange").pack(pady=5)
+        ttk.Label(content_frame, text="录制说明:点击「开始录制」后进行操作,完成后点击「停止并保存」", font=("微软雅黑", 9), foreground="orange").pack(pady=5)
 
         speed_frame = ttk.Frame(content_frame)
         speed_frame.pack(pady=5)
-        ttk.Label(speed_frame, text="播放速度：").pack(side=tk.LEFT)
+        ttk.Label(speed_frame, text="播放速度:").pack(side=tk.LEFT)
         self.macro_speed_var = tk.DoubleVar(value=1.0)
         speed_combo = ttk.Combobox(speed_frame, textvariable=self.macro_speed_var, values=["0.5", "1.0", "1.5", "2.0"], width=5, state="readonly")
         speed_combo.pack(side=tk.LEFT, padx=5)
 
         self.macro_repeat_var = tk.IntVar(value=1)
-        ttk.Label(speed_frame, text="  重复次数：").pack(side=tk.LEFT)
+        ttk.Label(speed_frame, text="  重复次数:").pack(side=tk.LEFT)
         repeat_combo = ttk.Combobox(speed_frame, textvariable=self.macro_repeat_var, values=["1", "2", "3", "5"], width=3, state="readonly")
         repeat_combo.pack(side=tk.LEFT, padx=5)
 
@@ -4435,7 +4429,7 @@ class AIPCHelperV8:
 
         ttk.Button(record_frame, text="⏹ 停止并保存", command=self.stop_and_save_macro).pack(side=tk.LEFT, padx=10)
 
-        ttk.Label(content_frame, text="已录制的宏：", font=("微软雅黑", 11)).pack(pady=10)
+        ttk.Label(content_frame, text="已录制的宏:", font=("微软雅黑", 11)).pack(pady=10)
 
         self.macro_listbox = tk.Listbox(content_frame, height=10)
         self.macro_listbox.pack(pady=5, fill=tk.X, padx=10)
@@ -4448,7 +4442,7 @@ class AIPCHelperV8:
         ttk.Button(btn_frame, text="🔄 刷新", command=self.refresh_macro_list).pack(side=tk.LEFT, padx=5)
         ttk.Button(btn_frame, text="🗑️ 删除", command=self.delete_selected_macro).pack(side=tk.LEFT, padx=5)
 
-        ttk.Label(content_frame, text="使用提示：", font=("微软雅黑", 10)).pack(pady=(15, 5))
+        ttk.Label(content_frame, text="使用提示:", font=("微软雅黑", 10)).pack(pady=(15, 5))
         tips = """• 录制过程中计算机会记录您的所有操作
 • 播放时可选择速度和重复次数
 • 建议为每个宏起一个易懂的名字
@@ -4464,9 +4458,9 @@ class AIPCHelperV8:
             self.macro_recorder.start_recording(name)
             self.is_recording = True
             self.record_btn.config(text="⏸ 录制中...")
-            self.say("系统", "🔴 开始录制宏，请在电脑上进行操作...")
+            self.say("系统", "🔴 开始录制宏,请在电脑上进行操作...")
         else:
-            self.say("系统", "录制进行中，请点击\"停止并保存\"")
+            self.say("系统", "录制进行中,请点击\"停止并保存\"")
 
     def stop_and_save_macro(self):
         """停止并保存宏"""
@@ -4474,11 +4468,11 @@ class AIPCHelperV8:
             macro_data = self.macro_recorder.stop_recording()
             if macro_data:
                 name = macro_data.get("name", "未命名宏")
-                macro_name = simpledialog.askstring("保存宏", "请输入宏名称：", initialvalue=name)
+                macro_name = simpledialog.askstring("保存宏", "请输入宏名称:", initialvalue=name)
                 if macro_name:
                     macro_data["name"] = macro_name
                     self.macro_recorder.save_macro(macro_data)
-                    self.say("系统", f"✅ 宏已保存：{macro_name}")
+                    self.say("系统", f"✅ 宏已保存:{macro_name}")
                     self.refresh_macro_list()
             self.is_recording = False
             self.record_btn.config(text="⏺ 开始录制")
@@ -4501,7 +4495,7 @@ class AIPCHelperV8:
                 macro_name = macros[selection[0]]["file"]
                 speed = self.macro_speed_var.get() if hasattr(self, 'macro_speed_var') else 1.0
                 repeat = self.macro_repeat_var.get() if hasattr(self, 'macro_repeat_var') else 1
-                self.say("系统", f"▶ 正在播放宏：{macros[selection[0]]['name']} (速度:{speed}x, 重复:{repeat}次)")
+                self.say("系统", f"▶ 正在播放宏:{macros[selection[0]]['name']} (速度:{speed}x, 重复:{repeat}次)")
                 threading.Thread(target=lambda: self.macro_player.play(macro_name, speed=speed, repeat=repeat), daemon=True).start()
 
     def delete_selected_macro(self):
@@ -4511,7 +4505,7 @@ class AIPCHelperV8:
             macros = self.macro_recorder.list_macros()
             if selection[0] < len(macros):
                 macro_name = macros[selection[0]]["file"]
-                if messagebox.askyesno("确认", f"确定删除宏 \"{macros[selection[0]]['name']}\" 吗？"):
+                if messagebox.askyesno("确认", f"确定删除宏 \"{macros[selection[0]]['name']}\" 吗?"):
                     self.macro_recorder.delete_macro(macro_name)
                     self.refresh_macro_list()
                     self.say("系统", f"✅ 宏已删除")
@@ -4519,24 +4513,24 @@ class AIPCHelperV8:
     def show_code_workspace(self):
         """显示编程工作区面板"""
         win, content_frame = self.create_scrollable_window("💻 编程工作区", 800, 650)
-        
+
         from modules.code_workspace_panel import CodeWorkspacePanel
         panel = CodeWorkspacePanel(content_frame, self)
-        
+
         ttk.Button(content_frame, text="关闭", command=win.destroy).pack(pady=10)
-    
+
     def show_ai_agent_panel(self):
         """显示AI智能体面板"""
         win, content_frame = self.create_scrollable_window("🤖 AI智能体", 700, 550)
 
         ttk.Label(content_frame, text="🤖 AI智能体 - 任务规划与执行", font=("微软雅黑", 14, "bold")).pack(pady=10)
-        ttk.Label(content_frame, text="输入任务指令，AI自动规划并执行", foreground="gray").pack(pady=(0, 10))
+        ttk.Label(content_frame, text="输入任务指令,AI自动规划并执行", foreground="gray").pack(pady=(0, 10))
 
-        ttk.Label(content_frame, text="输入任务指令：", font=("微软雅黑", 11)).pack(pady=5)
+        ttk.Label(content_frame, text="输入任务指令:", font=("微软雅黑", 11)).pack(pady=5)
         task_entry = ttk.Entry(content_frame, width=60)
         task_entry.pack(pady=5)
 
-        ttk.Label(content_frame, text="示例：搜索Python教程并保存到文档", font=("微软雅黑", 9), foreground="gray").pack(pady=2)
+        ttk.Label(content_frame, text="示例:搜索Python教程并保存到文档", font=("微软雅黑", 9), foreground="gray").pack(pady=2)
 
         task_result_text = scrolledtext.ScrolledText(content_frame, height=8, width=60, state=tk.DISABLED)
         task_result_text.pack(pady=10, padx=10)
@@ -4556,7 +4550,7 @@ class AIPCHelperV8:
                 return
 
             task_entry.config(state=tk.DISABLED)
-            append_result(f"🤔 AI正在规划任务：{task}...")
+            append_result(f"🤔 AI正在规划任务:{task}...")
 
             def run_task():
                 try:
@@ -4573,14 +4567,14 @@ class AIPCHelperV8:
 
                     steps = self.ai_agent.plan_task(task)
                     if not steps:
-                        append_result("❌ 任务规划失败，请检查Ollama服务是否运行")
+                        append_result("❌ 任务规划失败,请检查Ollama服务是否运行")
                         self.root.after(0, lambda: task_entry.config(state=tk.NORMAL))
                         return
 
                     plan_text = "\n".join([f"{s.get('step')}. {s.get('action')}" for s in steps])
-                    append_result(f"📋 任务计划：\n{plan_text}")
+                    append_result(f"📋 任务计划:\n{plan_text}")
 
-                    if messagebox.askyesno("确认执行", f"共{len(steps)}个步骤，是否执行？"):
+                    if messagebox.askyesno("确认执行", f"共{len(steps)}个步骤,是否执行?"):
                         append_result("▶ 开始执行任务...")
                         results = self.ai_agent.execute_plan(steps)
 
@@ -4589,18 +4583,18 @@ class AIPCHelperV8:
                                 append_result(f"❌ 步骤{r.get('step')}失败: {r.get('error', '未知错误')}")
 
                         success_count = sum(1 for r in results if r.get("success"))
-                        append_result(f"✅ 任务完成！成功 {success_count}/{len(results)} 个步骤")
+                        append_result(f"✅ 任务完成!成功 {success_count}/{len(results)} 个步骤")
 
                         doc_org = DocumentOrganizer()
                         save_path = doc_org.create_summary_document(
                             f"任务执行结果: {task[:20]}",
                             [{"title": f"任务: {task}", "content": plan_text + "\n\n执行结果:\n" + "\n".join([f"步骤{r.get('step')}: {'成功' if r.get('success') else '失败'}" for r in results])}]
                         )
-                        append_result(f"📄 结果已保存到：{save_path}")
+                        append_result(f"📄 结果已保存到:{save_path}")
                     else:
                         append_result("⏸ 用户取消执行")
                 except Exception as e:
-                    append_result(f"❌ 执行失败：{str(e)}")
+                    append_result(f"❌ 执行失败:{str(e)}")
                 finally:
                     self.root.after(0, lambda: task_entry.config(state=tk.NORMAL))
 
@@ -4611,27 +4605,27 @@ class AIPCHelperV8:
         ttk.Button(btn_frame, text="🚀 执行任务", command=execute_ai_task).pack(side=tk.LEFT, padx=5)
         ttk.Button(btn_frame, text="清空结果", command=lambda: task_result_text.config(state=tk.NORMAL) or task_result_text.delete(1.0, tk.END) or task_result_text.config(state=tk.DISABLED)).pack(side=tk.LEFT, padx=5)
 
-        ttk.Label(content_frame, text="快捷操作：", font=("微软雅黑", 11)).pack(pady=10)
+        ttk.Label(content_frame, text="快捷操作:", font=("微软雅黑", 11)).pack(pady=10)
 
         quick_frame = ttk.Frame(content_frame)
         quick_frame.pack(pady=5)
 
         def quick_search():
-            query = simpledialog.askstring("快速搜索", "请输入搜索内容：")
+            query = simpledialog.askstring("快速搜索", "请输入搜索内容:")
             if query:
                 browser = BrowserAutomation()
                 browser.search(query)
-                self.say("系统", f"🔍 正在搜索：{query}")
+                self.say("系统", f"🔍 正在搜索:{query}")
 
         def quick_save_doc():
-            content = simpledialog.askstring("快速保存", "请输入要保存的内容：")
+            content = simpledialog.askstring("快速保存", "请输入要保存的内容:")
             if content:
                 doc_org = DocumentOrganizer()
                 path = doc_org.create_summary_document("快速记录", [{"title": "内容", "content": content}])
-                self.say("系统", f"✅ 文档已保存：{path}")
+                self.say("系统", f"✅ 文档已保存:{path}")
 
         def quick_open_app():
-            app = simpledialog.askstring("快速启动", "请输入应用名称或路径：")
+            app = simpledialog.askstring("快速启动", "请输入应用名称或路径:")
             if app:
                 self.open_app(app)
 
@@ -4648,7 +4642,7 @@ class AIPCHelperV8:
             self.current_folder = folder
             self.config_manager.set("current_folder", folder)
             self.folder_label.config(text=f"📁 当前目录: {self.current_folder}")
-            self.say("系统", f"✅ 已切换到目录：{folder}")
+            self.say("系统", f"✅ 已切换到目录:{folder}")
 
     def undo(self):
         if not self.rename_history:
@@ -4658,12 +4652,12 @@ class AIPCHelperV8:
         try:
             if os.path.exists(dst):
                 os.rename(dst, src)
-                self.say("系统", f"✅ 已撤销：{os.path.basename(dst)} → {os.path.basename(src)}")
+                self.say("系统", f"✅ 已撤销:{os.path.basename(dst)} → {os.path.basename(src)}")
             else:
-                self.say("系统", "❌ 撤销失败：目标文件不存在")
+                self.say("系统", "❌ 撤销失败:目标文件不存在")
         except Exception as e:
             logger.error(f"撤销失败 {dst} -> {src}: {e}")
-            self.say("系统", f"❌ 撤销失败：{e}")
+            self.say("系统", f"❌ 撤销失败:{e}")
 
     def clear_chat(self):
         self.chat.config(state=tk.NORMAL)
@@ -4684,7 +4678,7 @@ class AIPCHelperV8:
             "• 大文件: 找出占用空间最大的文件\n"
             "• 清理空文件: 删除大小为 0 的无效文件\n"
             "• 批量重命名: 一键批量修改文件名\n"
-            "• 撤销: 撤回上次整理操作，安全无忧\n\n"
+            "• 撤销: 撤回上次整理操作,安全无忧\n\n"
             "━━━ ⚙️ 系统控制 ━━━\n"
             "• 电源: 关机 / 重启 / 睡眠 / 锁定 / 取消关机\n"
             "• 工具: 任务管理器 / 系统设置 / CMD / PowerShell\n"
@@ -4719,7 +4713,7 @@ class AIPCHelperV8:
         # 关闭对话记忆模块
         if hasattr(self, 'conversation_memory'):
             self.conversation_memory.close()
-        self.say("系统", "👋 再见！")
+        self.say("系统", "👋 再见!")
         self.root.destroy()
 
 # ---------- 主函数 ----------
