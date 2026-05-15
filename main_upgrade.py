@@ -286,7 +286,7 @@ class UpgradeGUI:
                    command=self._rebuild_index).pack(side=tk.LEFT, padx=(0, 5))
         ttk.Button(toolbar, text="📂 扫描下载文件夹",
                    command=self._scan_download_folder).pack(side=tk.LEFT, padx=(0, 5))
-        
+
         # 监控控制按钮
         self.kb_monitor_btn = ttk.Button(toolbar, text="▶️ 启动监控",
                    command=self._toggle_kb_monitor)
@@ -418,53 +418,53 @@ class UpgradeGUI:
         dialog.geometry("400x300")
         dialog.transient(self.root)
         dialog.grab_set()
-        
+
         # 当前配置
         email_classifier = self.ctx.get_or_none("email_classifier")
         current_config = email_classifier.email_config if email_classifier else {}
-        
+
         # 表单
         ttk.Label(dialog, text="邮箱地址:").pack(anchor=tk.W, padx=10, pady=(10,0))
         email_var = tk.StringVar(value=current_config.get("email_address", ""))
         ttk.Entry(dialog, textvariable=email_var).pack(fill=tk.X, padx=10)
-        
+
         ttk.Label(dialog, text="密码/授权码:").pack(anchor=tk.W, padx=10, pady=(10,0))
         pwd_var = tk.StringVar()
         ttk.Entry(dialog, textvariable=pwd_var, show="*").pack(fill=tk.X, padx=10)
-        
+
         ttk.Label(dialog, text="IMAP 服务器:").pack(anchor=tk.W, padx=10, pady=(10,0))
         imap_var = tk.StringVar(value=current_config.get("imap_server", "imap.gmail.com"))
         ttk.Entry(dialog, textvariable=imap_var).pack(fill=tk.X, padx=10)
-        
+
         ttk.Label(dialog, text="SMTP 服务器:").pack(anchor=tk.W, padx=10, pady=(10,0))
         smtp_var = tk.StringVar(value=current_config.get("smtp_server", "smtp.gmail.com"))
         ttk.Entry(dialog, textvariable=smtp_var).pack(fill=tk.X, padx=10)
-        
+
         def _save():
             if not email_classifier:
                 messagebox.showerror("错误", "邮件分类器未初始化")
                 return
-            
+
             email = email_var.get().strip()
             pwd = pwd_var.get()
-            
+
             if not email:
                 messagebox.showerror("错误", "邮箱地址不能为空")
                 return
-            
+
             # 更新配置
             email_classifier.email_config["email_address"] = email
             email_classifier.email_config["imap_server"] = imap_var.get()
             email_classifier.email_config["smtp_server"] = smtp_var.get()
-            
+
             # 密码存 keyring
             if pwd:
                 EmailClassifier._set_password(email, pwd)
-            
+
             email_classifier.save_config()
             messagebox.showinfo("成功", "邮箱配置已保存")
             dialog.destroy()
-        
+
         ttk.Button(dialog, text="保存", command=_save).pack(pady=20)
 
     def _start_email(self):
@@ -551,28 +551,28 @@ class UpgradeGUI:
 
     def _scan_download_folder(self):
         """扫描下载文件夹并添加到知识库"""
-        
+
         download_path = Path.home() / "Downloads"
         if not download_path.exists():
             self._append_output(self.kb_output, "下载文件夹不存在\n", "error")
             return
-        
+
         def _do():
             kb = self.ctx.get_or_none("knowledge_base")
             if not kb:
                 self._append_output(self.kb_output, "知识库未初始化\n", "error")
                 return
-            
+
             self._append_output(self.kb_output, f"开始扫描: {download_path}\n", "info")
-            
+
             # 支持的文件类型
             supported_exts = {'.txt', '.md', '.pdf', '.docx', '.py', '.json', '.csv'}
             files = [f for f in download_path.iterdir() if f.is_file() and f.suffix.lower() in supported_exts]
-            
+
             if not files:
                 self._append_output(self.kb_output, "未找到支持的文件\n", "info")
                 return
-            
+
             added = 0
             for i, file_path in enumerate(files):
                 try:
@@ -582,10 +582,10 @@ class UpgradeGUI:
                         self._append_output(self.kb_output, f"已处理 {i+1}/{len(files)}...\n", "info")
                 except Exception as e:
                     self._append_output(self.kb_output, f"跳过 {file_path.name}: {e}\n", "error")
-            
+
             self._append_output(self.kb_output, f"扫描完成，新增 {added} 个文件\n", "success")
             self._update_kb_status(f"最后扫描: {datetime.now().strftime('%H:%M:%S')} | 新增 {added} 个文件")
-        
+
         threading.Thread(target=_do, daemon=True).start()
 
     def _toggle_kb_monitor(self):
@@ -594,7 +594,7 @@ class UpgradeGUI:
         if not kb:
             self._append_output(self.kb_output, "知识库未初始化\n", "error")
             return
-        
+
         # 检查当前监控状态（通过检查是否有监控线程）
         if hasattr(kb, '_monitoring') and kb._monitoring:
             # 停止监控
@@ -608,7 +608,7 @@ class UpgradeGUI:
             self.kb_monitor_btn.config(text="⏹ 停止监控")
             self._update_kb_status("监控状态: 运行中")
             self._append_output(self.kb_output, "监控已启动\n", "success")
-            
+
             # 启动后台线程
             def _monitor():
                 while kb._monitoring:
@@ -618,7 +618,7 @@ class UpgradeGUI:
                     except Exception as e:
                         self._append_output(self.kb_output, f"监控异常: {e}\n", "error")
                         break
-            
+
             threading.Thread(target=_monitor, daemon=True).start()
 
     def _update_kb_status(self, text):

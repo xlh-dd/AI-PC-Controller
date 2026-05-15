@@ -9,7 +9,7 @@ logger = logging.getLogger("FileManager")
 
 class FileManager:
     """文件管理模块"""
-    
+
     # 安全路径白名单
     SAFE_DIRS = [
         str(Path.home() / "Desktop"),
@@ -19,10 +19,10 @@ class FileManager:
         str(Path.home() / "Music"),
         str(Path.home() / "Videos"),
     ]
-    
+
     # 最大遍历深度
     MAX_DEPTH = 10
-    
+
     def __init__(self):
         self.file_types = {
             "图片": [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".webp", ".svg", ".ico"],
@@ -37,7 +37,7 @@ class FileManager:
             "快捷方式": [".lnk", ".url"]
         }
         self.rename_history = []
-    
+
     def _is_safe_path(self, folder: str) -> bool:
         """检查路径是否在安全白名单内"""
         try:
@@ -53,7 +53,7 @@ class FileManager:
         except Exception as e:
             logger.error(f"路径安全检查失败: {e}")
             return False
-    
+
     def _is_system_dir(self, path: str) -> bool:
         """判断是否为系统目录"""
         path = os.path.realpath(path).lower()
@@ -62,7 +62,7 @@ class FileManager:
             "c:\\system volume information", "c:\\recovery"
         ]
         return any(path.startswith(root) for root in system_roots)
-    
+
     def auto_sort_files(self, current_folder, target_base, ai_helper=None):
         """按类型整理文件"""
         try:
@@ -73,22 +73,22 @@ class FileManager:
                 raise ValueError(f"目标目录 {target_base} 不在安全白名单范围内")
             if self._is_system_dir(current_folder) or self._is_system_dir(target_base):
                 raise ValueError("禁止操作系统目录")
-            
+
             move_plan = []
             unknown_files = []
-            
+
             # 使用深度限制的遍历
             for root, dirs, files in os.walk(current_folder, topdown=True):
                 # 计算当前深度
                 rel_path = os.path.relpath(root, current_folder)
                 current_depth = 0 if rel_path == '.' else rel_path.count(os.sep) + 1
-                
+
                 # 超过最大深度则跳过
                 if current_depth > self.MAX_DEPTH:
                     logger.warning(f"达到最大遍历深度 {self.MAX_DEPTH}，跳过: {root}")
                     dirs.clear()  # 清空 dirs 阻止进一步遍历
                     continue
-                
+
                 for file in files:
                     src = os.path.join(root, file)
                     ext = os.path.splitext(file)[1].lower()
@@ -110,7 +110,7 @@ class FileManager:
                             dst = f"{base}_{counter}{ext}"
                             counter += 1
                         move_plan.append((src, dst))
-            
+
             if ai_helper and unknown_files:
                 for src, file in unknown_files:
                     category = ai_helper.classify_file(file, list(self.file_types.keys()))
@@ -135,11 +135,11 @@ class FileManager:
                         dst = f"{base}_{counter}{ext}"
                         counter += 1
                     move_plan.append((src, dst))
-            
+
             return move_plan
         except Exception as e:
             raise Exception(f"按类型整理失败: {e}")
-    
+
     def safe_move(self, src, dst):
         """安全移动文件"""
         try:
@@ -150,7 +150,7 @@ class FileManager:
         except Exception as e:
             logger.warning(f"移动失败 {src} -> {dst}: {e}")
             return False
-    
+
     def find_duplicate_files(self, current_folder):
         """查找重复文件"""
         try:
@@ -163,12 +163,12 @@ class FileManager:
                         hash_map[file_hash].append(path)
                     except Exception:
                         continue
-            
+
             duplicates = [v for v in hash_map.values() if len(v) > 1]
             return duplicates
         except Exception as e:
             raise Exception(f"查找重复文件失败: {e}")
-    
+
     def get_file_md5(self, file_path):
         """计算文件MD5值"""
         md5_hash = hashlib.md5()
@@ -176,7 +176,7 @@ class FileManager:
             for byte_block in iter(lambda: f.read(4096), b""):
                 md5_hash.update(byte_block)
         return md5_hash.hexdigest()
-    
+
     def clean_empty_files(self, current_folder):
         """清理空文件"""
         try:
@@ -192,7 +192,7 @@ class FileManager:
             return empty_files
         except Exception as e:
             raise Exception(f"清理空文件失败: {e}")
-    
+
     def find_large_files(self, current_folder, min_size_gb=1):
         """查找大文件"""
         try:
@@ -211,7 +211,7 @@ class FileManager:
             return large_files
         except Exception as e:
             raise Exception(f"查找大文件失败: {e}")
-    
+
     def is_system_dir(self, path):
         """判断是否为系统目录"""
         path = os.path.realpath(path).lower()
@@ -220,7 +220,7 @@ class FileManager:
             "c:\\system volume information", "c:\\recovery"
         ]
         return any(path.startswith(root) for root in system_roots)
-    
+
     def list_files(self, current_folder):
         """列出当前目录文件"""
         try:

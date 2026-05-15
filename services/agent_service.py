@@ -124,7 +124,7 @@ class AgentService:
             return "hermes" if self._hermes_available else "none"
         if self._priority == BackendPriority.OLLAMA_ONLY:
             return "ollama"
-        
+
         # AUTO / HERMES_FIRST / AGENT_FIRST
         if self._hermes_available:
             return "hermes"
@@ -140,7 +140,7 @@ class AgentService:
              stream_callback: Callable[[str], None] = None,
              timeout: int = None) -> str:
         """统一对话接口（支持流式），使用渐进式超时 + 模型切换
-        
+
         注意：此方法为无状态调用，不维护对话历史。
         如需多轮对话，请使用 chat_with_history()。
         """
@@ -199,28 +199,28 @@ class AgentService:
                           stream_callback: Callable[[str], None] = None,
                           timeout: int = None) -> str:
         """多轮对话：自动拼接历史上下文
-        
+
         DeepSeek API 无状态，每次请求需将历史传递给后端。
         AgentService 在本地维护 messages 数组实现多轮对话。
         """
         self.ensure_ready()
-        
+
         # 添加用户消息到历史
         self.conversation_history.append({"role": "user", "content": message})
-        
+
         # 构建带历史的完整 prompt
         full_prompt = self._format_history_prompt()
-        
+
         # 调用后端
         try:
             response = self.chat(full_prompt, stream_callback=stream_callback, timeout=timeout)
-            
+
             # 将 AI 回复添加到历史
             self.conversation_history.append({"role": "assistant", "content": response})
-            
+
             # 限制历史轮数，避免超出上下文窗口
             self._trim_history()
-            
+
             return response
         except Exception as e:
             # 失败时移除用户消息（保留历史完整性）
@@ -231,20 +231,20 @@ class AgentService:
     def _format_history_prompt(self) -> str:
         """将历史消息格式化为 prompt 文本"""
         parts = []
-        
+
         if self._system_prompt:
             parts.append(f"[系统指令]\n{self._system_prompt}")
-        
+
         if len(self.conversation_history) > 1:  # 超过当前这条用户消息
             parts.append("[对话历史]")
             for msg in self.conversation_history[:-1]:  # 除最后一条（当前用户消息）
                 role_label = "👤 用户" if msg["role"] == "user" else "🤖 AI"
                 parts.append(f"{role_label}: {msg['content']}")
-        
+
         # 当前消息
         current = self.conversation_history[-1]["content"] if self.conversation_history else ""
         parts.append(f"[当前消息]\n{current}")
-        
+
         return "\n\n".join(parts)
 
     def _trim_history(self):
@@ -279,11 +279,11 @@ class AgentService:
                   stream_callback: Callable[[str], None] = None,
                   timeout: int = None) -> Dict[str, Any]:
         """结构化 JSON 输出（通过强 prompt 引导而非 API response_format）
-        
+
         Args:
             message: 用户消息
             json_schema: JSON 格式描述
-        
+
         Returns:
             解析后的 dict，或 {"error": "...", "raw": "..."}
         """
@@ -294,9 +294,9 @@ class AgentService:
                 f"{json_schema}\n\n"
                 f"用户需求：{message}"
             )
-        
+
         response = self.chat(prompt, stream_callback=stream_callback, timeout=timeout)
-        
+
         # 尝试解析 JSON
         try:
             return json.loads(response)
@@ -353,7 +353,7 @@ class AgentService:
 
     def parse_command(self, natural_text: str) -> Dict[str, Any]:
         self.ensure_ready()
-        
+
         if self._hermes_available:
             try:
                 return self._hermes.parse_command(natural_text)
@@ -377,17 +377,17 @@ class AgentService:
 
     def _local_parse(self, text: str) -> Dict[str, Any]:
         text_lower = text.lower().strip()
-        
+
         if any(kw in text_lower for kw in ["关机", "shutdown"]):
             m = re.search(r'(\d+)\s*分', text)
             return {"action": "shutdown", "delay": int(m.group(1)) if m else 0}
         if any(kw in text_lower for kw in ["重启", "restart"]):
             return {"action": "restart"}
-        
+
         open_match = re.match(r'^(打开|启动|运行|open)\s*(.+)', text, re.IGNORECASE)
         if open_match:
             return {"action": "open_app", "app_name": open_match.group(2).strip()}
-        
+
         return {"action": "unknown", "original": text}
 
     # ── 分析 ──────────────────────────────────────────────────────────────

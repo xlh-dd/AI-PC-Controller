@@ -25,16 +25,16 @@ class DatabaseManager:
 
     def get_connection(self, db_name: str) -> sqlite3.Connection:
         """获取指定数据库的线程本地连接（lazy init）
-        
+
         每个线程、每个 db_name 维护独立的连接。
         连接在首次访问时创建，不会跨线程共享。
         """
         key = db_name  # 一个 db_name 对应一个 thread-local 连接
-        
+
         # thread-local storage: 每个线程独立的连接字典
         if not hasattr(self._local, '_conns'):
             self._local._conns = {}
-        
+
         if key not in self._local._conns:
             db_path = self.db_dir / db_name
             conn = sqlite3.connect(str(db_path), timeout=30.0, check_same_thread=False)
@@ -44,7 +44,7 @@ class DatabaseManager:
             conn.execute("PRAGMA busy_timeout=30000")  # 30s busy timeout
             self._local._conns[key] = conn
             logger.debug(f"创建 DB 连接: {db_name} (thread={threading.current_thread().name})")
-        
+
         return self._local._conns[key]
 
     def execute(self, db_name: str, sql: str, params=()) -> sqlite3.Cursor:

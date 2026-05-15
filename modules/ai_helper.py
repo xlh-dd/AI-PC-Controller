@@ -13,7 +13,7 @@ logger = logging.getLogger("AIHelper")
 
 class AIHelper:
     """AI辅助模块"""
-    
+
     def __init__(self, ollama_url="http://localhost:11434/api/generate", model="qwen2.5:1.5b", config_manager=None):
         self.ollama_url = ollama_url
         self.model = model
@@ -32,7 +32,7 @@ class AIHelper:
             from modules.unified_api_client import get_unified_client
             self._api_client = get_unified_client(self.config_manager)
         return self._api_client
-    
+
     def _get_cache_key(self, method_name, *args, **kwargs):
         """生成缓存键"""
         key_parts = [method_name]
@@ -41,12 +41,12 @@ class AIHelper:
         for k, v in sorted(kwargs.items()):
             key_parts.append(f"{k}:{v}")
         return "|".join(key_parts)
-    
+
     def _check_cache(self, method_name, *args, **kwargs):
         """检查缓存"""
         key = self._get_cache_key(method_name, *args, **kwargs)
         return self.cache.get(key)
-    
+
     def _set_cache(self, method_name, result, *args, **kwargs):
         """设置缓存"""
         key = self._get_cache_key(method_name, *args, **kwargs)
@@ -56,14 +56,14 @@ class AIHelper:
             oldest_key = next(iter(self.cache))
             del self.cache[oldest_key]
         self.cache[key] = result
-    
+
     def clear_cache(self):
         """清空缓存"""
         self.cache.clear()
-    
+
     def ai_query(self, prompt, system_prompt=None, stream_callback=None, stop_event=None, use_memory=True, timeout=60):
         """调用AI模型
-        
+
         Args:
             prompt: 用户输入
             system_prompt: 系统提示词
@@ -106,18 +106,18 @@ class AIHelper:
             logger.error(f"AI调用异常：{e}")
 
         return None
-    
+
     def classify_file(self, filename, categories):
         """使用AI分类文件"""
         if not self.use_ai_features:
             return None
-        
+
         # 检查缓存
         cached_result = self._check_cache("classify_file", filename, tuple(categories))
         if cached_result is not None:
             logger.debug("使用缓存结果")
             return cached_result
-        
+
         prompt = f"请根据文件名判断它属于以下哪个类别（只返回类别名称）：\n类别列表：{', '.join(categories)}\n\n文件名：{filename}"
         resp = self.ai_query(prompt, use_memory=False)
         result = None
@@ -126,14 +126,14 @@ class AIHelper:
                 if cat in resp:
                     result = cat
                     break
-        
+
         # 设置缓存
         self._set_cache("classify_file", result, filename, tuple(categories))
         return result
-    
+
     def parse_command_with_clarification(self, msg):
         """解析用户指令，如果不确定则返回澄清问题
-        
+
         返回: (result, clarification)
         - result: 解析结果dict，如果没有结果则为None
         - clarification: 澄清问题字符串，如果有不确定的地方
@@ -141,7 +141,7 @@ class AIHelper:
         cached_result = self._check_cache("parse_command", msg)
         if cached_result is not None:
             return cached_result, None
-        
+
         prompt = f"""你是一个指令解析专家。请分析用户指令并返回JSON格式的操作指令。
 
 【支持的操作类型】（action字段）
@@ -184,11 +184,11 @@ class AIHelper:
 }}
 
 请直接返回JSON，不要其他文字。"""
-        
+
         resp = self.ai_query(prompt, system_prompt="你是一个智能助手，负责解析用户指令。", use_memory=False)
         result = None
         clarification = None
-        
+
         if resp:
             try:
                 json_str = re.search(r'(\{.*\})', resp, re.DOTALL)
@@ -202,13 +202,13 @@ class AIHelper:
                     result = data
             except Exception as e:
                 logger.error(f"解析JSON失败: {e}")
-        
+
         # 设置缓存（不缓存带clarification的结果）
         if result and not clarification:
             self._set_cache("parse_command", result, msg)
-        
+
         return result, clarification
-    
+
     def parse_command(self, msg):
         """解析用户指令 - 全面支持自然语言版本（兼容旧版本）"""
         cached_result = self._check_cache("parse_command", msg)
@@ -422,11 +422,11 @@ class AIHelper:
                     result = data
             except:
                 pass
-        
+
         # 设置缓存
         self._set_cache("parse_command", result, msg)
         return result
-    
+
     def analyze_duplicate_files(self, files_info):
         """分析重复文件"""
         # 将文件信息转换为可哈希的元组，用于缓存键
@@ -435,14 +435,14 @@ class AIHelper:
                 tuple(sorted(file.items()))
                 for file in sorted(files, key=lambda x: x.get('path', ''))
             )
-        
+
         # 检查缓存
         hashable_files = files_info_to_hashable(files_info)
         cached_result = self._check_cache("analyze_duplicate_files", hashable_files)
         if cached_result is not None:
             logger.debug("使用缓存结果")
             return cached_result
-        
+
         prompt = f"""
 以下是一组重复文件（MD5相同），请分析哪些文件可以安全删除（保留一个最佳版本）。
 考虑因素：文件名是否合理、修改时间最新、路径是否在常见位置等。
@@ -463,11 +463,11 @@ class AIHelper:
                     result = del_list
             except:
                 pass
-        
+
         # 设置缓存
         self._set_cache("analyze_duplicate_files", result, hashable_files)
         return result
-    
+
     def generate_rename_plan(self, folders, msg):
         """生成文件改名计划"""
         # 检查缓存
@@ -475,7 +475,7 @@ class AIHelper:
         if cached_result is not None:
             logger.debug("使用缓存结果")
             return cached_result
-        
+
         prompt = f"""
 当前文件夹列表：{folders}
 用户要求：{msg}
@@ -490,11 +490,11 @@ class AIHelper:
                 result = data.get("rename_pairs", [])
             except json.JSONDecodeError:
                 result = self.extract_rename_pairs_from_text(resp, folders)
-        
+
         # 设置缓存
         self._set_cache("generate_rename_plan", result, tuple(folders), msg)
         return result
-    
+
     def extract_rename_pairs_from_text(self, text, folders):
         """从文本中提取改名对"""
         pairs = []
@@ -511,7 +511,7 @@ class AIHelper:
                 if old in folders and new:
                     pairs.append({"original": old, "new": new})
         return pairs
-    
+
     def set_config(self, ollama_url=None, model=None, use_ai_features=None, provider_id=None):
         """设置AI配置"""
         if ollama_url:

@@ -29,7 +29,7 @@ class UIManager:
         """获取或创建全局变量（线程安全）"""
         if var_name not in self._locks:
             self._locks[var_name] = threading.Lock()
-        
+
         with self._locks[var_name]:
             if var_name not in self._global_vars:
                 if var_type == "string":
@@ -121,7 +121,7 @@ class ProgressManager:
                 current_max = self._progress_vars.get(name + "_max", 100)
                 percentage = (value / current_max) * 100 if current_max > 0 else 0
                 self._progress_vars[name].set(percentage)
-                
+
                 if name in self._progress_callbacks:
                     from tkinter import Tk
                     try:

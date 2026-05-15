@@ -40,7 +40,7 @@ logger = logging.getLogger("AIAgent")
 
 class AIAgent:
     """AI智能体 - 任务规划、执行、反馈
-    
+
     支持依赖注入，允许传入自定义的 ai_helper 实例
     """
 
@@ -118,7 +118,7 @@ class AIAgent:
 
     def __init__(self, ai_helper=None, config_manager=None, ollama_url=None, model=None, event_bus=None, **kwargs):
         """初始化 AI 智能体
-        
+
         Args:
             ai_helper: AIHelper 实例（可选，支持依赖注入）
             config_manager: 配置管理器实例（可选，用于创建默认 AIHelper）
@@ -129,7 +129,7 @@ class AIAgent:
         """
         # 依赖注入：优先使用传入的 ai_helper
         self.ai_helper = ai_helper
-        
+
         # EventBus 集成
         if event_bus is None:
             try:
@@ -140,7 +140,7 @@ class AIAgent:
                 logger.warning("EventBus 不可用，事件发布功能受限")
         else:
             self.event_bus = event_bus
-        
+
         # 如果没有传入 ai_helper，尝试通过 config_manager 创建或使用回退方案
         if self.ai_helper is None:
             if config_manager is not None:
@@ -159,10 +159,10 @@ class AIAgent:
                 self.ollama_url = ollama_url
                 self.model = model
                 logger.info("使用传统参数模式（ollama_url, model）")
-        
+
         # 保存配置引用（如果提供）
         self.config_manager = config_manager
-        
+
         # 保存 URL 和 model（向后兼容，也可能从 ai_helper 获取）
         if self.ai_helper and hasattr(self.ai_helper, 'ollama_url'):
             self.ollama_url = self.ai_helper.ollama_url or ollama_url or "http://localhost:11434/api/generate"
@@ -170,11 +170,11 @@ class AIAgent:
         else:
             self.ollama_url = ollama_url or "http://localhost:11434/api/generate"
             self.model = model or "qwen2.5:1.5b"
-        
+
         self._wechat_controller = None
         self._command_executor = None
         self._feedback_callback = None
-        
+
         # 系统控制器
         self._system_controller = None
         if SYSTEM_CONTROLLER_AVAILABLE:
@@ -183,7 +183,7 @@ class AIAgent:
                 logger.info("系统控制器已加载")
             except Exception as e:
                 logger.warning(f"加载系统控制器失败: {e}")
-        
+
         self.tools = {
             "search_browser": self.search_browser,
             "search_and_collect": self.search_and_collect,
@@ -511,7 +511,7 @@ class AIAgent:
         self._publish_event("plan.started", {"command": user_command})
         # 根据用户指令选择相关的工具类别，动态构建提示词
         prompt = self._build_planning_prompt(user_command)
-        
+
         try:
             response = self._call_llm(prompt)
             steps = self._parse_steps(response)
@@ -522,28 +522,28 @@ class AIAgent:
             logger.error(f"任务规划失败: {e}")
             self._publish_event("plan.failed", {"command": user_command, "error": str(e)})
             return []
-    
+
     def _build_planning_prompt(self, user_command):
         """构建任务规划提示词，根据用户指令动态选择相关工具"""
         # 定义工具类别和关键字映射
         tool_categories = self._TOOL_CATEGORIES
-        
+
         # 根据用户指令确定相关工具类别
         user_command_lower = user_command.lower()
         relevant_categories = []
-        
+
         for category_name, category_info in tool_categories.items():
             if any(keyword in user_command_lower for keyword in category_info["keywords"]):
                 relevant_categories.append(category_name)
-        
+
         # 如果没有匹配的类别，使用前3个最常见的类别
         if not relevant_categories:
             relevant_categories = ["搜索与信息收集", "文档与文件操作", "系统控制与自动化"]
-        
+
         # 构建工具列表
         tools_list = []
         seen_tools = set()
-        
+
         for category_name in relevant_categories[:3]:  # 最多3个类别，避免提示词过长
             if category_name in tool_categories:
                 for tool_desc in tool_categories[category_name]["tools"]:
@@ -551,7 +551,7 @@ class AIAgent:
                     if tool_name not in seen_tools:
                         tools_list.append(tool_desc)
                         seen_tools.add(tool_name)
-        
+
         # 确保至少有一些工具
         if not tools_list:
             tools_list = [
@@ -559,9 +559,9 @@ class AIAgent:
                 "send_wechat - 发送微信消息",
                 "open_app - 打开应用程序"
             ]
-        
+
         tools_text = "\n".join([f"- {tool}" for tool in tools_list])
-        
+
         prompt = f"""将指令分解为步骤，输出JSON数组。
 
 指令: {user_command}
@@ -576,25 +576,25 @@ class AIAgent:
 [{{"step":1,"tool":"collect_and_save","action":"搜索XX并保存","parameters":{{"query":"XX","save_path":"C:\\\\Users\\\\Administrator\\\\Desktop\\\\XX.md","format":"markdown"}}}}]
 
 只输出JSON，无其他内容。"""
-        
+
         return prompt
 
     def _validate_params(self, tool, params):
         """验证工具参数是否完整"""
         if tool not in self.tool_descriptions:
             return None, f"未知工具: {tool}"
-        
+
         tool_desc = self.tool_descriptions[tool]
         required_params = tool_desc.get("parameters", {}).get("required", [])
-        
+
         missing_params = []
         for param in required_params:
             if param not in params or params[param] is None or params[param] == "":
                 missing_params.append(param)
-        
+
         if missing_params:
             return None, f"缺少必需参数: {', '.join(missing_params)}"
-        
+
         return True, None
 
     def execute_plan(self, steps, context=None):
@@ -624,7 +624,7 @@ class AIAgent:
                         })
                         self._send_feedback(f"❌ {step_info} - {error}", is_error=True)
                         continue
-                    
+
                     result = self.tools[tool](**params)
                     results.append({
                         "step": step.get('step'),
@@ -685,12 +685,12 @@ class AIAgent:
                     if attempt < max_retries - 1:
                         time.sleep(2 ** attempt)
             return ""
-        
+
         # 否则回退到旧的Ollama API
         if not REQUESTS_AVAILABLE:
             logger.error("requests模块未安装，无法调用LLM API")
             return ""
-        
+
         for attempt in range(max_retries):
             try:
                 payload = {
@@ -761,7 +761,7 @@ class AIAgent:
         except Exception as e:
             logger.error(f"浏览器搜索失败: {e}")
             return f"搜索失败: {str(e)}"
-    
+
     def search_and_collect(self, query, max_results=5):
         """搜索并收集信息，返回结构化数据（三层降级：DDGS -> 百度 -> 浏览器）"""
         self._publish_event("search.started", {"query": query, "max_results": max_results})
@@ -833,16 +833,16 @@ class AIAgent:
             logger.error(f"搜索并收集失败: {e}")
             self._publish_event("search.failed", {"query": query, "error": str(e)})
             return {"success": False, "error": str(e)}
-    
+
     def collect_and_save(self, query, save_path, format="markdown", max_results=10):
         """搜索、收集信息并保存为文档
-        
+
         Args:
             query: 搜索关键词
             save_path: 保存路径
             format: 文档格式 (markdown/txt/json)
             max_results: 最大搜索结果数
-            
+
         Returns:
             保存结果
         """
@@ -1022,7 +1022,7 @@ class AIAgent:
                 from modules.macro_recorder import get_player
                 player = get_player()
                 success = player.play(macro_name, speed=speed, repeat=repeat)
-            
+
             if success:
                 logger.info(f"宏播放成功: {macro_name}")
                 return {"success": True, "message": f"宏 {macro_name} 播放完成"}
@@ -1041,7 +1041,7 @@ class AIAgent:
                 from modules.macro_recorder import get_recorder
                 recorder = get_recorder()
                 recorder.start_recording(name)
-            
+
             logger.info(f"开始录制宏: {name}")
             return {"success": True, "message": f"开始录制宏 {name}，请进行操作后手动停止"}
         except Exception as e:
@@ -1073,7 +1073,7 @@ class AIAgent:
     def file_operation(self, operation, source=None, destination=None):
         """执行文件操作（含路径安全校验）"""
         import shutil
-        
+
         # 路径安全校验：禁止访问系统关键目录
         _FORBIDDEN_PREFIXES = (
             os.environ.get('SystemRoot', r'C:\Windows').lower(),
@@ -1081,7 +1081,7 @@ class AIAgent:
             r'c:\programdata',
             r'c:\program files (x86)',
         )
-        
+
         def _is_safe(p):
             if not p:
                 return True
@@ -1090,10 +1090,10 @@ class AIAgent:
                 if real.startswith(prefix):
                     return False
             return True
-        
+
         if not _is_safe(source) or not _is_safe(destination):
             return {"success": False, "error": "路径不安全：禁止操作系统目录"}
-        
+
         try:
             if operation == "copy":
                 if os.path.isdir(source):
@@ -1113,7 +1113,7 @@ class AIAgent:
                 os.rename(source, destination)
             else:
                 return {"success": False, "error": f"未知操作: {operation}"}
-            
+
             logger.info(f"文件操作成功: {operation}")
             return {"success": True, "message": f"文件操作 {operation} 完成"}
         except Exception as e:
@@ -1133,7 +1133,7 @@ class AIAgent:
                 response = requests.delete(url, timeout=30)
             else:
                 return {"success": False, "error": f"不支持的请求方法: {method}"}
-            
+
             logger.info(f"HTTP请求成功: {method} {url}")
             return {
                 "success": True,
@@ -1183,14 +1183,14 @@ class AIAgent:
                 "控制面板": "control",
                 "微信": r"C:\Program Files (x86)\Tencent\WeChat\WeChat.exe",
             }
-            
+
             app_path = common_apps.get(app_name, app_name)
-            
+
             if os.path.exists(app_path):
                 os.startfile(app_path)
             else:
                 os.startfile(app_path)
-            
+
             logger.info(f"打开应用程序: {app_name}")
             return {"success": True, "message": f"已打开 {app_name}"}
         except Exception as e:
@@ -1202,7 +1202,7 @@ class AIAgent:
         if not PYAUTOGUI_AVAILABLE:
             logger.error("pyautogui模块未安装，无法执行图像点击。请运行: pip install pyautogui")
             return {"success": False, "error": "pyautogui模块未安装，无法执行图像点击。请运行: pip install pyautogui"}
-        
+
         try:
             start_time = time.time()
             while time.time() - start_time < timeout:
@@ -1216,30 +1216,30 @@ class AIAgent:
                 except Exception:
                     pass
                 time.sleep(0.5)
-            
+
             logger.warning(f"图像查找超时: {image_path}")
             return {"success": False, "error": "未找到图像"}
         except Exception as e:
             logger.error(f"图像点击失败: {e}")
             return {"success": False, "error": str(e)}
-    
+
     # ===== 新增系统控制方法 =====
-    
+
     def control_volume(self, action="get", level=50, steps=5, mute=None):
         """控制音量
-        
+
         Args:
             action: 操作类型 (get/up/down/set/toggle_mute)
             level: 音量级别 (0-100)，当action='set'时使用
             steps: 步数，当action='up'或'down'时使用
             mute: 静音状态，当action='set'时使用
-            
+
         Returns:
             操作结果
         """
         if not self._system_controller:
             return {"success": False, "error": "系统控制器未加载"}
-        
+
         try:
             if action == "get":
                 return self._system_controller.get_volume()
@@ -1255,20 +1255,20 @@ class AIAgent:
                 return {"success": False, "error": f"未知音量操作: {action}"}
         except Exception as e:
             return {"success": False, "error": f"音量控制失败: {str(e)}"}
-    
+
     def control_network(self, action="get_info", enable=None):
         """控制网络
-        
+
         Args:
             action: 操作类型 (get_info/toggle_wifi/get_wifi)
             enable: 开启/关闭Wi-Fi，当action='toggle_wifi'时使用
-            
+
         Returns:
             操作结果
         """
         if not self._system_controller:
             return {"success": False, "error": "系统控制器未加载"}
-        
+
         try:
             if action == "get_info":
                 return self._system_controller.get_network_info()
@@ -1280,23 +1280,23 @@ class AIAgent:
                 return {"success": False, "error": f"未知网络操作: {action}"}
         except Exception as e:
             return {"success": False, "error": f"网络控制失败: {str(e)}"}
-    
+
     def manage_processes(self, action="list", filter_str="", pid=None, process_name=None, force=False):
         """管理进程
-        
+
         Args:
             action: 操作类型 (list/kill/kill_by_name)
             filter_str: 过滤字符串，当action='list'时使用
             pid: 进程ID，当action='kill'时使用
             process_name: 进程名，当action='kill_by_name'时使用
             force: 是否强制结束
-            
+
         Returns:
             操作结果
         """
         if not self._system_controller:
             return {"success": False, "error": "系统控制器未加载"}
-        
+
         try:
             if action == "list":
                 return self._system_controller.list_processes(filter_str)
@@ -1312,21 +1312,21 @@ class AIAgent:
                 return {"success": False, "error": f"未知进程操作: {action}"}
         except Exception as e:
             return {"success": False, "error": f"进程管理失败: {str(e)}"}
-    
+
     def manage_windows(self, action="list", title_pattern="", filter_str=""):
         """管理窗口
-        
+
         Args:
             action: 操作类型 (list/find/activate/minimize/maximize/close)
             title_pattern: 窗口标题模式
             filter_str: 过滤字符串，当action='list'时使用
-            
+
         Returns:
             操作结果
         """
         if not self._system_controller:
             return {"success": False, "error": "系统控制器未加载"}
-        
+
         try:
             if action == "list":
                 return self._system_controller.list_windows(filter_str)
@@ -1354,38 +1354,38 @@ class AIAgent:
                 return {"success": False, "error": f"未知窗口操作: {action}"}
         except Exception as e:
             return {"success": False, "error": f"窗口管理失败: {str(e)}"}
-    
+
     def take_screenshot(self, region=None, save_path=None):
         """截取屏幕
-        
+
         Args:
             region: 截图区域 (left, top, width, height)，None表示全屏
             save_path: 保存路径，None表示保存到临时文件
-            
+
         Returns:
             截图结果
         """
         if not self._system_controller:
             return {"success": False, "error": "系统控制器未加载"}
-        
+
         try:
             return self._system_controller.take_screenshot(region, save_path)
         except Exception as e:
             return {"success": False, "error": f"截图失败: {str(e)}"}
-    
+
     def control_clipboard(self, action="get", content=""):
         """控制剪贴板
-        
+
         Args:
             action: 操作类型 (get/set/clear)
             content: 要设置的内容，当action='set'时使用
-            
+
         Returns:
             操作结果
         """
         if not self._system_controller:
             return {"success": False, "error": "系统控制器未加载"}
-        
+
         try:
             if action == "get":
                 return self._system_controller.get_clipboard()
@@ -1399,53 +1399,53 @@ class AIAgent:
                 return {"success": False, "error": f"未知剪贴板操作: {action}"}
         except Exception as e:
             return {"success": False, "error": f"剪贴板控制失败: {str(e)}"}
-    
+
     def get_system_info(self):
         """获取系统信息
-        
+
         Returns:
             系统信息
         """
         if not self._system_controller:
             return {"success": False, "error": "系统控制器未加载"}
-        
+
         try:
             return self._system_controller.get_system_info()
         except Exception as e:
             return {"success": False, "error": f"获取系统信息失败: {str(e)}"}
-    
+
     def speak_text(self, text, rate=150, volume=1.0):
         """语音合成
-        
+
         Args:
             text: 要合成的文本
             rate: 语速 (默认150)
             volume: 音量 (0.0-1.0)
-            
+
         Returns:
             操作结果
         """
         if not self._system_controller:
             return {"success": False, "error": "系统控制器未加载"}
-        
+
         try:
             return self._system_controller.speak_text(text, rate, volume)
         except Exception as e:
             return {"success": False, "error": f"语音合成失败: {str(e)}"}
-    
+
     def ocr_screen(self, region=None, lang="chi_sim+eng"):
         """识别屏幕区域的文字
-        
+
         Args:
             region: 屏幕区域
             lang: 语言代码
-            
+
         Returns:
             识别结果
         """
         if not self._system_controller:
             return {"success": False, "error": "系统控制器未加载"}
-        
+
         try:
             return self._system_controller.ocr_screen(region, lang)
         except Exception as e:
@@ -1697,12 +1697,12 @@ _doc_org_instance = None
 
 def get_ai_agent(ai_helper=None, config_manager=None, **kwargs):
     """获取 AIAgent 单例实例
-    
+
     Args:
         ai_helper: AIHelper 实例（可选，支持依赖注入）
         config_manager: 配置管理器实例（可选）
         **kwargs: 其他参数（ollama_url, model 等，向后兼容）
-    
+
     Returns:
         AIAgent 实例
     """

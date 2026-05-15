@@ -3,7 +3,7 @@ HermesService - 全能力 Hermes Agent 集成入口
 
 Hermes 全部能力矩阵：
   基础:  chat | oneshot (-z) | session (--resume/--continue)
-  技能:  skills | plugins | hooks | tools  
+  技能:  skills | plugins | hooks | tools
   记忆:  memory (语义记忆/向量存储)
   联网:  browser (浏览器自动化)
   协议:  MCP servers | ACP | gateway
@@ -74,11 +74,11 @@ class HermesSession:
     model: str = ""
     provider: str = ""
     context: List[Dict] = field(default_factory=list)
-    
+
     def touch(self):
         self.last_active = time.time()
         self.message_count += 1
-    
+
     def to_dict(self) -> Dict:
         return {
             "id": self.session_id,
@@ -120,28 +120,28 @@ class HermesService:
         self._initialized = False
         self._lock = threading.RLock()
         self._start_time = 0.0
-        
+
         # 会话管理
         self._sessions: Dict[str, HermesSession] = {}
         self._active_session_id: Optional[str] = None
-        
+
         # 能力检测
         self._capabilities: List[HermesCapability] = []
         self._capability_cache: Dict[str, bool] = {}
-        
+
         # 回调
         self._cleanup_hooks: List[Callable] = []
         self._status_callbacks: List[Callable] = []
-        
+
         # 模型切换器（延迟初始化）
         self._model_switcher = None
         self._current_active_model: Optional[str] = None
-        
+
         # 超时配置（渐进式）
         self._default_timeout = 180
         self._max_timeout = 600
         self._timeout_step = 120  # 每次超时递增
-        
+
         # 从配置加载路径 + 超时
         if config_manager:
             self._hermes_dir = config_manager.get("hermes_install_path", self._hermes_dir)
@@ -155,36 +155,36 @@ class HermesService:
         """初始化 Hermes 服务"""
         if self._initialized:
             return self._available
-        
+
         with self._lock:
             if self._initialized:
                 return self._available
             self._initialized = True
             self._start_time = time.time()
-        
+
         logger.info("🚀 初始化 Hermes Service...")
-        
+
         # 1. 检查 WSL
         self._wsl_ready = self._probe_wsl()
         if not self._wsl_ready:
             self._wsl_ready = self._boot_wsl()
-        
+
         if not self._wsl_ready:
             logger.warning("WSL 不可用")
             return False
-        
+
         # 2. 检查 Hermes
         self._available, self._version = self._probe_hermes()
         if not self._available:
             logger.warning("Hermes 不可用")
             return False
-        
+
         # 3. 检测可用能力
         self._detect_capabilities()
-        
+
         # 4. 恢复已有会话
         self._restore_sessions()
-        
+
         # 5. 初始化模型切换器
         try:
             from services.model_switcher import get_model_switcher
@@ -194,7 +194,7 @@ class HermesService:
             )
         except Exception as e:
             logger.debug(f"ModelSwitcher 初始化跳过: {e}")
-        
+
         logger.info(
             f"✅ Hermes Service 就绪 "
             f"(v{self._version}, "
@@ -268,14 +268,14 @@ class HermesService:
         """检测 Hermes 支持的能力"""
         if not self._available:
             return
-        
+
         # 基础能力总是可用
         self._capabilities = [
             HermesCapability.CHAT,
             HermesCapability.ONESHOT,
             HermesCapability.SESSION,
         ]
-        
+
         # 通过 hermes --help 解析子命令
         try:
             r = subprocess.run(
@@ -285,7 +285,7 @@ class HermesService:
                 encoding='utf-8', errors='replace'
             )
             help_text = r.stdout + r.stderr
-            
+
             capability_map = {
                 'skills': HermesCapability.SKILLS,
                 'plugins': HermesCapability.PLUGINS,
@@ -298,12 +298,12 @@ class HermesService:
                 'webhook': HermesCapability.WEBHOOK,
                 'acp': HermesCapability.ACP,
             }
-            
+
             for keyword, cap in capability_map.items():
                 if keyword in help_text.lower():
                     self._capabilities.append(cap)
                     self._capability_cache[cap.value] = True
-                    
+
         except Exception as e:
             logger.debug(f"能力检测失败: {e}")
 
@@ -371,11 +371,11 @@ class HermesService:
             return [s.to_dict() for s in self._sessions.values()]
 
     # ── 模型切换器 ──────────────────────────────────────────────────────────
-    
+
     @property
     def model_switcher(self):
         return self._model_switcher
-    
+
     def get_current_model_id(self) -> str:
         """获取当前应使用的模型ID（通过切换器）"""
         if self._model_switcher:
@@ -383,7 +383,7 @@ class HermesService:
             if current:
                 return current.model_id
         return "ds-v4-flash"
-    
+
     def select_model_for_task(self, prompt: str) -> Optional[str]:
         """根据任务选择模型，返回 model_id"""
         if self._model_switcher and self._model_switcher.auto_switch_enabled:
@@ -391,14 +391,14 @@ class HermesService:
             if selected:
                 return selected.model_id
         return None
-    
+
     # ── 核心接口: Oneshot 一次性问答 ──────────────────────────────────────────
 
     def oneshot(self, prompt: str, system_prompt: str = "",
                 model: str = None, timeout: int = None,
                 stream_callback: Callable[[str], None] = None) -> str:
         """一次性问答模式 (hermes -z)
-        
+
         Args:
             prompt: 用户消息
             system_prompt: 系统提示
@@ -415,7 +415,7 @@ class HermesService:
             full_prompt = f"System: {system_prompt}\n\nUser: {prompt}"
 
         hermes_bin = f"{self._hermes_dir}/venv/bin/hermes"
-        
+
         # 写入 WSL 原生临时文件（避免 9p 挂载缓存问题）
         wsl_file = self._write_wsl_tmp(full_prompt, "hermes_prompt_")
         try:
@@ -426,44 +426,44 @@ class HermesService:
                     model = auto_model.model_id
             elif not model:
                 model = self.get_current_model_id()
-            
+
             model_arg = f' -m "{model}"' if model else ''
             actual_timeout = timeout or self._default_timeout
-            
+
             cmd = (
                 f'PROMPT=$(cat "{wsl_file}"); '
                 f'{hermes_bin} -z "$PROMPT"{model_arg} '
                 f'--accept-hooks --ignore-rules 2>&1'
             )
-            
+
             logger.info(f"📤 Hermes oneshot: {prompt[:60]}...")
             start = time.time()
-            
+
             if stream_callback:
                 result = self._run_streaming(cmd, stream_callback, actual_timeout)
             else:
                 result = self._run_blocking(cmd, actual_timeout)
-            
+
             # 记录调用结果到模型切换器
             elapsed = time.time() - start
             self._record_call_result(model or "default", result, elapsed, actual_timeout)
             return result
-                
+
         finally:
             self._remove_wsl_tmp(wsl_file)
-    
+
     def oneshot_with_escalation(self, prompt: str, system_prompt: str = "",
                                  stream_callback: Callable[[str], None] = None,
                                  max_retries: int = 2) -> str:
         """渐进式超时：从默认超时开始，每次超时增加 timeout_step，最多重试 max_retries 次
-        
+
         遇到超时会自动尝试降级模型
         """
         if not self.ensure_ready():
             return self._fallback_error("Hermes 不可用")
-        
+
         timeout = self._default_timeout
-        
+
         for attempt in range(max_retries + 1):
             # 选择模型
             model = None
@@ -471,19 +471,19 @@ class HermesService:
                 selected = self._model_switcher.select_model(prompt)
                 if selected:
                     model = selected.model_id
-            
+
             logger.info(f"📤 Hermes oneshot (尝试 {attempt+1}/{max_retries+1}, 超时={timeout}s, 模型={model or 'auto'})")
-            
+
             result = self.oneshot(
                 prompt, system_prompt=system_prompt,
                 model=model, timeout=timeout,
                 stream_callback=stream_callback
             )
-            
+
             # 检查是否超时
             if result.startswith("[超时]"):
                 logger.warning(f"⏰ Hermes 超时 ({timeout}s)，尝试 {attempt+1}/{max_retries+1}")
-                
+
                 # 尝试降级模型
                 if self._model_switcher and attempt < max_retries:
                     elapsed = timeout * 1000
@@ -495,11 +495,11 @@ class HermesService:
                     if fallback:
                         self._current_active_model = fallback.model_id
                         model = fallback.model_id  # 下次重试用降级模型
-                
+
                 # 增加超时时间
                 timeout = min(timeout + self._timeout_step, self._max_timeout)
                 continue
-            
+
             # 检查是否慢响应（<timeout 但 >60s）
             if result.startswith("[错误]"):
                 if self._model_switcher and attempt < max_retries:
@@ -510,24 +510,24 @@ class HermesService:
                         self._current_active_model = fallback.model_id
                         model = fallback.model_id  # 下次重试用降级模型
                         continue
-            
+
             return result
-        
+
         return "[超时] Hermes 在所有重试后仍未响应，请检查网络或 API 状态"
-    
+
     def _record_call_result(self, model_id: str, result: str, elapsed: float, timeout: int):
         """记录调用结果到模型切换器"""
         if not self._model_switcher:
             return
-        
+
         # 将 API model_id 转换为内部 ID 以匹配 ModelSwitcher 统计
         internal_id = self._model_switcher.find_by_api_model_id(model_id) or model_id
-        
+
         is_timeout = result.startswith("[超时]") or elapsed >= timeout * 0.95
         is_error = result.startswith("[错误]")
-        
+
         latency_ms = elapsed * 1000
-        
+
         if is_timeout or is_error:
             self._model_switcher.record_failure(internal_id)
             # 超时自动降级
@@ -542,7 +542,7 @@ class HermesService:
              stream_callback: Callable[[str], None] = None,
              timeout: int = None) -> str:
         """对话模式：自动管理会话
-        
+
         首次调用创建会话，后续使用 --resume 恢复上下文
         """
         if not self.ensure_ready():
@@ -551,18 +551,18 @@ class HermesService:
         session = self.get_active_session()
         if not session:
             session = self.new_session()
-        
+
         hermes_bin = f"{self._hermes_dir}/venv/bin/hermes"
-        
+
         if session.message_count == 0:
             # 首次消息：使用 session 名称
             safe_name = re.sub(r'[^a-zA-Z0-9_-]', '_', session.name or 'chat')
-            
+
             # 将 system_prompt 和消息合并
             full_msg = message
             if system_prompt:
                 full_msg = f"System instruction: {system_prompt}\n\nUser: {message}"
-            
+
             # 写入 WSL 原生临时文件
             wsl_file_msg = self._write_wsl_tmp(full_msg, "hermes_chat_")
             try:
@@ -572,18 +572,18 @@ class HermesService:
                     f'--accept-hooks --ignore-rules '
                     f'--resume "{safe_name}" 2>&1'
                 )
-                
+
                 if stream_callback:
                     result = self._run_streaming(cmd, stream_callback, timeout)
                 else:
                     result = self._run_blocking(cmd, timeout)
-                    
+
             finally:
                 self._remove_wsl_tmp(wsl_file_msg)
         else:
             # 后续消息：使用 --resume 恢复
             safe_name = re.sub(r'[^a-zA-Z0-9_-]', '_', session.name or 'chat')
-            
+
             wsl_file_msg = self._write_wsl_tmp(message, "hermes_msg_")
             try:
                 cmd = (
@@ -592,15 +592,15 @@ class HermesService:
                     f'--accept-hooks --ignore-rules '
                     f'--resume "{safe_name}" 2>&1'
                 )
-                
+
                 if stream_callback:
                     result = self._run_streaming(cmd, stream_callback, timeout)
                 else:
                     result = self._run_blocking(cmd, timeout)
-                    
+
             finally:
                 self._remove_wsl_tmp(wsl_file_msg)
-        
+
         session.touch()
         return result
 
@@ -610,14 +610,14 @@ class HermesService:
                          stream_callback: Callable[[str], None] = None,
                          timeout: int = 180) -> str:
         """继续已有会话 (hermes --continue)
-        
+
         不传入消息则仅仅恢复会话上下文，用于查看历史
         """
         if not self.ensure_ready():
             return self._fallback_error("Hermes 不可用")
 
         hermes_bin = f"{self._hermes_dir}/venv/bin/hermes"
-        
+
         if message:
             wsl_file_cont = self._write_wsl_tmp(message, "hermes_cont_")
             try:
@@ -627,7 +627,7 @@ class HermesService:
                     f'--accept-hooks --ignore-rules '
                     f'--continue "{session_name}" 2>&1'
                 )
-                
+
                 if stream_callback:
                     return self._run_streaming(cmd, stream_callback, timeout)
                 else:
@@ -644,18 +644,18 @@ class HermesService:
 
     # ── 核心接口: 任务执行模式 ──────────────────────────────────────────────
 
-    def execute_task(self, task: str, 
+    def execute_task(self, task: str,
                      stream_callback: Callable[[str], None] = None,
                      timeout: int = None) -> str:
         """任务执行模式 - 向 Hermes 发送结构化任务
-        
+
         与 chat 不同，execute 会使用 worktree 和 pass-session-id
         """
         if not self.ensure_ready():
             return self._fallback_error("Hermes 不可用")
 
         hermes_bin = f"{self._hermes_dir}/venv/bin/hermes"
-        
+
         wsl_file_task = self._write_wsl_tmp(task, "hermes_task_")
         try:
             cmd = (
@@ -664,12 +664,12 @@ class HermesService:
                 f'--accept-hooks --ignore-rules '
                 f'--worktree --pass-session-id 2>&1'
             )
-            
+
             if stream_callback:
                 return self._run_streaming(cmd, stream_callback, timeout)
             else:
                 return self._run_blocking(cmd, timeout)
-                
+
         finally:
             self._remove_wsl_tmp(wsl_file_task)
 
@@ -701,7 +701,7 @@ class HermesService:
         """列出 Hermes 可用技能"""
         if not self.has_capability(HermesCapability.SKILLS):
             return []
-        
+
         hermes_bin = f"{self._hermes_dir}/venv/bin/hermes"
         try:
             r = subprocess.run(
@@ -718,7 +718,7 @@ class HermesService:
         """调用 Hermes 技能"""
         hermes_bin = f"{self._hermes_dir}/venv/bin/hermes"
         skill_args = ' '.join(f'--{k} "{v}"' for k, v in params.items())
-        
+
         try:
             r = subprocess.run(
                 ['wsl', '-d', self._wsl_distro, 'bash', '-l', '-c',
@@ -735,7 +735,7 @@ class HermesService:
         """列出可用工具"""
         if not self.has_capability(HermesCapability.TOOLS):
             return []
-        
+
         hermes_bin = f"{self._hermes_dir}/venv/bin/hermes"
         try:
             r = subprocess.run(
@@ -754,7 +754,7 @@ class HermesService:
         """查询 Hermes 语义记忆"""
         if not self.has_capability(HermesCapability.MEMORY):
             return []
-        
+
         hermes_bin = f"{self._hermes_dir}/venv/bin/hermes"
         try:
             r = subprocess.run(
@@ -774,7 +774,7 @@ class HermesService:
         """让 Hermes 浏览器访问指定URL"""
         if not self.has_capability(HermesCapability.BROWSER):
             return "浏览器能力不可用"
-        
+
         hermes_bin = f"{self._hermes_dir}/venv/bin/hermes"
         try:
             r = subprocess.run(
@@ -843,7 +843,7 @@ class HermesService:
 
     def _write_wsl_tmp(self, content: str, prefix: str = "hermes_") -> str:
         """将内容写入 WSL 原生 /tmp/ 文件系统，返回 WSL 路径。
-        
+
         避免 Windows→WSL 的 9p 挂载缓存问题：文件直接在 WSL 内创建，
         不经过 /mnt/c/ 通道路由。
         """
@@ -881,7 +881,7 @@ class HermesService:
             )
             elapsed = time.time() - self._start_time if self._start_time else 0
             logger.debug(f"Hermes 响应: {elapsed:.1f}s")
-            
+
             if r.returncode == 0:
                 return r.stdout.strip() or "(空响应)"
             else:
@@ -904,7 +904,7 @@ class HermesService:
                 text=True, encoding='utf-8', errors='replace',
                 bufsize=0
             )
-            
+
             deadline = time.time() + timeout
             for line in iter(proc.stdout.readline, ''):
                 if time.time() > deadline:
@@ -915,10 +915,10 @@ class HermesService:
                     callback(line)
                 if proc.poll() is not None:
                     break
-            
+
             proc.wait(timeout=5)
             return ''.join(full_output).strip()
-            
+
         except Exception as e:
             return f"[流式异常] {e}"
 

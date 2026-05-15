@@ -86,13 +86,13 @@ class DeepSeekClient:
     def chat(self, messages: list, stream_callback: Callable[[str], None] = None,
              timeout: int = 60, system_prompt: str = "") -> str:
         """发送聊天请求，支持流式输出
-        
+
         Args:
             messages: [{"role": "user"/"assistant", "content": "..."}, ...]
             stream_callback: 流式回调 (接收每个 token)
             timeout: 超时秒数
             system_prompt: 系统提示
-        
+
         Returns:
             AI 回复文本
         """

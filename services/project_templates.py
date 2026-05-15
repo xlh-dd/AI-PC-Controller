@@ -32,7 +32,7 @@ class ProjectTemplate:
 
 class ProjectTemplates:
     """项目模板管理器"""
-    
+
     TEMPLATES = {
         "flask_api": ProjectTemplate(
             name="Flask REST API",
@@ -115,7 +115,7 @@ def test_health(client):
             dependencies=["flask", "flask-jwt-extended", "python-dotenv"],
             post_commands=["pip install -r requirements.txt"]
         ),
-        
+
         "fastapi": ProjectTemplate(
             name="FastAPI",
             description="Python FastAPI with async support",
@@ -179,7 +179,7 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
             },
             dependencies=["fastapi", "uvicorn", "pydantic"]
         ),
-        
+
         "react_app": ProjectTemplate(
             name="React App",
             description="React + TypeScript + Vite",
@@ -255,7 +255,7 @@ export default defineConfig({
             dev_dependencies=["vite", "@vitejs/plugin-react", "typescript", "@types/react", "@types/react-dom"],
             post_commands=["npm install"]
         ),
-        
+
         "vue_app": ProjectTemplate(
             name="Vue App",
             description="Vue 3 + TypeScript + Vite",
@@ -311,7 +311,7 @@ const count = ref(0)
             dev_dependencies=["vite", "@vitejs/plugin-vue", "typescript", "vue-tsc"],
             post_commands=["npm install"]
         ),
-        
+
         "python_scraper": ProjectTemplate(
             name="Python 爬虫",
             description="Scrapy-like crawler with requests + BeautifulSoup",
@@ -333,12 +333,12 @@ class WebScraper:
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.0'
         })
         self.visited = set()
-    
+
     def fetch(self, url: str) -> Optional[BeautifulSoup]:
         if url in self.visited:
             return None
         self.visited.add(url)
-        
+
         try:
             time.sleep(self.delay)
             resp = self.session.get(url, timeout=30)
@@ -347,7 +347,7 @@ class WebScraper:
         except Exception as e:
             print(f"Error fetching {url}: {e}")
             return None
-    
+
     def extract_links(self, soup: BeautifulSoup, base: str) -> List[str]:
         links = []
         for a in soup.find_all('a', href=True):
@@ -355,14 +355,14 @@ class WebScraper:
             if urlparse(href).netloc == urlparse(self.base_url).netloc:
                 links.append(href)
         return links
-    
+
     def parse(self, soup: BeautifulSoup) -> Dict:
         # TODO: implement parsing logic
         return {
             "title": soup.title.text if soup.title else "",
             "links": len(soup.find_all('a')),
         }
-    
+
     def run(self, start_url: str = None):
         url = start_url or self.base_url
         soup = self.fetch(url)
@@ -383,7 +383,7 @@ lxml>=4.9
             },
             dependencies=["requests", "beautifulsoup4", "lxml"]
         ),
-        
+
         "go_api": ProjectTemplate(
             name="Go API",
             description="Go Gin REST API",
@@ -405,15 +405,15 @@ var items = []Item{}
 
 func main() {
 	r := gin.Default()
-	
+
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
-	
+
 	r.GET("/items", func(c *gin.Context) {
 		c.JSON(http.StatusOK, items)
 	})
-	
+
 	r.POST("/items", func(c *gin.Context) {
 		var item Item
 		if err := c.ShouldBindJSON(&item); err != nil {
@@ -424,7 +424,7 @@ func main() {
 		items = append(items, item)
 		c.JSON(http.StatusCreated, item)
 	})
-	
+
 	r.Run(":8080")
 }
 ''',
@@ -452,7 +452,7 @@ CMD ["./main"]
             dependencies=["github.com/gin-gonic/gin"],
             post_commands=["go mod tidy"]
         ),
-        
+
         "rust_cli": ProjectTemplate(
             name="Rust CLI",
             description="Rust CLI with clap",
@@ -487,20 +487,20 @@ enum Commands {
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
-    
+
     match cli.command {
         Commands::Hello { name } => {
             println!("Hello, {}!", name.unwrap_or_else(|| "World".to_string()));
         }
     }
-    
+
     Ok(())
 }
 ''',
             },
             post_commands=["cargo build"]
         ),
-        
+
         "data_science": ProjectTemplate(
             name="数据科学",
             description="Jupyter + Pandas + Matplotlib",
@@ -525,7 +525,7 @@ def analyze_data(file_path: str):
     print(df.info())
     print(f"\\nDescribe:")
     print(df.describe())
-    
+
     # 保存统计图
     df.hist(figsize=(10, 8))
     plt.tight_layout()
@@ -539,7 +539,7 @@ if __name__ == '__main__':
             dependencies=["pandas", "numpy", "matplotlib", "seaborn", "jupyter", "scikit-learn"]
         ),
     }
-    
+
     @classmethod
     def list_templates(cls) -> List[Dict]:
         """列出所有模板"""
@@ -553,43 +553,43 @@ if __name__ == '__main__':
             }
             for tid, t in cls.TEMPLATES.items()
         ]
-    
+
     @classmethod
     def get_template(cls, template_id: str) -> Optional[ProjectTemplate]:
         """获取模板"""
         return cls.TEMPLATES.get(template_id)
-    
+
     @classmethod
     def generate(cls, template_id: str, output_dir: str, project_name: str = None) -> Dict:
         """生成项目
-        
+
         Returns:
             {"success": bool, "files": [...], "errors": [...]}
         """
         template = cls.get_template(template_id)
         if not template:
             return {"success": False, "errors": [f"模板不存在: {template_id}"]}
-        
+
         project_name = project_name or template_id
         project_dir = os.path.join(output_dir, project_name)
-        
+
         os.makedirs(project_dir, exist_ok=True)
-        
+
         created = []
         errors = []
-        
+
         for rel_path, content in template.files.items():
             try:
                 file_path = os.path.join(project_dir, rel_path)
                 os.makedirs(os.path.dirname(file_path), exist_ok=True)
-                
+
                 with open(file_path, 'w', encoding='utf-8') as f:
                     f.write(content)
-                
+
                 created.append(rel_path)
             except Exception as e:
                 errors.append(f"{rel_path}: {e}")
-        
+
         return {
             "success": len(errors) == 0,
             "files": created,

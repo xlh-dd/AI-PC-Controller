@@ -9,7 +9,7 @@ logger = logging.getLogger("ConfigManager")
 
 class ConfigManager:
     """配置管理类"""
-    
+
     CONFIG_VALIDATION = {
         "check_interval": {
             "type": int,
@@ -98,23 +98,23 @@ class ConfigManager:
             "description": "语音合成音量"
         }
     }
-    
+
     def __init__(self, config_file=None):
         self.config_file = config_file or Path.home() / ".aipc_helper_config.json"
         self.config = self.load_config()
         self._lock = threading.RLock()
         self._validate_and_fix_config()
-    
+
     def _validate_and_fix_config(self):
         """验证并修复配置"""
         for key, spec in self.CONFIG_VALIDATION.items():
             if key not in self.config:
                 self.config[key] = spec["default"]
                 continue
-            
+
             value = self.config[key]
             value_type = spec["type"]
-            
+
             if value_type == bool:
                 if isinstance(value, str):
                     self.config[key] = value.lower() in ("true", "yes", "1", "on")
@@ -135,23 +135,23 @@ class ConfigManager:
             elif value_type == str:
                 if not isinstance(value, str):
                     self.config[key] = str(value) if value is not None else spec["default"]
-    
+
     def validate_config_value(self, key: str, value: Any) -> tuple[bool, Any]:
         """验证配置值是否合法
-        
+
         Args:
             key: 配置键名
             value: 配置值
-            
+
         Returns:
             (是否有效, 修正后的值)
         """
         if key not in self.CONFIG_VALIDATION:
             return True, value
-        
+
         spec = self.CONFIG_VALIDATION[key]
         value_type = spec["type"]
-        
+
         try:
             if value_type == bool:
                 if isinstance(value, str):
@@ -170,40 +170,40 @@ class ConfigManager:
                 corrected = str(value) if value is not None else spec["default"]
             else:
                 corrected = value
-            
+
             return True, corrected
         except (ValueError, TypeError):
             return False, spec["default"]
-    
+
     def get_config_spec(self, key: Optional[str] = None) -> Union[Dict, Any]:
         """获取配置项的规格说明
-        
+
         Args:
             key: 配置键名，如果为None则返回所有规格
-            
+
         Returns:
             配置规格或规格字典
         """
         if key is None:
             return self.CONFIG_VALIDATION
         return self.CONFIG_VALIDATION.get(key)
-    
+
     def reset_to_defaults(self, keys: Optional[list] = None):
         """重置配置到默认值
-        
+
         Args:
             keys: 要重置的键列表，None表示全部重置
         """
         with self._lock:
             if keys is None:
                 keys = list(self.CONFIG_VALIDATION.keys())
-            
+
             for key in keys:
                 if key in self.CONFIG_VALIDATION:
                     self.config[key] = self.CONFIG_VALIDATION[key]["default"]
-            
+
             self.save_config()
-    
+
     def load_config(self):
         """加载配置文件"""
         if self.config_file.exists():
@@ -213,33 +213,33 @@ class ConfigManager:
             except Exception as e:
                 print(f"加载配置文件失败：{e}")
         return {}
-    
+
     def save_config(self):
         """保存配置文件（原子写入）"""
         import tempfile
-        
+
         with self._lock:
             try:
                 config_dir = os.path.dirname(self.config_file)
                 if config_dir and not os.path.exists(config_dir):
                     os.makedirs(config_dir, exist_ok=True)
-                
+
                 # 创建临时文件
                 temp_fd, temp_path = tempfile.mkstemp(
                     dir=config_dir or None,
                     prefix='.tmp_config_',
                     suffix='.json'
                 )
-                
+
                 try:
                     # 写入临时文件
                     with os.fdopen(temp_fd, 'w', encoding='utf-8') as f:
                         json.dump(self.config, f, ensure_ascii=False, indent=2)
-                    
+
                     # 原子替换（os.replace 在所有平台都是原子操作）
                     os.replace(temp_path, self.config_file)
                     return True
-                    
+
                 except Exception as write_error:
                     # 写入失败，清理临时文件
                     try:
@@ -248,15 +248,15 @@ class ConfigManager:
                     except Exception:
                         pass
                     raise write_error
-                    
+
             except Exception as e:
                 print(f"保存配置失败：{e}")
                 return False
-    
+
     def get(self, key, default=None):
         """获取配置值（带类型转换）"""
         value = self.config.get(key, default)
-        
+
         # 对特定键进行类型转换（确保与set方法一致）
         if key == "check_interval":
             try:
@@ -278,9 +278,9 @@ class ConfigManager:
             if value is None or not isinstance(value, str):
                 return default if default is not None else "hermes"
             return value
-        
+
         return value
-    
+
     def set(self, key, value):
         """设置配置值（带简单类型校验）"""
         with self._lock:
@@ -301,16 +301,16 @@ class ConfigManager:
                 value = str(value) if value is not None else "qwen2.5:1.5b"
             elif key == "current_api_provider" and not isinstance(value, str):
                 value = str(value) if value is not None else "hermes"
-            
+
             self.config[key] = value
             return self.save_config()
-    
+
     def get_data_directory(self, subdirectory=None) -> Path:
         """获取数据存储目录
-        
+
         Args:
             subdirectory: 子目录名
-            
+
         Returns:
             Path对象指向数据目录
         """
@@ -321,17 +321,17 @@ class ConfigManager:
         else:
             # 默认数据目录: 用户主目录下的 .aipc_helper_data
             data_path = Path.home() / ".aipc_helper_data"
-        
+
         # 确保目录存在
         data_path.mkdir(parents=True, exist_ok=True)
-        
+
         if subdirectory:
             subdir_path = data_path / subdirectory
             subdir_path.mkdir(parents=True, exist_ok=True)
             return subdir_path
-        
+
         return data_path
-    
+
     def get_default_app_paths(self):
         """获取默认应用路径"""
         local_appdata = os.environ.get('LOCALAPPDATA', '')

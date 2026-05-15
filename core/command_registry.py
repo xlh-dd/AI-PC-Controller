@@ -88,7 +88,7 @@ def list_commands() -> Dict[str, str]:
 def _register_builtin_commands():
     """注册内置命令（示例）"""
     registry = get_registry()
-    
+
     # 1. open_app
     def cmd_open_app(context, cmd_data):
         """打开应用程序"""
@@ -98,7 +98,7 @@ def _register_builtin_commands():
         else:
             context.say("系统", "无法识别要打开的应用。")
     registry.register_handler("open_app", cmd_open_app, "打开应用程序")
-    
+
     # 2. open_file
     def cmd_open_file(context, cmd_data):
         """打开文件"""
@@ -112,7 +112,7 @@ def _register_builtin_commands():
         else:
             context.say("系统", "无法识别要打开的文件路径。")
     registry.register_handler("open_file", cmd_open_file, "打开文件")
-    
+
     # 3. open_folder
     def cmd_open_folder(context, cmd_data):
         """打开文件夹"""
@@ -126,15 +126,15 @@ def _register_builtin_commands():
         else:
             context.say("系统", "无法识别要打开的文件夹路径。")
     registry.register_handler("open_folder", cmd_open_folder, "打开文件夹")
-    
+
     # 4. sort_files
     def cmd_sort_files(context, cmd_data):
         """自动分类文件"""
         context.auto_sort_files()
     registry.register_handler("sort_files", cmd_sort_files, "自动分类文件")
-    
+
     # 5. 更多命令可在此添加...
-    
+
     # 6. 迁移自 main.py 的 elif 链命令
     try:
         from .command_registry_migrated import _register_migrated_commands

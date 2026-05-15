@@ -40,7 +40,7 @@ TESSDATA_DIR = None
 try:
     from PIL import Image, ImageEnhance, ImageFilter
     import pytesseract
-    
+
     common_paths = [
         r"D:\AI\tesseract\tesseract.exe",
         r"D:\AI\tessdata",
@@ -49,12 +49,12 @@ try:
         os.path.join(os.environ.get("LOCALAPPDATA", ""), "Tesseract-OCR", "tesseract.exe"),
         os.path.join(os.environ.get("PROGRAMFILES", ""), "Tesseract-OCR", "tesseract.exe"),
     ]
-    
+
     for path in common_paths:
         if os.path.exists(path):
             pytesseract.pytesseract.tesseract_cmd = path
             TESSERACT_CMD = path
-            
+
             tesseract_dir = os.path.dirname(path)
             possible_tessdata = [
                 os.path.join(tesseract_dir, "tessdata"),
@@ -62,14 +62,14 @@ try:
                 r"D:\AI\tesseract\tessdata",
                 r"D:\AI\tessdata",
             ]
-            
+
             for td in possible_tessdata:
                 if os.path.exists(td):
                     TESSDATA_DIR = td
                     os.environ["TESSDATA_PREFIX"] = td + os.sep
                     logger.info(f"tessdata 目录: {td}")
                     break
-            
+
             try:
                 result = subprocess.run([path, "--version"], capture_output=True, text=True, timeout=5)
                 if result.returncode == 0:
@@ -79,11 +79,11 @@ try:
                     break
             except Exception as e:
                 logger.warning(f"检测 Tesseract 失败: {e}")
-    
+
     if not OCR_AVAILABLE:
         logger.warning("未找到 Tesseract OCR，OCR功能已禁用")
         logger.warning("请从 https://github.com/UB-Mannheim/tesseract/wiki 下载安装")
-        
+
 except ImportError as e:
     logger.warning(f"OCR库未安装 - {e}")
     logger.warning("请运行: pip install pytesseract Pillow")
@@ -170,7 +170,7 @@ class WeChatController:
                 self.last_error = "pygetwindow不可用"
                 logger.warning("pygetwindow不可用，无法检查窗口")
                 return False
-            
+
             windows = gw.getWindowsWithTitle('微信')
             if not windows:
                 windows = gw.getWindowsWithTitle('WeChat')
@@ -178,30 +178,30 @@ class WeChatController:
                 self.last_error = "未找到微信窗口"
                 logger.warning("未找到微信窗口")
                 return False
-            
+
             # 检查是否有可见窗口（非最小化）
             visible_window_found = False
             for win in windows:
                 try:
                     is_minimized = win.isMinimized
                     is_visible = not is_minimized and win.visible
-                    
+
                     logger.info(f"微信窗口: {win.title}, 位置: ({win.left}, {win.top}), 大小: {win.width}x{win.height}, "
                                f"最小化={is_minimized}, 可见={is_visible}")
-                    
+
                     if is_visible:
                         visible_window_found = True
-                        
+
                 except AttributeError:
                     # pygetwindow版本可能不支持这些属性
                     logger.info(f"微信窗口: {win.title}, 位置: ({win.left}, {win.top}), 大小: {win.width}x{win.height}")
                     visible_window_found = True
-            
+
             if not visible_window_found:
                 self.last_error = "微信窗口不可见（可能全部最小化）"
                 logger.warning("微信窗口不可见（可能全部最小化）")
                 return False
-            
+
             return True
         except Exception as e:
             self.last_error = f"检查窗口失败: {str(e)}"
@@ -210,10 +210,10 @@ class WeChatController:
 
     def activate_wechat_window(self, max_retries=2):
         """激活微信窗口，支持最小化恢复
-        
+
         Args:
             max_retries: 最大重试次数
-            
+
         Returns:
             (win, was_minimized, was_active) 或 None
         """
@@ -228,12 +228,12 @@ class WeChatController:
                         time.sleep(0.5)
                         continue
                     return None
-                
+
                 win = windows[0]
                 was_minimized = False
                 was_maximized = False
                 was_active = False
-                
+
                 # 检查窗口状态
                 try:
                     was_minimized = win.isMinimized
@@ -244,16 +244,16 @@ class WeChatController:
                     was_minimized = False
                     was_maximized = False
                     was_active = False
-                
+
                 logger.info(f"微信窗口状态: 最小化={was_minimized}, 最大化={was_maximized}, 激活={was_active}")
-                
+
                 # 恢复最小化窗口
                 if was_minimized:
                     logger.info("恢复最小化的微信窗口")
                     win.restore()
                     # 等待窗口完全恢复
                     time.sleep(0.3)
-                    
+
                     # 再次检查是否仍然最小化
                     try:
                         if win.isMinimized:
@@ -263,11 +263,11 @@ class WeChatController:
                             win.restore()   # 再恢复
                     except AttributeError:
                         pass
-                
+
                 # 激活窗口
                 win.activate()
                 time.sleep(0.3)
-                
+
                 # 确保窗口在前台
                 try:
                     if not win.isActive:
@@ -276,19 +276,19 @@ class WeChatController:
                         time.sleep(0.2)
                 except AttributeError:
                     pass
-                
+
                 # 额外等待窗口完全就绪
                 time.sleep(0.5)
-                
+
                 logger.info(f"微信窗口激活成功 (重试 {retry+1}/{max_retries})")
                 return win, was_minimized, was_active
-                
+
             except Exception as e:
                 logger.warning(f"激活微信窗口失败 (重试 {retry+1}/{max_retries}): {e}")
                 if retry < max_retries - 1:
                     time.sleep(0.5)
                     continue
-        
+
         logger.error(f"激活微信窗口失败，已达到最大重试次数 {max_retries}")
         return None
 
@@ -425,12 +425,12 @@ class WeChatController:
         """OCR方案获取消息"""
         if not OCR_AVAILABLE:
             return None
-            
+
         try:
             if self.tesseract_cmd and os.path.exists(self.tesseract_cmd):
                 pytesseract.pytesseract.tesseract_cmd = self.tesseract_cmd
                 logger.info(f"使用配置的Tesseract: {self.tesseract_cmd}")
-            
+
             win.activate()
             time.sleep(0.5)
 
@@ -511,7 +511,7 @@ class WeChatController:
             window_height = win.height
             window_left = win.left
             window_top = win.top
-            
+
             # 记录窗口信息用于调试
             logger.info(f"剪贴板方案 - 窗口信息: 位置({window_left}, {window_top}), 尺寸({window_width}x{window_height})")
 
@@ -519,7 +519,7 @@ class WeChatController:
             if self.last_msg_pos:
                 logger.info(f"使用用户校准的坐标: {self.last_msg_pos}")
                 rx, ry = self.last_msg_pos
-                
+
                 # 判断坐标类型：比例坐标(0-1)还是绝对坐标
                 if abs(rx) <= 1.0 and abs(ry) <= 1.0:
                     # 比例坐标：转换为绝对坐标
@@ -533,10 +533,10 @@ class WeChatController:
                     user_x = int(rx)
                     user_y = int(ry)
                     # 检查坐标是否在窗口内
-                    if not (window_left <= user_x <= window_left + window_width and 
+                    if not (window_left <= user_x <= window_left + window_width and
                            window_top <= user_y <= window_top + window_height):
                         logger.warning(f"绝对坐标({user_x}, {user_y})不在窗口内，窗口区域: ({window_left}, {window_top}) - ({window_left+window_width}, {window_top+window_height})")
-                
+
                 positions = [
                     (user_x, user_y),
                     (user_x + 10, user_y),
@@ -565,10 +565,10 @@ class WeChatController:
 
             full_text = ""
             successful_position = None
-            
+
             # 记录所有尝试位置用于调试
             logger.info(f"剪贴板方案将尝试 {len(positions)} 个位置: {positions}")
-            
+
             for idx, (msg_x, msg_y) in enumerate(positions):
                 try:
                     logger.info(f"尝试第 {idx+1}/{len(positions)} 个位置: ({msg_x}, {msg_y})")
@@ -758,7 +758,7 @@ class WeChatController:
     def check_wechat_message(self):
         """检查微信消息"""
         logger.info(f"开始检查微信消息，联系人：{self.contact}")
-        
+
         result = self.activate_wechat_window()
         if not result:
             self.fail_count += 1
@@ -841,7 +841,7 @@ class WeChatController:
             "contact": self.contact,
             "wechat_visible": self.is_wechat_window_visible(),
         }
-        
+
         try:
             windows = gw.getWindowsWithTitle('微信')
             if not windows:
@@ -857,21 +857,21 @@ class WeChatController:
                 }
         except Exception as e:
             info["window_error"] = str(e)
-        
+
         return info
-    
+
     def get_latest_messages(self, count=5):
         """获取最新的消息
-        
+
         Args:
             count: 要获取的消息数量（由于UI限制，目前只返回最新的一条消息）
-            
+
         Returns:
             消息列表，每个消息是包含text和id的字典
         """
         if not count or count <= 0:
             return []
-        
+
         try:
             # 调用check_wechat_message获取最新消息
             msg_data = self.check_wechat_message()
@@ -887,7 +887,7 @@ class WeChatController:
         except Exception as e:
             logger.error(f"获取最新消息失败: {e}")
             return []
-    
+
     def test_wechat_connection(self):
         """测试微信连接，返回诊断信息"""
         logger.info("开始测试微信连接...")
@@ -896,7 +896,7 @@ class WeChatController:
             "steps": [],
             "error": None
         }
-        
+
         try:
             result["steps"].append("检查窗口...")
             if not self.is_wechat_window_visible():
@@ -904,7 +904,7 @@ class WeChatController:
                 logger.error(result["error"])
                 return result
             result["steps"].append("✓ 找到微信窗口")
-            
+
             result["steps"].append("激活窗口...")
             activate_result = self.activate_wechat_window()
             if not activate_result:
@@ -912,13 +912,13 @@ class WeChatController:
                 return result
             result["steps"].append("✓ 窗口激活成功")
             win, was_minimized, was_active = activate_result
-            
+
             result["steps"].append("进入聊天...")
             if not self.enter_wechat_chat_by_click(win, self.contact):
                 result["error"] = f"无法进入与「{self.contact}」的聊天窗口"
                 return result
             result["steps"].append(f"✓ 进入「{self.contact}」聊天成功")
-            
+
             result["steps"].append("获取消息...")
             time.sleep(2)
             msg_data = self.get_last_message(win)
@@ -927,14 +927,14 @@ class WeChatController:
                 return result
             result["steps"].append(f"✓ 获取消息成功: {msg_data['text'][:30]}...")
             result["success"] = True
-            
+
             if was_minimized:
                 win.minimize()
-                
+
         except Exception as e:
             result["error"] = str(e)
             logger.error(f"测试连接异常: {e}")
-            
+
         return result
 
     def update_last_message_id(self, max_retries=3):

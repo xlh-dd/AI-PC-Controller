@@ -60,7 +60,7 @@ class UnifiedAPIClient:
 
     def query(self, prompt, system_prompt=None, stream_callback=None, model=None, stop_event=None):
         """统一的AI查询接口
-        
+
         Args:
             prompt: 用户输入
             system_prompt: 系统提示词
@@ -71,7 +71,7 @@ class UnifiedAPIClient:
         if not REQUESTS_AVAILABLE:
             logger.error("requests模块未安装，无法调用AI API")
             return None
-        
+
         if not self.provider_config:
             self.load_provider_config()
 
@@ -116,7 +116,7 @@ class UnifiedAPIClient:
                         if stop_event and stop_event.is_set():
                             logger.info("生成已停止")
                             return full_response.strip()
-                        
+
                         if line:
                             try:
                                 chunk = json.loads(line.decode('utf-8'))
@@ -187,7 +187,7 @@ class UnifiedAPIClient:
                         if stop_event and stop_event.is_set():
                             logger.info("生成已停止")
                             return full_response.strip()
-                        
+
                         if line:
                             line = line.decode('utf-8')
                             if line.startswith('data: '):
@@ -273,7 +273,7 @@ class UnifiedAPIClient:
 
     def _query_hermes(self, prompt, system_prompt, stream_callback, model, stop_event=None):
         """通过 HermesService 调用 Hermes Agent（全能力对接）
-        
+
         委托给 services/hermes_service.py，支持:
         - 流式输出透传
         - 会话持久化
@@ -285,12 +285,12 @@ class UnifiedAPIClient:
                 return None
 
             from services.hermes_service import get_hermes_service
-            
+
             hermes = get_hermes_service(
                 config_manager=getattr(self, '_config_manager', None),
                 wsl_distro=self.provider_config.get("wsl_distro", "Ubuntu-22.04")
             )
-            
+
             if not hermes.ensure_ready():
                 return "[Hermes 不可用，请检查 WSL 和 API 密钥配置]"
 
@@ -300,9 +300,9 @@ class UnifiedAPIClient:
                 model=model,
                 stream_callback=stream_callback,
             )
-            
+
             return answer
-            
+
         except Exception as e:
             logger.error(f"Hermes 调用异常: {e}")
             return None

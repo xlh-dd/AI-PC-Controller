@@ -12,19 +12,19 @@ logger = logging.getLogger("SocialSkills")
 
 class SocialSkills:
     """社交技能模块 - 处理微信、钉钉、邮件等社交通信功能"""
-    
+
     def __init__(self, wechat_controller=None, config_manager=None):
         self.wechat_controller = wechat_controller
         self.config_manager = config_manager
         self.keyword_responses = {}  # 关键词-回复映射
         self.email_templates = {}    # 邮件模板
         self.load_presets()
-        
+
     def load_presets(self):
         """加载预设的关键词回复和邮件模板"""
         presets_dir = Path(__file__).parent.parent / "knowledge_base" / "presets"
         presets_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # 加载关键词回复预设
         keyword_file = presets_dir / "keyword_responses.json"
         if keyword_file.exists():
@@ -37,7 +37,7 @@ class SocialSkills:
         else:
             self.keyword_responses = self._default_keyword_responses()
             self.save_keyword_responses()
-            
+
         # 加载邮件模板
         templates_file = presets_dir / "email_templates.json"
         if templates_file.exists():
@@ -142,7 +142,7 @@ class SocialSkills:
         """保存关键词回复预设"""
         presets_dir = Path(__file__).parent.parent / "knowledge_base" / "presets"
         presets_dir.mkdir(parents=True, exist_ok=True)
-        
+
         keyword_file = presets_dir / "keyword_responses.json"
         try:
             with open(keyword_file, 'w', encoding='utf-8') as f:
@@ -150,12 +150,12 @@ class SocialSkills:
             logger.info(f"已保存 {len(self.keyword_responses)} 个关键词回复预设")
         except Exception as e:
             logger.error(f"保存关键词回复预设失败: {e}")
-    
+
     def save_email_templates(self):
         """保存邮件模板"""
         presets_dir = Path(__file__).parent.parent / "knowledge_base" / "presets"
         presets_dir.mkdir(parents=True, exist_ok=True)
-        
+
         templates_file = presets_dir / "email_templates.json"
         try:
             with open(templates_file, 'w', encoding='utf-8') as f:
@@ -163,37 +163,37 @@ class SocialSkills:
             logger.info(f"已保存 {len(self.email_templates)} 个邮件模板")
         except Exception as e:
             logger.error(f"保存邮件模板失败: {e}")
-    
+
     def add_keyword_response(self, keyword: str, responses: List[str]):
         """添加关键词回复"""
         self.keyword_responses[keyword] = responses
         self.save_keyword_responses()
         logger.info(f"已添加关键词回复：{keyword}")
-    
+
     def add_email_template(self, template_name: str, template_data: Dict[str, str]):
         """添加邮件模板"""
         self.email_templates[template_name] = template_data
         self.save_email_templates()
         logger.info(f"已添加邮件模板：{template_name}")
-    
+
     def auto_reply_wechat(self, message: str) -> Optional[str]:
         """微信自动回复 - 根据关键词匹配回复"""
         if not message:
             return None
-            
+
         message_lower = message.lower()
-        
+
         # 检查完全匹配的关键词
         for keyword, responses in self.keyword_responses.items():
             if keyword.lower() in message_lower:
                 response = random.choice(responses)
-                
+
                 # 替换模板变量
                 response = response.replace("{current_time}", datetime.now().strftime("%H:%M:%S"))
                 response = response.replace("{current_date}", datetime.now().strftime("%Y年%m月%d日"))
-                
+
                 return response
-        
+
         # 检查部分匹配（更宽松的匹配）
         for keyword, responses in self.keyword_responses.items():
             keyword_lower = keyword.lower()
@@ -203,24 +203,24 @@ class SocialSkills:
                 response = response.replace("{current_time}", datetime.now().strftime("%H:%M:%S"))
                 response = response.replace("{current_date}", datetime.now().strftime("%Y年%m月%d日"))
                 return response
-        
+
         return None
-    
+
     def generate_email_from_template(self, template_name: str, template_vars: Dict[str, str]) -> Dict[str, str]:
         """根据模板和变量生成邮件"""
         if template_name not in self.email_templates:
             raise ValueError(f"邮件模板 '{template_name}' 不存在")
-        
+
         template = self.email_templates[template_name]
         subject = template.get("subject", "")
         body = template.get("body", "")
-        
+
         # 替换模板变量
         for key, value in template_vars.items():
             placeholder = "{" + key + "}"
             subject = subject.replace(placeholder, value)
             body = body.replace(placeholder, value)
-        
+
         # 替换日期时间变量
         current_time = datetime.now().strftime("%H:%M:%S")
         current_date = datetime.now().strftime("%Y年%m月%d日")
@@ -228,40 +228,40 @@ class SocialSkills:
         subject = subject.replace("{current_date}", current_date)
         body = body.replace("{current_time}", current_time)
         body = body.replace("{current_date}", current_date)
-        
+
         return {
             "subject": subject,
             "body": body,
             "template": template_name
         }
-    
-    def send_email(self, to_address: str, subject: str, body: str, 
+
+    def send_email(self, to_address: str, subject: str, body: str,
                   from_address: str = None, password: str = None,
                   smtp_server: str = "smtp.gmail.com", smtp_port: int = 587) -> bool:
         """发送邮件
-        
+
         注意：需要配置邮箱的SMTP设置
         """
         try:
             # 尝试使用yagmail（更简单）
             try:
                 import yagmail
-                
+
                 # 如果未提供发件人信息，尝试从配置获取
                 if not from_address and self.config_manager:
                     from_address = self.config_manager.get("email", "from_address")
                     password = self.config_manager.get("email", "password")
-                
+
                 if not from_address or not password:
                     logger.error("未配置发件人邮箱信息")
                     return False
-                
+
                 # 创建yagmail连接
                 yag = yagmail.SMTP(from_address, password, host=smtp_server, port=smtp_port)
                 yag.send(to=to_address, subject=subject, contents=body)
                 logger.info(f"邮件发送成功：{to_address}")
                 return True
-                
+
             except ImportError:
                 logger.warning("yagmail未安装，尝试使用smtplib")
                 import smtplib
@@ -270,62 +270,62 @@ class SocialSkills:
                 from email.mime.multipart import MIMEMultipart
                 from email.mime.base import MIMEBase
                 from email import encoders
-                
+
                 if not from_address or not password:
                     logger.error("未配置发件人邮箱信息")
                     return False
-                
+
                 # 创建邮件
                 msg = MIMEMultipart()
                 msg['From'] = from_address
                 msg['To'] = to_address
                 msg['Subject'] = subject
-                
+
                 # 添加邮件正文
                 msg.attach(MIMEText(body, 'plain', 'utf-8'))
-                
+
                 # 发送邮件
                 server = smtplib.SMTP(smtp_server, smtp_port)
                 server.starttls()
                 server.login(from_address, password)
                 server.send_message(msg)
                 server.quit()
-                
+
                 logger.info(f"邮件发送成功：{to_address}")
                 return True
-                
+
         except Exception as e:
             logger.error(f"发送邮件失败: {e}")
             return False
-    
+
     def monitor_and_auto_reply(self, interval_seconds: int = 10):
         """监控并自动回复微信消息
-        
+
         需要配合微信控制器使用
         """
         if not self.wechat_controller:
             logger.error("微信控制器未设置，无法监控微信消息")
             return
-        
+
         # 检查微信控制器是否支持所需方法
         required_methods = ['get_latest_messages', 'send_message']
         missing_methods = []
         for method in required_methods:
             if not hasattr(self.wechat_controller, method) or not callable(getattr(self.wechat_controller, method, None)):
                 missing_methods.append(method)
-        
+
         if missing_methods:
             logger.error(f"微信控制器缺少必需方法: {missing_methods}，无法监控微信消息")
             logger.error("请更新微信控制器模块或使用兼容的版本")
             return
-            
+
         logger.info(f"开始监控微信消息，检查间隔：{interval_seconds}秒")
-        
+
         try:
             while True:
                 # 获取最新消息
                 messages = self.wechat_controller.get_latest_messages(count=5)
-                
+
                 for msg in messages:
                     # 检查是否需要回复
                     reply = self.auto_reply_wechat(msg.get("content", ""))
@@ -333,61 +333,61 @@ class SocialSkills:
                         # 发送回复
                         self.wechat_controller.send_wechat_message(target=msg.get("sender", "文件传输助手"), message=reply)
                         logger.info(f"已自动回复消息：{msg.get('content', '')[:50]}...")
-                
+
                 time.sleep(interval_seconds)
-                
+
         except KeyboardInterrupt:
             logger.info("微信消息监控已停止")
         except Exception as e:
             logger.error(f"微信消息监控出错: {e}")
-    
+
     def get_available_templates(self) -> List[str]:
         """获取所有可用的邮件模板名称"""
         return list(self.email_templates.keys())
-    
+
     def get_template_variables(self, template_name: str) -> List[str]:
         """获取模板所需的所有变量"""
         if template_name not in self.email_templates:
             return []
-        
+
         template = self.email_templates[template_name]
         subject = template.get("subject", "")
         body = template.get("body", "")
-        
+
         # 使用正则表达式提取所有 {variable} 格式的变量
         variables = re.findall(r'\{(\w+)\}', subject + body)
         return list(set(variables))  # 去重
-    
+
     def draft_email_from_speech(self, speech_text: str) -> Dict[str, str]:
         """根据语音口述草拟邮件
-        
+
         简单实现：从语音中提取关键信息并填充到合适的模板
         """
         # 简单关键词匹配选择模板
         template_name = "商务邀约"  # 默认
-        
+
         if "会议" in speech_text or "纪要" in speech_text:
             template_name = "会议纪要"
         elif "请假" in speech_text or "休假" in speech_text:
             template_name = "请假申请"
         elif "合作" in speech_text or "邀约" in speech_text:
             template_name = "商务邀约"
-        
+
         # 简单提取信息（实际应该使用更复杂的NLP）
         template_vars = {}
-        
+
         # 尝试提取姓名
         name_match = re.search(r'[我|叫|是]\s*([\u4e00-\u9fa5]{2,4})', speech_text)
         if name_match:
             template_vars["your_name"] = name_match.group(1)
-        
+
         # 尝试提取公司名
         company_match = re.search(r'[公司|来自]\s*([\u4e00-\u9fa5]{2,10}公司|[A-Za-z\s]+)', speech_text)
         if company_match:
             template_vars["company_name"] = company_match.group(1)
-        
+
         # 添加当前日期
         template_vars["date"] = datetime.now().strftime("%Y年%m月%d日")
-        
+
         # 生成邮件
         return self.generate_email_from_template(template_name, template_vars)

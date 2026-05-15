@@ -6,21 +6,21 @@ logger = logging.getLogger("ThreadManager")
 
 class ThreadManager:
     """线程管理器 - 统一管理所有工作线程（单例模式）"""
-    
+
     _instance = None
     _initialized = False
-    
+
     def __new__(cls):
         """单例模式：确保全局只有一个 ThreadManager 实例"""
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
-    
+
     def __init__(self):
         """初始化线程管理器（仅执行一次）"""
         if ThreadManager._initialized:
             return
-        
+
         self._threads = {}
         self._locks = {}
         self._stop_events = {}

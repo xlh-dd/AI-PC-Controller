@@ -56,7 +56,7 @@ class CodeAIBridge:
 
     def review_code(self, file_path: str, content: str = None) -> Dict:
         """使用AI审查代码（JSON结构化输出）
-        
+
         Returns:
             {
                 "score": int,           # 0-100
@@ -82,7 +82,7 @@ class CodeAIBridge:
                     '.java': 'Java', '.go': 'Go', '.rs': 'Rust',
                     '.cpp': 'C++', '.c': 'C', '.cs': 'C#'}
         lang = lang_map.get(ext, '代码')
-        
+
         schema = '''{
   "score": 85,
   "bug_count": 2,
@@ -93,7 +93,7 @@ class CodeAIBridge:
   "security": ["安全问题1"],
   "summary": "总体评价（中文）"
 }'''
-        
+
         prompt = f"""请审查以下{lang}代码，返回结构化分析。
 
 文件: {os.path.basename(file_path)}
@@ -101,7 +101,7 @@ class CodeAIBridge:
 ```
 {content[:8000]}
 ```"""
-        
+
         try:
             if hasattr(self._agent, 'json_chat'):
                 result = self._agent.json_chat(prompt, json_schema=schema, timeout=300)
@@ -109,7 +109,7 @@ class CodeAIBridge:
                     result["file"] = file_path
                     result["language"] = lang
                     return result
-            
+
             # fallback to plain text
             full_prompt = f"""请审查以下{lang}代码，提供：
 1. 潜在bug或问题
@@ -139,11 +139,11 @@ class CodeAIBridge:
         """解析文本格式的审查结果"""
         result = {"file": file_path, "language": lang, "score": 0, "bug_count": 0,
                   "issues": [], "optimizations": [], "security": [], "summary": text}
-        
+
         score_match = re.search(r'【评分】\s*(\d+)', text)
         if score_match:
             result["score"] = int(score_match.group(1))
-        
+
         return result
 
     # ── 代码生成 ────────────────────────────────────────────────────────

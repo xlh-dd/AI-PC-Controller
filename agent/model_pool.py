@@ -272,7 +272,7 @@ class RouteRule:
 class ModelRouter:
     """
     智能路由：根据任务类型选择最优模型 + 自动降级链。
-    
+
     默认路由策略：
       - COMPLETION  → Ollama (qwen2.5:1.5b，本地最快)
       - UNDERSTAND  → Doubao (doubao-1.5-pro)

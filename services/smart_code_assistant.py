@@ -125,13 +125,13 @@ class SmartCodeAssistant:
   "suggestions": ["建议1", "建议2"],
   "optimized_code": "优化后的完整代码"
 }'''
-        
+
         prompt = f"""请分析以下{language}代码的性能并给出优化建议和优化后的代码。
 
 ```{language}
 {code[:6000]}
 ```"""
-        
+
         try:
             result = self._agent.json_chat(prompt, json_schema=schema, timeout=300)
             if "error" in result:
@@ -194,29 +194,29 @@ class SmartCodeAssistant:
   "fixes": ["修复方案1", "修复方案2"],
   "fixed_code": "修复后的完整代码"
 }'''
-        
+
         prompt = f"""请审查以下{language}代码的安全漏洞。
 
 ```{language}
 {code[:6000]}
 ```"""
-        
+
         try:
             result = self._agent.json_chat(prompt, json_schema=schema, timeout=300)
             if "error" in result:
                 return self._parse_security_fallback(result.get("raw", str(result)))
-            
+
             vulns = result.get("vulnerabilities", [])
             review_lines = []
             for v in vulns:
                 sev_emoji = {"critical": "🔴", "high": "🟠", "medium": "🟡", "low": "🟢"}.get(v.get("severity", ""), "⚪")
                 review_lines.append(f"{sev_emoji} [{v.get('severity', '?')}] {v.get('issue', '?')}")
-            
+
             fixes = result.get("fixes", [])
             if fixes:
                 review_lines.append("\n修复方案:")
                 review_lines.extend(f"  {i+1}. {f}" for i, f in enumerate(fixes))
-            
+
             return {"review": "\n".join(review_lines), "fixed": result.get("fixed_code", "")}
         except Exception as e:
             return {"review": f"❌ 失败: {e}", "fixed": ""}
