@@ -4511,19 +4511,14 @@ class AIPCHelperV8:
     def show_ai_agent_panel(self):
         """显示AI智能体面板"""
         win, content_frame = self.create_scrollable_window("🤖 AI智能体", 700, 550)
-
         ttk.Label(content_frame, text="🤖 AI智能体 - 任务规划与执行", font=("微软雅黑", 14, "bold")).pack(pady=10)
         ttk.Label(content_frame, text="输入任务指令,AI自动规划并执行", foreground="gray").pack(pady=(0, 10))
-
         ttk.Label(content_frame, text="输入任务指令:", font=("微软雅黑", 11)).pack(pady=5)
         task_entry = ttk.Entry(content_frame, width=60)
         task_entry.pack(pady=5)
-
         ttk.Label(content_frame, text="示例:搜索Python教程并保存到文档", font=("微软雅黑", 9), foreground="gray").pack(pady=2)
-
         task_result_text = scrolledtext.ScrolledText(content_frame, height=8, width=60, state=tk.DISABLED)
         task_result_text.pack(pady=10, padx=10)
-
         def append_result(text):
             def update_ui():
                 task_result_text.config(state=tk.NORMAL)
@@ -4531,16 +4526,13 @@ class AIPCHelperV8:
                 task_result_text.see(tk.END)
                 task_result_text.config(state=tk.DISABLED)
             self.root.after(0, update_ui)
-
         def execute_ai_task():
             task = task_entry.get().strip()
             if not task:
                 messagebox.showwarning("警告", "请输入任务指令")
                 return
-
             task_entry.config(state=tk.DISABLED)
             append_result(f"🤔 AI正在规划任务:{task}...")
-
             def run_task():
                 try:
                     if not hasattr(self, 'ai_agent') or self.ai_agent is None:
@@ -4553,27 +4545,21 @@ class AIPCHelperV8:
                         self.ai_agent.set_feedback_callback(lambda msg, is_error: append_result(f"{'❌' if is_error else '✅'} {msg}"))
                     else:
                         self.ai_agent.ai_helper = self.ai_helper
-
                     steps = self.ai_agent.plan_task(task)
                     if not steps:
                         append_result("❌ 任务规划失败,请检查Ollama服务是否运行")
                         self.root.after(0, lambda: task_entry.config(state=tk.NORMAL))
                         return
-
                     plan_text = "\n".join([f"{s.get('step')}. {s.get('action')}" for s in steps])
                     append_result(f"📋 任务计划:\n{plan_text}")
-
                     if messagebox.askyesno("确认执行", f"共{len(steps)}个步骤,是否执行?"):
                         append_result("▶ 开始执行任务...")
                         results = self.ai_agent.execute_plan(steps)
-
                         for r in results:
                             if not r.get("success"):
                                 append_result(f"❌ 步骤{r.get('step')}失败: {r.get('error', '未知错误')}")
-
                         success_count = sum(1 for r in results if r.get("success"))
                         append_result(f"✅ 任务完成!成功 {success_count}/{len(results)} 个步骤")
-
                         doc_org = DocumentOrganizer()
                         save_path = doc_org.create_summary_document(
                             f"任务执行结果: {task[:20]}",
@@ -4586,9 +4572,7 @@ class AIPCHelperV8:
                     append_result(f"❌ 执行失败:{str(e)}")
                 finally:
                     self.root.after(0, lambda: task_entry.config(state=tk.NORMAL))
-
             threading.Thread(target=run_task, daemon=True).start()
-
         btn_frame = ttk.Frame(content_frame)
         btn_frame.pack(pady=10)
         ttk.Button(btn_frame, text="🚀 执行任务", command=execute_ai_task).pack(side=tk.LEFT, padx=5)
