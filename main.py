@@ -4106,7 +4106,6 @@ class AIPCHelperV8:
         win.title("📋 任务管理器")
         win.geometry("800x500")
         win.configure(bg="#1e1e2e")
-        
         # 创建 Treeview
         columns = ("类型", "名称", "执行时间/间隔", "状态", "操作")
         tree = ttk.Treeview(win, columns=columns, show="headings")
@@ -4124,12 +4123,11 @@ class AIPCHelperV8:
         tree.column("操作", width=100)
         
         tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        
         # 添加滚动条
         scrollbar = ttk.Scrollbar(win, orient=tk.VERTICAL, command=tree.yview)
         tree.configure(yscrollcommand=scrollbar.set)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        
+
         def refresh_task_list():
             # 清空现有数据
             for item in tree.get_children():
