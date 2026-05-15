@@ -1202,44 +1202,8 @@ class EmailClassifier:
                 
                 # 添加附件
                 if attachments:
-                    for attachment_path in attachments:
-                        if not os.path.exists(attachment_path):
-                            logger.warning(f"附件文件不存在：{attachment_path}")
-                            continue
-                        
-                        try:
-                            # 获取文件名和MIME类型
-                            filename = os.path.basename(attachment_path)
-                            mime_type, encoding = mimetypes.guess_type(attachment_path)
-                            if mime_type is None or encoding is not None:
-                                mime_type = 'application/octet-stream'
-                            
-                            main_type, sub_type = mime_type.split('/', 1)
-                            
-                            with open(attachment_path, 'rb') as f:
-                                if main_type == 'text':
-                                    # 文本文件
-                                    attachment = MIMEText(f.read().decode('utf-8', errors='ignore'), _subtype=sub_type, _charset='utf-8')
-                                else:
-                                    # 二进制文件
-                                    attachment = MIMEBase(main_type, sub_type)
-                                    attachment.set_payload(f.read())
-                                
-                            # 添加头部信息
-                            attachment.add_header('Content-Disposition', 'attachment', filename=filename)
-                            attachment.add_header('Content-ID', f'<{filename}>')
-                            
-                            # 对于非文本文件，需要编码
-                            if main_type != 'text':
-                                encoders.encode_base64(attachment)
-                            
-                            msg.attach(attachment)
-                            logger.debug(f"已添加附件：{filename}")
-                            
-                        except Exception as e:
-                            logger.error(f"添加附件失败 {attachment_path}: {e}")
-                            continue
-                
+                    self._attach_files(msg, attachments)
+
                 # 发送邮件
                 server = smtplib.SMTP(self.smtp_server, self.smtp_port)
                 server.starttls()
@@ -1253,6 +1217,48 @@ class EmailClassifier:
         except Exception as e:
             logger.error(f"发送邮件失败: {e}")
             return False
+
+    def _attach_files(self, msg, attachments):
+        """添加附件到邮件消息"""
+        for attachment_path in attachments:
+            if not os.path.exists(attachment_path):
+                logger.warning(f"附件文件不存在：{attachment_path}")
+                continue
+
+            try:
+                # 获取文件名和MIME类型
+                filename = os.path.basename(attachment_path)
+                mime_type, encoding = mimetypes.guess_type(attachment_path)
+                if mime_type is None or encoding is not None:
+                    mime_type = 'application/octet-stream'
+
+                main_type, sub_type = mime_type.split('/', 1)
+
+                with open(attachment_path, 'rb') as f:
+                    if main_type == 'text':
+                        # 文本文件
+                        attachment = MIMEText(f.read().decode('utf-8', errors='ignore'), _subtype=sub_type, _charset='utf-8')
+                    else:
+                        # 二进制文件
+                        attachment = MIMEBase(main_type, sub_type)
+                        attachment.set_payload(f.read())
+
+                # 添加头部信息
+                attachment.add_header('Content-Disposition', 'attachment', filename=filename)
+                attachment.add_header('Content-ID', f'<{filename}>')
+
+                # 对于非文本文件，需要编码
+                if main_type != 'text':
+                    encoders.encode_base64(attachment)
+
+                msg.attach(attachment)
+                logger.debug(f"已添加附件：{filename}")
+
+            except Exception as e:
+                logger.error(f"添加附件失败 {attachment_path}: {e}")
+                continue
+
+
     
     def add_faq(self, question: str, answer: str, category: str = "general", tags: str = ""):
         """添加FAQ到知识库"""
