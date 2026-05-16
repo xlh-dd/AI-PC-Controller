@@ -1739,14 +1739,7 @@ class AIPCHelperV8:
             logger.error(f"快速操作执行失败 [{action}]: {e}", exc_info=True)
             self.say("系统", f"❌ 执行失败: {str(e)}")
 
-    def _validate_ai_result(self, result):
-        """验证AI解析结果是否包含必要参数"""
-        if not result or "action" not in result:
-            return False
-
-        action = result.get("action")
-        # 必要参数映射
-        required_params = {
+        _REQUIRED_AI_PARAMS = {
             # 基本操作
             "open_app": ["app_name"],
             "open_file": ["file_path"],
@@ -1868,11 +1861,19 @@ class AIPCHelperV8:
             "speak_text": ["text"],
         }
 
-        if action not in required_params:
+    def _validate_ai_result(self, result):
+        """验证AI解析结果是否包含必要参数"""
+        if not result or "action" not in result:
+            return False
+
+        action = result.get("action")
+        # 必要参数映射
+
+        if action not in _REQUIRED_AI_PARAMS:
             # 未知动作,视为无效
             return False
 
-        for param in required_params[action]:
+        for param in _REQUIRED_AI_PARAMS[action]:
             if param not in result or not result[param]:
                 return False
 
