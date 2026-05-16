@@ -27,6 +27,7 @@ from modules.email_classifier import EmailClassifier
 from modules.ui_manager import init_ui_manager
 # Hermes 桥接 (已优化, 旧版本 hermes_bridge.py 已移除)
 from modules.hermes_bridge_optimized import get_hermes_bridge_optimized, get_hermes_ai_helper_optimized
+from core.command_registry import execute_command
 import traceback
 
 try:
@@ -1728,7 +1729,6 @@ class AIPCHelperV8:
     def _execute_quick_action(self, action, params):
         """执行快速操作按钮 - 统一通过 CommandRegistry"""
         try:
-            from core.command_registry import execute_command
             # params from quick action -> cmd_data for registry
             cmd_data = dict(params) if params else {}
             cmd_data["action"] = action
@@ -1886,7 +1886,6 @@ class AIPCHelperV8:
 
         # 命令注册表执行(所有命令已迁移到 registry)
         try:
-            from core.command_registry import execute_command
             execute_command(action, self, cmd_data)
         except KeyError:
             self.say("AI管家", f"无法执行该指令(未知操作类型:{action})。")
