@@ -10,6 +10,7 @@ import json
 import logging
 import threading
 import subprocess
+import winreg
 from pathlib import Path
 from typing import Optional, List, Dict, Any, Tuple, Union
 
@@ -1088,7 +1089,6 @@ class SystemController:
             包含软件列表的字典，可能包含warnings字段
         """
         try:
-            import winreg
             software_list = []
             warnings = []
             paths_accessed = 0
@@ -1158,7 +1158,6 @@ class SystemController:
 
     def _enumerate_registry_subkeys(self, key, path, display_path, software_list, warnings):
         """枚举注册表子键并读取软件信息"""
-        import winreg
         i = 0
         while True:
             try:
