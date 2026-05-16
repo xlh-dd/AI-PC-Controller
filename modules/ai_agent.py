@@ -240,8 +240,7 @@ class AIAgent:
         except Exception as e:
             logger.debug(f"事件发布失败 [{event_type}]: {e}")
 
-    def _setup_tool_descriptions(self):
-        self.tool_descriptions = {
+    TOOL_DESCRIPTIONS = {
             "search_browser": {
                 "description": "在浏览器中搜索信息，需要提供搜索关键词",
                 "parameters": {
@@ -250,7 +249,7 @@ class AIAgent:
                         "query": {"type": "string", "description": "搜索关键词"}
                     },
                     "required": ["query"]
-                }
+    }
             },
             "search_and_collect": {
                 "description": "搜索并收集信息，返回结构化数据（无需打开浏览器）",
@@ -261,7 +260,7 @@ class AIAgent:
                         "max_results": {"type": "integer", "description": "最大结果数，默认5"}
                     },
                     "required": ["query"]
-                }
+    }
             },
             "collect_and_save": {
                 "description": "搜索信息、收集并整理后保存为文档（推荐使用）",
@@ -274,7 +273,7 @@ class AIAgent:
                         "max_results": {"type": "integer", "description": "最大搜索结果数，默认10"}
                     },
                     "required": ["query", "save_path"]
-                }
+    }
             },
             "send_wechat": {
                 "description": "发送微信消息给指定联系人",
@@ -285,7 +284,7 @@ class AIAgent:
                         "message": {"type": "string", "description": "消息内容"}
                     },
                     "required": ["target", "message"]
-                }
+    }
             },
             "save_document": {
                 "description": "将内容保存到指定路径的文档中",
@@ -296,7 +295,7 @@ class AIAgent:
                         "content": {"type": "string", "description": "文档内容"}
                     },
                     "required": ["path", "content"]
-                }
+    }
             },
             "execute_command": {
                 "description": "执行系统命令",
@@ -306,7 +305,7 @@ class AIAgent:
                         "command": {"type": "string", "description": "要执行的命令"}
                     },
                     "required": ["command"]
-                }
+    }
             },
             "play_macro": {
                 "description": "播放录制的宏（自动化脚本）",
@@ -318,7 +317,7 @@ class AIAgent:
                         "repeat": {"type": "integer", "description": "重复次数，默认1"}
                     },
                     "required": ["macro_name"]
-                }
+    }
             },
             "record_macro": {
                 "description": "开始录制宏（记录鼠标键盘操作）",
@@ -328,7 +327,7 @@ class AIAgent:
                         "name": {"type": "string", "description": "宏名称"}
                     },
                     "required": ["name"]
-                }
+    }
             },
             "schedule_task": {
                 "description": "创建定时任务",
@@ -342,7 +341,7 @@ class AIAgent:
                         "params": {"type": "object", "description": "任务参数"}
                     },
                     "required": ["name", "task_type", "schedule_type", "time"]
-                }
+    }
             },
             "file_operation": {
                 "description": "执行文件操作",
@@ -354,7 +353,7 @@ class AIAgent:
                         "destination": {"type": "string", "description": "目标路径"}
                     },
                     "required": ["operation"]
-                }
+    }
             },
             "http_request": {
                 "description": "发送HTTP请求",
@@ -366,7 +365,7 @@ class AIAgent:
                         "data": {"type": "object", "description": "请求数据"}
                     },
                     "required": ["url"]
-                }
+    }
             },
             "run_python": {
                 "description": "执行Python代码",
@@ -376,7 +375,7 @@ class AIAgent:
                         "code": {"type": "string", "description": "Python代码"}
                     },
                     "required": ["code"]
-                }
+    }
             },
             "open_app": {
                 "description": "打开应用程序",
@@ -386,7 +385,7 @@ class AIAgent:
                         "app_name": {"type": "string", "description": "应用名称或路径"}
                     },
                     "required": ["app_name"]
-                }
+    }
             },
             "click_image": {
                 "description": "在屏幕上查找并点击图像",
@@ -398,7 +397,7 @@ class AIAgent:
                         "timeout": {"type": "integer", "description": "超时时间（秒），默认10"}
                     },
                     "required": ["image_path"]
-                }
+    }
             },
             # 新增系统控制工具描述
             "control_volume": {
@@ -412,7 +411,7 @@ class AIAgent:
                         "mute": {"type": "boolean", "description": "静音状态，当action='set'时使用"}
                     },
                     "required": ["action"]
-                }
+    }
             },
             "control_network": {
                 "description": "控制网络连接",
@@ -423,7 +422,7 @@ class AIAgent:
                         "enable": {"type": "boolean", "description": "开启/关闭Wi-Fi，当action='toggle_wifi'时使用"}
                     },
                     "required": ["action"]
-                }
+    }
             },
             "manage_processes": {
                 "description": "管理系统进程",
@@ -437,7 +436,7 @@ class AIAgent:
                         "force": {"type": "boolean", "description": "是否强制结束，默认false"}
                     },
                     "required": ["action"]
-                }
+    }
             },
             "manage_windows": {
                 "description": "管理应用程序窗口",
@@ -449,7 +448,7 @@ class AIAgent:
                         "filter_str": {"type": "string", "description": "过滤字符串，当action='list'时使用"}
                     },
                     "required": ["action"]
-                }
+    }
             },
             "take_screenshot": {
                 "description": "截取屏幕",
@@ -460,7 +459,7 @@ class AIAgent:
                         "save_path": {"type": "string", "description": "保存路径，空表示保存到临时文件"}
                     },
                     "required": []
-                }
+    }
             },
             "control_clipboard": {
                 "description": "控制剪贴板",
@@ -471,7 +470,7 @@ class AIAgent:
                         "content": {"type": "string", "description": "要设置的内容，当action='set'时使用"}
                     },
                     "required": ["action"]
-                }
+    }
             },
             "system_info": {
                 "description": "获取系统信息(CPU、内存、磁盘、网络等)",
@@ -479,7 +478,7 @@ class AIAgent:
                     "type": "object",
                     "properties": {},
                     "required": []
-                }
+    }
             },
             "speak_text": {
                 "description": "语音合成(文本转语音)",
@@ -491,7 +490,7 @@ class AIAgent:
                         "volume": {"type": "number", "description": "音量(0.0-1.0，默认1.0)"}
                     },
                     "required": ["text"]
-                }
+    }
             },
             "ocr_screen": {
                 "description": "识别屏幕区域的文字(OCR)",
@@ -502,9 +501,14 @@ class AIAgent:
                         "lang": {"type": "string", "description": "语言代码(默认chi_sim+eng)"}
                     },
                     "required": []
-                }
-            }
-        }
+    }
+    }
+    }
+
+    def _setup_tool_descriptions(self):
+        """工具描述(从 TOOL_DESCRIPTIONS 类常量加载)"""
+        self.tool_descriptions = TOOL_DESCRIPTIONS
+
 
     def plan_task(self, user_command):
         """使用LLM将用户指令分解为可执行步骤"""
