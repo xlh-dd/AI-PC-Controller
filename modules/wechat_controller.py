@@ -515,54 +515,7 @@ class WeChatController:
             # 记录窗口信息用于调试
             logger.info(f"剪贴板方案 - 窗口信息: 位置({window_left}, {window_top}), 尺寸({window_width}x{window_height})")
 
-            positions = []
-            if self.last_msg_pos:
-                logger.info(f"使用用户校准的坐标: {self.last_msg_pos}")
-                rx, ry = self.last_msg_pos
-
-                # 判断坐标类型：比例坐标(0-1)还是绝对坐标
-                if abs(rx) <= 1.0 and abs(ry) <= 1.0:
-                    # 比例坐标：转换为绝对坐标
-                    logger.info(f"坐标类型: 比例坐标")
-                    user_x = int(window_left + window_width * rx)
-                    user_y = int(window_top + window_height * ry)
-                    logger.info(f"比例坐标转换为绝对坐标: ({rx}, {ry}) -> ({user_x}, {user_y})")
-                else:
-                    # 绝对坐标：直接使用，但确保在窗口内
-                    logger.info(f"坐标类型: 绝对坐标")
-                    user_x = int(rx)
-                    user_y = int(ry)
-                    # 检查坐标是否在窗口内
-                    if not (window_left <= user_x <= window_left + window_width and
-                           window_top <= user_y <= window_top + window_height):
-                        logger.warning(f"绝对坐标({user_x}, {user_y})不在窗口内，窗口区域: ({window_left}, {window_top}) - ({window_left+window_width}, {window_top+window_height})")
-
-                positions = [
-                    (user_x, user_y),
-                    (user_x + 10, user_y),
-                    (user_x - 10, user_y),
-                    (user_x, user_y + 5),
-                    (user_x, user_y - 5),
-                    (user_x + 5, user_y + 5),
-                    (user_x - 5, user_y - 5),
-                ]
-            else:
-                logger.info("未找到用户校准的坐标，使用默认位置")
-                positions = [
-                    (window_left + int(window_width * 0.6), window_top + int(window_height * 0.88)),
-                    (window_left + int(window_width * 0.7), window_top + int(window_height * 0.88)),
-                    (window_left + int(window_width * 0.5), window_top + int(window_height * 0.85)),
-                    (window_left + int(window_width * 0.6), window_top + int(window_height * 0.85)),
-                    (window_left + int(window_width * 0.7), window_top + int(window_height * 0.85)),
-                    (window_left + int(window_width * 0.8), window_top + int(window_height * 0.85)),
-                    (window_left + int(window_width * 0.6), window_top + int(window_height * 0.80)),
-                    (window_left + int(window_width * 0.7), window_top + int(window_height * 0.80)),
-                    (window_left + int(window_width * 0.5), window_top + int(window_height * 0.88)),
-                    (window_left + int(window_width * 0.8), window_top + int(window_height * 0.80)),
-                    (window_left + window_width // 2, window_top + int(window_height * 0.85)),
-                    (window_left + window_width // 2, window_top + int(window_height * 0.90)),
-                ]
-
+            positions = self._build_message_positions(win)
             full_text = ""
             successful_position = None
 
@@ -965,3 +918,59 @@ class WeChatController:
             time.sleep(1)
         logger.error(f"update_last_message_id: 重试 {max_retries} 次后仍失败")
         return False
+
+    def _build_message_positions(self, win):
+        """构建消息点击位置列表"""
+        window_width = win.width
+        window_height = win.height
+        window_left = win.left
+        window_top = win.top
+        
+        logger.info(f"剪贴板方案 - 窗口信息: 位置({window_left}, {window_top}), 尺寸({window_width}x{window_height})")
+        if self.last_msg_pos:
+            logger.info(f"使用用户校准的坐标: {self.last_msg_pos}")
+            rx, ry = self.last_msg_pos
+
+            # 判断坐标类型：比例坐标(0-1)还是绝对坐标
+            if abs(rx) <= 1.0 and abs(ry) <= 1.0:
+                # 比例坐标：转换为绝对坐标
+                logger.info(f"坐标类型: 比例坐标")
+                user_x = int(window_left + window_width * rx)
+                user_y = int(window_top + window_height * ry)
+                logger.info(f"比例坐标转换为绝对坐标: ({rx}, {ry}) -> ({user_x}, {user_y})")
+            else:
+                # 绝对坐标：直接使用，但确保在窗口内
+                logger.info(f"坐标类型: 绝对坐标")
+                user_x = int(rx)
+                user_y = int(ry)
+                # 检查坐标是否在窗口内
+                if not (window_left <= user_x <= window_left + window_width and
+                       window_top <= user_y <= window_top + window_height):
+                    logger.warning(f"绝对坐标({user_x}, {user_y})不在窗口内，窗口区域: ({window_left}, {window_top}) - ({window_left+window_width}, {window_top+window_height})")
+
+            return [
+                (user_x, user_y),
+                (user_x + 10, user_y),
+                (user_x - 10, user_y),
+                (user_x, user_y + 5),
+                (user_x, user_y - 5),
+                (user_x + 5, user_y + 5),
+                (user_x - 5, user_y - 5),
+            ]
+        else:
+            logger.info("未找到用户校准的坐标，使用默认位置")
+            return [
+                (window_left + int(window_width * 0.6), window_top + int(window_height * 0.88)),
+                (window_left + int(window_width * 0.7), window_top + int(window_height * 0.88)),
+                (window_left + int(window_width * 0.5), window_top + int(window_height * 0.85)),
+                (window_left + int(window_width * 0.6), window_top + int(window_height * 0.85)),
+                (window_left + int(window_width * 0.7), window_top + int(window_height * 0.85)),
+                (window_left + int(window_width * 0.8), window_top + int(window_height * 0.85)),
+                (window_left + int(window_width * 0.6), window_top + int(window_height * 0.80)),
+                (window_left + int(window_width * 0.7), window_top + int(window_height * 0.80)),
+                (window_left + int(window_width * 0.5), window_top + int(window_height * 0.88)),
+                (window_left + int(window_width * 0.8), window_top + int(window_height * 0.80)),
+                (window_left + window_width // 2, window_top + int(window_height * 0.85)),
+                (window_left + window_width // 2, window_top + int(window_height * 0.90)),
+            ]
+
