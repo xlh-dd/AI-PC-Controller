@@ -1739,127 +1739,129 @@ class AIPCHelperV8:
             logger.error(f"快速操作执行失败 [{action}]: {e}", exc_info=True)
             self.say("系统", f"❌ 执行失败: {str(e)}")
 
-        _REQUIRED_AI_PARAMS = {
-            # 基本操作
-            "open_app": ["app_name"],
-            "open_file": ["file_path"],
-            "open_folder": ["folder_path"],
-            "sort_files": [],
-            "find_duplicates": [],
-            "find_large": [],
-            "clean_empty": [],
-            "rename_files": ["pattern"],
-            "rename": ["description"],
-            "list_files": [],
-            "ai_chat": [],
-            # 系统控制
-            "shutdown": [],  # delay可选
-            "restart": [],
-            "logout": [],
-            "sleep": [],
-            "lock": [],
-            "hibernate": [],
-            "turn_off_display": [],
-            "cancel_shutdown": [],
-            # 微信相关
-            "send_wechat": ["target", "message"],
-            "schedule_wechat": ["target", "message", "send_time"],
-            "start_listening": [],
-            "stop_listening": [],
-            # 定时任务
-            "schedule_task": ["task", "send_time"],
-            # 自动化任务
-            "run_automation": ["task_name"],
-            # 自定义命令
-            "custom_command": ["command"],
-            # 进程管理
-            "kill_process": [],  # process_name或pid至少一个
-            "list_processes": [],
-            # 窗口管理
-            "minimize_window": ["window_title"],
-            "maximize_window": ["window_title"],
-            "close_window": ["window_title"],
-            "activate_window": ["window_title"],
-            "list_windows": [],
-            # 音量控制
-            "volume_up": [],
-            "volume_down": [],
-            "set_volume": ["level"],
-            "toggle_mute": [],
-            # 截图和剪贴板
-            "take_screenshot": [],
-            "get_clipboard": [],
-            "set_clipboard": ["content"],
-            # 系统信息
-            "get_system_info": [],
-            "get_network_info": [],
-            "get_cpu_usage": [],
-            "get_memory_usage": [],
-            "get_disk_usage": [],
-            "get_battery_status": [],
-            # 网络控制
-            "toggle_wifi": [],
-            "disconnect_network": [],
-            "connect_network": [],
-            "ping_host": ["host"],
-            "get_ip_address": [],
-            # 文件操作
-            "delete_file": ["file_path"],
-            "move_file": ["source", "destination"],
-            "copy_file": ["source", "destination"],
-            "create_folder": ["folder_path"],
-            "delete_folder": ["folder_path"],
-            "read_file": ["file_path"],
-            "write_file": ["file_path", "content"],
-            # 浏览器控制
-            "open_browser": [],
-            "close_browser": [],
-            "navigate_url": ["url"],
-            "refresh_page": [],
-            "go_back": [],
-            "go_forward": [],
-            # 输入模拟
-            "type_text": ["text"],
-            "press_key": ["key"],
-            "move_mouse": ["x", "y"],
-            "click_mouse": ["x", "y"],
-            "scroll": ["amount"],
-            # 媒体控制
-            "play_media": [],
-            "pause_media": [],
-            "next_track": [],
-            "prev_track": [],
-            # 系统工具
-            "open_settings": [],
-            "open_control_panel": [],
-            "open_task_manager": [],
-            "open_cmd": [],
-            "open_powershell": [],
-            "open_explorer": [],
-            "open_notepad": [],
-            "open_calculator": [],
-            "open_camera": [],
-            # 时间日期
-            "get_current_time": [],
-            "get_current_date": [],
-            # 回收站
-            "empty_recycle_bin": [],
-            # 桌面操作
-            "show_desktop": [],
-            "show_start_menu": [],
-            "switch_user": [],
-            # 拍照录屏
-            "take_photo": [],
-            "record_screen": [],
-            "stop_recording": [],
-            # 天气闹钟
-            "get_weather": ["city"],
-            "set_alarm": ["time"],
-            # AI智能体
-            "ai_agent": ["task"],
-            # 语音合成
-            "speak_text": ["text"],
-        }
+
+    _REQUIRED_AI_PARAMS = {
+        # 基本操作
+        "open_app": ["app_name"],
+        "open_file": ["file_path"],
+        "open_folder": ["folder_path"],
+        "sort_files": [],
+        "find_duplicates": [],
+        "find_large": [],
+        "clean_empty": [],
+        "rename_files": ["pattern"],
+        "rename": ["description"],
+        "list_files": [],
+        "ai_chat": [],
+        # 系统控制
+        "shutdown": [],  # delay可选
+        "restart": [],
+        "logout": [],
+        "sleep": [],
+        "lock": [],
+        "hibernate": [],
+        "turn_off_display": [],
+        "cancel_shutdown": [],
+        # 微信相关
+        "send_wechat": ["target", "message"],
+        "schedule_wechat": ["target", "message", "send_time"],
+        "start_listening": [],
+        "stop_listening": [],
+        # 定时任务
+        "schedule_task": ["task", "send_time"],
+        # 自动化任务
+        "run_automation": ["task_name"],
+        # 自定义命令
+        "custom_command": ["command"],
+        # 进程管理
+        "kill_process": [],  # process_name或pid至少一个
+        "list_processes": [],
+        # 窗口管理
+        "minimize_window": ["window_title"],
+        "maximize_window": ["window_title"],
+        "close_window": ["window_title"],
+        "activate_window": ["window_title"],
+        "list_windows": [],
+        # 音量控制
+        "volume_up": [],
+        "volume_down": [],
+        "set_volume": ["level"],
+        "toggle_mute": [],
+        # 截图和剪贴板
+        "take_screenshot": [],
+        "get_clipboard": [],
+        "set_clipboard": ["content"],
+        # 系统信息
+        "get_system_info": [],
+        "get_network_info": [],
+        "get_cpu_usage": [],
+        "get_memory_usage": [],
+        "get_disk_usage": [],
+        "get_battery_status": [],
+        # 网络控制
+        "toggle_wifi": [],
+        "disconnect_network": [],
+        "connect_network": [],
+        "ping_host": ["host"],
+        "get_ip_address": [],
+        # 文件操作
+        "delete_file": ["file_path"],
+        "move_file": ["source", "destination"],
+        "copy_file": ["source", "destination"],
+        "create_folder": ["folder_path"],
+        "delete_folder": ["folder_path"],
+        "read_file": ["file_path"],
+        "write_file": ["file_path", "content"],
+        # 浏览器控制
+        "open_browser": [],
+        "close_browser": [],
+        "navigate_url": ["url"],
+        "refresh_page": [],
+        "go_back": [],
+        "go_forward": [],
+        # 输入模拟
+        "type_text": ["text"],
+        "press_key": ["key"],
+        "move_mouse": ["x", "y"],
+        "click_mouse": ["x", "y"],
+        "scroll": ["amount"],
+        # 媒体控制
+        "play_media": [],
+        "pause_media": [],
+        "next_track": [],
+        "prev_track": [],
+        # 系统工具
+        "open_settings": [],
+        "open_control_panel": [],
+        "open_task_manager": [],
+        "open_cmd": [],
+        "open_powershell": [],
+        "open_explorer": [],
+        "open_notepad": [],
+        "open_calculator": [],
+        "open_camera": [],
+        # 时间日期
+        "get_current_time": [],
+        "get_current_date": [],
+        # 回收站
+        "empty_recycle_bin": [],
+        # 桌面操作
+        "show_desktop": [],
+        "show_start_menu": [],
+        "switch_user": [],
+        # 拍照录屏
+        "take_photo": [],
+        "record_screen": [],
+        "stop_recording": [],
+        # 天气闹钟
+        "get_weather": ["city"],
+        "set_alarm": ["time"],
+        # AI智能体
+        "ai_agent": ["task"],
+        # 语音合成
+        "speak_text": ["text"],
+    }
+
 
     def _validate_ai_result(self, result):
         """验证AI解析结果是否包含必要参数"""
