@@ -52,6 +52,15 @@ except ImportError:
     sns = None
     logger.warning("seaborn模块未安装，数据可视化功能受限。请运行: pip install seaborn")
 
+
+try:
+    import speech_recognition as sr
+    SPEECH_RECOGNITION_AVAILABLE = True
+except ImportError:
+    SPEECH_RECOGNITION_AVAILABLE = False
+    sr = None
+    logger.warning("speech_recognition库未安装，语音识别功能不可用。请运行: pip install SpeechRecognition")
+
 class LearningSkills:
     """学习与辅助决策技能模块 - 会议同传、游戏攻略、数据分析等功能"""
 
@@ -114,12 +123,12 @@ class LearningSkills:
 
     def _init_speech_recognition(self):
         """初始化语音识别"""
+        if not SPEECH_RECOGNITION_AVAILABLE:
+            logger.warning("speech_recognition库未安装，语音识别功能不可用")
+            return
         try:
-            import speech_recognition as sr
             self.speech_recognizer = sr.Recognizer()
             logger.info("语音识别初始化成功")
-        except ImportError:
-            logger.warning("speech_recognition库未安装，语音识别功能不可用")
         except Exception as e:
             logger.error(f"语音识别初始化失败: {e}")
 
@@ -185,7 +194,10 @@ class LearningSkills:
         logger.info(f"会议同传工作线程启动：{meeting_id}")
 
         try:
-            import speech_recognition as sr
+            # 检查依赖是否可用
+            if not SPEECH_RECOGNITION_AVAILABLE:
+                logger.error("speech_recognition库未安装，无法进行会议同传。请运行: pip install SpeechRecognition")
+                return
 
             # 检查googletrans是否可用
             if not DEEP_TRANSLATOR_AVAILABLE:
