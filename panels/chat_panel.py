@@ -47,10 +47,10 @@ class ChatPanel:
 
         self.conv_panel = ttk.Frame(self.chat_paned)
         self._build_conversation_sidebar()
-        self.chat_paned.add(self.conv_panel, minsize=180)
+        self.chat_paned.add(self.conv_panel, minsize=120, stretch="never")
 
         self.chat_right = ttk.Frame(self.chat_paned)
-        self.chat_paned.add(self.chat_right, minsize=400)
+        self.chat_paned.add(self.chat_right, minsize=250, stretch="always")
 
         self.chat = scrolledtext.ScrolledText(
             self.chat_right, wrap=tk.WORD, state=tk.DISABLED,

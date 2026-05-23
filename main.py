@@ -37,6 +37,7 @@ from modules.hermes_bridge_optimized import get_hermes_bridge_optimized, get_her
 from core.command_registry import execute_command
 from controllers import AppController
 from controllers.message_router import MessageRouter
+from controllers.command_handler import CommandHandler
 from panels import ChatPanel, FilePanel, SystemPanel, WeChatPanel, AutomationPanel
 import traceback
 
@@ -126,6 +127,7 @@ class AppShell:
 
         self.app_controller = AppController(self.config_manager)
         self.message_router = MessageRouter()
+        self.command_handler = CommandHandler(self)
 
         # 后台线程加载重模块
         self._init_thread = threading.Thread(target=self._lazy_init_modules, daemon=True)
@@ -471,6 +473,10 @@ class AppShell:
 
         self.notebook.bind("<<NotebookTabChanged>>", self._on_tab_changed)
 
+        # 全局快捷键
+        self.root.bind("<Control-q>", lambda e: self.on_closing())
+        self.root.bind("<Control-Q>", lambda e: self.on_closing())
+
         # ========== 底部状态栏 ==========
         self._build_bottom_status()
 
@@ -667,391 +673,22 @@ class AppShell:
 
     def _fallback_keyword_parse(self, msg):
         """关键词匹配解析(作为AI的后备方案)"""
-        quick_result = self.quick_parse_command(msg)
-        if quick_result:
-            action, params = quick_result
-            self._execute_quick_action(action, params)
-            return
-
-        msg_lower = msg.lower().strip()
-        if any(k in msg_lower for k in ["按类型整理", "分类", "排序"]):
-            self.execute_ai_command({"action": "sort_files"})
-        elif any(k in msg_lower for k in ["重复文件", "去重"]):
-            self.execute_ai_command({"action": "find_duplicates"})
-        elif any(k in msg_lower for k in ["空文件"]):
-            self.execute_ai_command({"action": "clean_empty"})
-        elif any(k in msg_lower for k in ["大文件", "占用空间"]):
-            self.execute_ai_command({"action": "find_large"})
-        elif any(k in msg_lower for k in ["改名", "重命名", "序号", "替换"]):
-            self.execute_ai_command({"action": "rename", "description": msg})
-        elif any(k in msg_lower for k in ["打开", "启动", "运行", "开启"]):
-            self.execute_ai_command({"action": "open_app", "app_name": msg})
-        elif any(k in msg_lower for k in ["列出", "显示", "查看", "文件", "内容", "有什么"]):
-            self.execute_ai_command({"action": "list_files"})
-        elif any(k in msg_lower for k in ["关机", "重启", "注销", "任务管理器", "取消关机"]):
-            self.execute_ai_command({"action": "system_operation", "operation": msg})
-        elif "执行命令" in msg_lower:
-            cmd = msg.replace("执行命令:", "").strip()
-            self.execute_ai_command({"action": "custom_command", "command": cmd})
-        elif "ai助手" in msg_lower:
-            self.ai_chat_dialog()
-        elif "开始监听" in msg_lower:
-            self.execute_ai_command({"action": "start_listening"})
-        elif "停止监听" in msg_lower:
-            if self.wechat_listener_running:
-                self.execute_ai_command({"action": "stop_listening"})
-
-        # ---------- 新增50条指令支持 ----------
-        elif any(k in msg_lower for k in ["截图", "截屏", "屏幕截图"]):
-            self.execute_ai_command({"action": "take_screenshot"})
-        elif any(k in msg_lower for k in ["录屏", "录影", "屏幕录制", "录制屏幕"]):
-            self.execute_ai_command({"action": "record_screen"})
-        elif any(k in msg_lower for k in ["停止录屏", "停止录制", "结束录屏"]):
-            self.execute_ai_command({"action": "stop_recording"})
-        elif any(k in msg_lower for k in ["静音", "关闭声音", "关闭音量", "静音模式"]):
-            self.execute_ai_command({"action": "toggle_mute"})
-        elif any(k in msg_lower for k in ["音量增大", "提高音量", "音量加大", "调高音量"]):
-            self.execute_ai_command({"action": "volume_up"})
-        elif any(k in msg_lower for k in ["音量减小", "降低音量", "音量降低", "调低音量"]):
-            self.execute_ai_command({"action": "volume_down"})
-        elif any(k in msg_lower for k in ["播放音乐", "播放媒体", "开始播放", "播放音频"]):
-            self.execute_ai_command({"action": "play_media"})
-        elif any(k in msg_lower for k in ["暂停音乐", "暂停媒体", "停止播放", "暂停音频"]):
-            self.execute_ai_command({"action": "pause_media"})
-        elif any(k in msg_lower for k in ["下一曲", "下一首", "下一首歌", "下一个"]):
-            self.execute_ai_command({"action": "next_track"})
-        elif any(k in msg_lower for k in ["上一曲", "上一首", "上一首歌", "上一个"]):
-            self.execute_ai_command({"action": "prev_track"})
-        elif any(k in msg_lower for k in ["显示桌面", "回到桌面", "最小化所有"]):
-            self.execute_ai_command({"action": "show_desktop"})
-        elif any(k in msg_lower for k in ["显示开始菜单", "开始菜单", "打开开始菜单"]):
-            self.execute_ai_command({"action": "show_start_menu"})
-        elif any(k in msg_lower for k in ["切换用户", "切换账户", "注销登录"]):
-            self.execute_ai_command({"action": "switch_user"})
-        elif any(k in msg_lower for k in ["清空回收站", "清理回收站", "回收站清空"]):
-            self.execute_ai_command({"action": "empty_recycle_bin"})
-        elif any(k in msg_lower for k in ["计算器", "打开计算器", "启动计算器"]):
-            self.execute_ai_command({"action": "open_calculator"})
-        elif any(k in msg_lower for k in ["记事本", "打开记事本", "启动记事本"]):
-            self.execute_ai_command({"action": "open_notepad"})
-        elif any(k in msg_lower for k in ["相机", "摄像头", "打开相机", "启动相机"]):
-            self.execute_ai_command({"action": "open_camera"})
-        elif any(k in msg_lower for k in ["拍照", "照相", "拍摄照片"]):
-            self.execute_ai_command({"action": "take_photo"})
-        elif any(k in msg_lower for k in ["当前时间", "现在几点", "现在时间", "查看时间"]):
-            self.execute_ai_command({"action": "get_current_time"})
-        elif any(k in msg_lower for k in ["当前日期", "今天日期", "今天几号", "查看日期"]):
-            self.execute_ai_command({"action": "get_current_date"})
-        elif any(k in msg_lower for k in ["ip地址", "本机ip", "查看ip", "网络地址"]):
-            self.execute_ai_command({"action": "get_ip_address"})
-        elif any(k in msg_lower for k in ["系统信息", "电脑信息", "查看系统信息", "硬件信息"]):
-            self.execute_ai_command({"action": "get_system_info"})
-        elif any(k in msg_lower for k in ["cpu使用率", "cpu占用", "查看cpu", "处理器使用率"]):
-            self.execute_ai_command({"action": "get_cpu_usage"})
-        elif any(k in msg_lower for k in ["内存使用率", "内存占用", "查看内存", "内存情况"]):
-            self.execute_ai_command({"action": "get_memory_usage"})
-        elif any(k in msg_lower for k in ["磁盘使用率", "磁盘空间", "查看磁盘", "硬盘空间"]):
-            self.execute_ai_command({"action": "get_disk_usage"})
-        elif any(k in msg_lower for k in ["电池状态", "电量", "查看电池", "电池电量"]):
-            self.execute_ai_command({"action": "get_battery"})
-        elif any(k in msg_lower for k in ["休眠", "睡眠模式", "进入休眠", "电脑休眠"]):
-            self.execute_ai_command({"action": "hibernate"})
-        elif any(k in msg_lower for k in ["锁定屏幕", "锁定电脑", "屏幕锁定", "锁屏"]):
-            self.execute_ai_command({"action": "lock"})
-        elif any(k in msg_lower for k in ["注销", "登出", "退出登录", "切换账户"]):
-            self.execute_ai_command({"action": "logout"})
-        elif any(k in msg_lower for k in ["关闭显示器", "关闭屏幕", "息屏", "屏幕关闭"]):
-            self.execute_ai_command({"action": "turn_off_display"})
-        elif any(k in msg_lower for k in ["刷新页面", "刷新", "重新加载", "刷新网页"]):
-            self.execute_ai_command({"action": "refresh_page"})
-        elif any(k in msg_lower for k in ["前进", "下一页", "下一个页面", "向前"]):
-            self.execute_ai_command({"action": "go_forward"})
-        elif any(k in msg_lower for k in ["后退", "上一页", "上一个页面", "向后"]):
-            self.execute_ai_command({"action": "go_back"})
-        elif any(k in msg_lower for k in ["浏览器", "打开浏览器", "启动浏览器", "网页浏览器"]):
-            self.execute_ai_command({"action": "open_browser"})
-        elif any(k in msg_lower for k in ["关闭浏览器", "退出浏览器", "结束浏览器"]):
-            self.execute_ai_command({"action": "close_browser"})
-        elif any(k in msg_lower for k in ["文件资源管理器", "资源管理器", "打开文件管理器", "文件管理"]):
-            self.execute_ai_command({"action": "open_explorer"})
-        elif any(k in msg_lower for k in ["命令提示符", "cmd", "打开cmd", "启动命令提示符"]):
-            self.execute_ai_command({"action": "open_cmd"})
-        elif any(k in msg_lower for k in ["powershell", "打开powershell", "启动powershell"]):
-            self.execute_ai_command({"action": "open_powershell"})
-        elif any(k in msg_lower for k in ["任务管理器", "打开任务管理器", "启动任务管理器"]):
-            self.execute_ai_command({"action": "open_task_manager"})
-        elif any(k in msg_lower for k in ["控制面板", "打开控制面板", "启动控制面板"]):
-            self.execute_ai_command({"action": "open_control_panel"})
-        elif any(k in msg_lower for k in ["系统设置", "打开系统设置", "启动系统设置"]):
-            self.execute_ai_command({"action": "open_settings"})
-        elif any(k in msg_lower for k in ["复制到剪贴板", "复制文本", "复制内容"]):
-            # 尝试提取要复制的文本
-            match = re.search(r'复制(?:文本|内容)?[::]\s*(.+)', msg)
-            if match:
-                text = match.group(1).strip()
-                self.execute_ai_command({"action": "set_clipboard", "content": text})
-            else:
-                self.say("系统", "请指定要复制的文本,例如:复制文本:你好世界")
-        elif any(k in msg_lower for k in ["从剪贴板粘贴", "粘贴文本", "粘贴内容", "读取剪贴板"]):
-            self.execute_ai_command({"action": "get_clipboard"})
-        elif any(k in msg_lower for k in ["鼠标点击", "点击鼠标", "单击"]):
-            self.execute_ai_command({"action": "click_mouse"})
-        elif any(k in msg_lower for k in ["滚动", "滚轮", "鼠标滚轮", "上下滚动"]):
-            # 尝试提取滚动数量
-            match = re.search(r'滚动\s*(\d+)', msg_lower)
-            amount = int(match.group(1)) if match else 3
-            self.execute_ai_command({"action": "scroll", "amount": amount})
-        elif any(k in msg_lower for k in ["输入文本", "打字", "模拟输入"]):
-            # 尝试提取要输入的文本
-            match = re.search(r'输入(?:文本)?[::]\s*(.+)', msg)
-            if match:
-                text = match.group(1).strip()
-                self.execute_ai_command({"action": "type_text", "text": text})
-            else:
-                self.say("系统", "请指定要输入的文本,例如:输入文本:你好世界")
-        elif any(k in msg_lower for k in ["按键", "按键盘", "模拟按键"]):
-            # 尝试提取按键
-            match = re.search(r'按键(?:[::]|\s*)(\w+)', msg_lower)
-            if match:
-                key = match.group(1).strip()
-                self.execute_ai_command({"action": "press_key", "key": key})
-            else:
-                self.say("系统", "请指定要按的按键,例如:按键:enter")
-        elif any(k in msg_lower for k in ["鼠标移动", "移动鼠标", "移动光标"]):
-            # 尝试提取坐标
-            match = re.search(r'移动到\s*(\d+)\s*[,,]\s*(\d+)', msg_lower)
-            if match:
-                x, y = int(match.group(1)), int(match.group(2))
-                self.execute_ai_command({"action": "move_mouse", "x": x, "y": y})
-            else:
-                self.say("系统", "请指定鼠标坐标,例如:移动到100,200")
-        elif any(k in msg_lower for k in ["ping", "网络测试", "连接测试"]):
-            # 尝试提取主机
-            match = re.search(r'ping\s+(\S+)', msg_lower) or re.search(r'测试\s+(\S+)\s*连接', msg_lower)
-            if match:
-                host = match.group(1).strip()
-                self.execute_ai_command({"action": "ping_host", "host": host})
-            else:
-                self.execute_ai_command({"action": "ping_host", "host": "baidu.com"})
-        elif any(k in msg_lower for k in ["断开网络", "断开连接", "关闭网络"]):
-            self.execute_ai_command({"action": "disconnect_network"})
-        elif any(k in msg_lower for k in ["连接网络", "启用网络", "打开网络"]):
-            self.execute_ai_command({"action": "connect_network"})
-        elif any(k in msg_lower for k in ["删除文件", "移除文件", "删除"]):
-            # 尝试提取文件路径
-            match = re.search(r'删除(?:文件)?[::]\s*(.+)', msg)
-            if match:
-                file_path = match.group(1).strip()
-                self.execute_ai_command({"action": "delete_file", "file_path": file_path})
-            else:
-                self.say("系统", "请指定要删除的文件路径,例如:删除文件:C:\\test.txt")
-        elif any(k in msg_lower for k in ["创建文件夹", "新建文件夹", "建立目录"]):
-            # 尝试提取文件夹路径
-            match = re.search(r'创建(?:文件夹)?[::]\s*(.+)', msg)
-            if match:
-                folder_path = match.group(1).strip()
-                self.execute_ai_command({"action": "create_folder", "folder_path": folder_path})
-            else:
-                self.say("系统", "请指定要创建的文件夹路径,例如:创建文件夹:C:\\new_folder")
-        elif any(k in msg_lower for k in ["读取文件", "查看文件", "打开文件"]):
-            match = re.search(r'(?:读取|查看|打开)文件[::]\s*(.+)', msg)
-            if match:
-                file_path = match.group(1).strip()
-                self.execute_ai_command({"action": "open_file", "file_path": file_path})
-            else:
-                self.say("系统", "请指定要打开的文件路径,例如:打开文件:C:\\test.txt")
-        else:
-            self.say("AI管家", "🤔 我不太明白,试试一键操作按钮或输入更明确的指令。")
+        self.command_handler.fallback_keyword_parse(msg)
 
     def _execute_quick_action(self, action, params):
-        """执行快速操作按钮 - 统一通过 CommandRegistry"""
-        try:
-            # params from quick action -> cmd_data for registry
-            cmd_data = dict(params) if params else {}
-            cmd_data["action"] = action
-            execute_command(action, self, cmd_data)
-        except KeyError:
-            self.say("AI管家", f"无法执行该操作(未知操作类型:{action})。")
-        except Exception as e:
-            logger.error(f"快速操作执行失败 [{action}]: {e}", exc_info=True)
-            self.say("系统", f"❌ 执行失败: {str(e)}")
+        """执行快速操作按钮 - 委托给 CommandHandler"""
+        self.command_handler._execute_quick_action(action, params)
 
-    _REQUIRED_AI_PARAMS = {
-        # 基本操作
-        "open_app": ["app_name"],
-        "open_file": ["file_path"],
-        "open_folder": ["folder_path"],
-        "sort_files": [],
-        "find_duplicates": [],
-        "find_large": [],
-        "clean_empty": [],
-        "rename_files": ["pattern"],
-        "rename": ["description"],
-        "list_files": [],
-        "ai_chat": [],
-        # 系统控制
-        "shutdown": [],  # delay可选
-        "restart": [],
-        "logout": [],
-        "sleep": [],
-        "lock": [],
-        "hibernate": [],
-        "turn_off_display": [],
-        "cancel_shutdown": [],
-        # 微信相关
-        "send_wechat": ["target", "message"],
-        "schedule_wechat": ["target", "message", "send_time"],
-        "start_listening": [],
-        "stop_listening": [],
-        # 定时任务
-        "schedule_task": ["task", "send_time"],
-        # 自动化任务
-        "run_automation": ["task_name"],
-        # 自定义命令
-        "custom_command": ["command"],
-        # 进程管理
-        "kill_process": [],  # process_name或pid至少一个
-        "list_processes": [],
-        # 窗口管理
-        "minimize_window": ["window_title"],
-        "maximize_window": ["window_title"],
-        "close_window": ["window_title"],
-        "activate_window": ["window_title"],
-        "list_windows": [],
-        # 音量控制
-        "volume_up": [],
-        "volume_down": [],
-        "set_volume": ["level"],
-        "toggle_mute": [],
-        # 截图和剪贴板
-        "take_screenshot": [],
-        "get_clipboard": [],
-        "set_clipboard": ["content"],
-        # 系统信息
-        "get_system_info": [],
-        "get_network_info": [],
-        "get_cpu_usage": [],
-        "get_memory_usage": [],
-        "get_disk_usage": [],
-        "get_battery_status": [],
-        # 网络控制
-        "toggle_wifi": [],
-        "disconnect_network": [],
-        "connect_network": [],
-        "ping_host": ["host"],
-        "get_ip_address": [],
-        # 文件操作
-        "delete_file": ["file_path"],
-        "move_file": ["source", "destination"],
-        "copy_file": ["source", "destination"],
-        "create_folder": ["folder_path"],
-        "delete_folder": ["folder_path"],
-        "read_file": ["file_path"],
-        "write_file": ["file_path", "content"],
-        # 浏览器控制
-        "open_browser": [],
-        "close_browser": [],
-        "navigate_url": ["url"],
-        "refresh_page": [],
-        "go_back": [],
-        "go_forward": [],
-        # 输入模拟
-        "type_text": ["text"],
-        "press_key": ["key"],
-        "move_mouse": ["x", "y"],
-        "click_mouse": ["x", "y"],
-        "scroll": ["amount"],
-        # 媒体控制
-        "play_media": [],
-        "pause_media": [],
-        "next_track": [],
-        "prev_track": [],
-        # 系统工具
-        "open_settings": [],
-        "open_control_panel": [],
-        "open_task_manager": [],
-        "open_cmd": [],
-        "open_powershell": [],
-        "open_explorer": [],
-        "open_notepad": [],
-        "open_calculator": [],
-        "open_camera": [],
-        # 时间日期
-        "get_current_time": [],
-        "get_current_date": [],
-        # 回收站
-        "empty_recycle_bin": [],
-        # 桌面操作
-        "show_desktop": [],
-        "show_start_menu": [],
-        "switch_user": [],
-        # 拍照录屏
-        "take_photo": [],
-        "record_screen": [],
-        "stop_recording": [],
-        # 天气闹钟
-        "get_weather": ["city"],
-        "set_alarm": ["time"],
-        # AI智能体
-        "ai_agent": ["task"],
-        # 语音合成
-        "speak_text": ["text"],
-    }
+    # _REQUIRED_AI_PARAMS 已迁移到 controllers/command_handler.py
+    _REQUIRED_AI_PARAMS = {}  # 向后兼容引用
 
     def _validate_ai_result(self, result):
         """验证AI解析结果是否包含必要参数"""
-        if not result or "action" not in result:
-            return False
-
-        action = result.get("action")
-        # 必要参数映射
-
-        if action not in _REQUIRED_AI_PARAMS:
-            # 未知动作,视为无效
-            return False
-
-        for param in _REQUIRED_AI_PARAMS[action]:
-            if param not in result or not result[param]:
-                return False
-
-        return True
+        return self.command_handler._validate_ai_result(result)
 
     def quick_parse_command(self, msg):
         """快速解析常见命令模式,返回(action, params)或None"""
-        msg_lower = msg.lower().strip()
-        patterns = [
-            (r"(关机|shutdown)", "shutdown", {}),
-            (r"(重启|restart|reboot)", "restart", {}),
-            (r"(睡眠|sleep)", "sleep", {}),
-            (r"(锁定|lock)", "lock", {}),
-            (r"整理\s*(文件|桌面|下载)", "sort_files", {}),
-            (r"(查重|重复|duplicate)\s*(文件)?", "find_duplicates", {}),
-            (r"大文件\s*(\d+)?\s*(GB|G|gb|g)?", "find_large", {}),
-            (r"(清理|删除)\s*空文件", "clean_empty", {}),
-            (r"(列出|显示)\s*文件", "list_files", {}),
-            (r"重命名\s*(文件|文件夹)?\s*[：:]\s*(.+)", "rename", {}),
-            (r"打开\s*(.+?)(?:\s|$)", "open_app", {}),
-            (r"启动\s*(.+?)(?:\s|$)", "open_app", {}),
-            (r"运行\s*(.+?)(?:\s|$)", "open_app", {}),
-            (r"搜索\s*(.+?)(?:\s|$)", "search", {}),
-            (r"百度\s*(.+?)(?:\s|$)", "search", {}),
-        ]
-        for pattern, action, default_params in patterns:
-            m = re.search(pattern, msg_lower)
-            if m:
-                params = dict(default_params)
-                if m.groups():
-                    for i, g in enumerate(m.groups()):
-                        if g:
-                            params[f"arg{i}"] = g.strip()
-                    if action == "open_app":
-                        params["app_name"] = m.group(1).strip()
-                    elif action == "rename":
-                        params["pattern"] = m.group(2).strip() if m.lastindex >= 2 else ""
-                    elif action == "search":
-                        params["query"] = m.group(1).strip()
-                return action, params
-        return None
+        return self.command_handler.quick_parse_command(msg)
 
     def _process_ai_command(self, msg):
         """处理AI解析后的命令结果"""
@@ -1070,64 +707,19 @@ class AppShell:
 
     def execute_ai_command(self, result):
         """执行AI解析后的命令"""
-        try:
-            action = result.get("action", "")
-            execute_command(action, self, result)
-        except Exception as e:
-            logger.error(f"执行AI命令失败: {e}")
-            self.say("系统", f"命令执行失败: {e}")
+        self.command_handler.execute_ai_command(result)
 
     def detect_app_executable(self, app_name):
         """检测应用可执行文件路径"""
-        app_name_lower = app_name.lower()
-        for name, path in self.app_paths.items():
-            if app_name_lower in name.lower() or name.lower() in app_name_lower:
-                if os.path.exists(path):
-                    return path
-        common_paths = [
-            os.path.expandvars(r"%ProgramFiles%"),
-            os.path.expandvars(r"%ProgramFiles(x86)%"),
-            os.path.expandvars(r"%LOCALAPPDATA%"),
-            os.path.expandvars(r"%APPDATA%"),
-        ]
-        for base in common_paths:
-            if not os.path.exists(base):
-                continue
-            for root, dirs, files in os.walk(base):
-                depth = root.replace(base, "").count(os.sep)
-                if depth > 2:
-                    dirs.clear()
-                    continue
-                for f in files:
-                    if f.lower().endswith(".exe") and app_name_lower in f.lower():
-                        return os.path.join(root, f)
-        return None
+        return self.command_handler.detect_app_executable(app_name)
 
     def add_custom_app(self):
         """添加自定义应用"""
-        app_name = simpledialog.askstring("添加应用", "应用名称:", parent=self.root)
-        if not app_name:
-            return
-        app_path = filedialog.askopenfilename(
-            title=f"选择 {app_name} 的可执行文件",
-            filetypes=[("可执行文件", "*.exe"), ("所有文件", "*.*")]
-        )
-        if app_path:
-            self.app_paths[app_name] = app_path
-            self.config_manager.set("app_paths", self.app_paths)
-            self.say("系统", f"已添加应用: {app_name}")
+        self.command_handler.add_custom_app()
 
     def list_custom_apps(self):
         """显示已添加的应用列表"""
-        apps = self.app_paths
-        if not apps:
-            self.say("系统", "暂无自定义应用")
-            return
-        lines = ["已添加的应用:"]
-        for name, path in apps.items():
-            exists = "✅" if os.path.exists(path) else "❌"
-            lines.append(f"  {exists} {name}: {path}")
-        self.say("系统", "\n".join(lines))
+        self.command_handler.list_custom_apps()
 
     def ai_chat_dialog(self):
         """AI对话窗口"""
