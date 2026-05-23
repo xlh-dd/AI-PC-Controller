@@ -1,8 +1,9 @@
 import tkinter as tk
-from tkinter import scrolledtext, messagebox, simpledialog, ttk
+from tkinter import scrolledtext, messagebox, simpledialog, ttk, filedialog
 import threading
 import logging
 import traceback
+import os
 from datetime import datetime
 
 logger = logging.getLogger("ChatPanel")
@@ -144,6 +145,7 @@ class ChatPanel:
         self.conv_listbox.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
         self.conv_listbox.bind("<<ListboxSelect>>", self._on_conv_selected)
         self.conv_listbox.bind("<Double-Button-1>", lambda e: self._rename_conversation())
+        self.conv_listbox.bind("<Button-3>", self._on_conv_right_click)
 
         v_scroll = ttk.Scrollbar(list_frame, command=self.conv_listbox.yview)
         v_scroll.pack(side=tk.RIGHT, fill=tk.Y)
@@ -741,3 +743,66 @@ class ChatPanel:
         self.chat.config(state=tk.NORMAL)
         self.chat.delete(1.0, tk.END)
         self.chat.config(state=tk.DISABLED)
+
+    def _on_conv_right_click(self, event):
+        """对话列表右键菜单"""
+        idx = self.conv_listbox.nearest(event.y)
+        if idx < 0:
+            return
+        self.conv_listbox.selection_clear(0, tk.END)
+        self.conv_listbox.selection_set(idx)
+        menu = tk.Menu(self.conv_panel, tearoff=0,
+                        bg="#313244", fg="#cdd6f4",
+                        activebackground="#45475a", activeforeground="#f5e0dc")
+        menu.add_command(label="✏️ 重命名", command=self._rename_conversation)
+        menu.add_command(label="🗑️ 删除", command=self._delete_conversation_dialog)
+        menu.add_separator()
+        menu.add_command(label="📤 导出", command=self._export_conversation)
+        menu.post(event.x_root, event.y_root)
+
+    def _delete_conversation_dialog(self):
+        """删除对话确认对话框"""
+        sel = self.conv_listbox.curselection()
+        if not sel:
+            return
+        if messagebox.askyesno("删除对话", "确定删除此对话？\n此操作不可恢复。"):
+            self._delete_selected_conversation(sel[0])
+
+    def _delete_selected_conversation(self, idx):
+        """删除指定索引的对话"""
+        try:
+            conv = self._conv_mgr.conversations[idx]
+            self._conv_mgr.delete(conv.id)
+        except Exception:
+            return
+        cid = getattr(self, '_current_conv_id', None)
+        if cid and cid == conv.id:
+            self._new_conversation()
+        self._refresh_conversation_list()
+        self.controller.show_toast("对话已删除")
+
+    def _export_conversation(self):
+        """导出对话为文本文件"""
+        sel = self.conv_listbox.curselection()
+        if not sel:
+            return
+        idx = sel[0]
+        try:
+            conv = self._conv_mgr.conversations[idx]
+        except Exception:
+            return
+        path = filedialog.asksaveasfilename(
+            defaultextension=".txt",
+            filetypes=[("文本文件", "*.txt"), ("Markdown", "*.md")],
+            initialfile=(conv.title or "conversation")
+        )
+        if not path:
+            return
+        lines = []
+        for turn in conv.turns:
+            lines.append(f"## {turn.role.upper()}")
+            lines.append(turn.content)
+            lines.append("")
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(lines))
+        self.controller.show_toast(f"已导出到 {os.path.basename(path)}")

@@ -88,7 +88,8 @@ class AppShell:
     def __init__(self, root):
         self.root = root
         self.root.title("Hermes | AI电脑管家 8.0")
-        self.root.geometry("1000x700")
+        # 恢复上次窗口位置
+        self._restore_geometry()
         self.root.minsize(900, 600)
         self.root.resizable(True, True)
 
@@ -476,6 +477,9 @@ class AppShell:
         # 全局快捷键
         self.root.bind("<Control-q>", lambda e: self.on_closing())
         self.root.bind("<Control-Q>", lambda e: self.on_closing())
+        self.root.bind("<Control-Tab>", self._switch_tab_next)
+        self.root.bind("<Control-ISO_Left_Tab>", self._switch_tab_prev)
+        self.root.bind("<Control-Shift-Tab>", self._switch_tab_prev)
 
         # ========== 底部状态栏 ==========
         self._build_bottom_status()
@@ -875,6 +879,50 @@ class AppShell:
     def _cancel_hermes(self):
         """取消 Hermes 处理(由 ChatPanel 管理)"""
         pass
+
+
+    def _restore_geometry(self):
+        """恢复上次窗口位置和大小"""
+        try:
+            saved = self.config_manager.get("window_geometry", "")
+            if saved:
+                self.root.geometry(saved)
+        except:
+            self.root.geometry("1000x700")
+
+    def _save_geometry(self):
+        """保存当前窗口位置和大小"""
+        try:
+            self.config_manager.set("window_geometry", self.root.geometry())
+        except:
+            pass
+
+    def _switch_tab_next(self, event=None):
+        """切换到下一个标签"""
+        idx = self.notebook.index("current")
+        total = self.notebook.index("end")
+        self.notebook.select((idx + 1) % total)
+
+    def _switch_tab_prev(self, event=None):
+        """切换到上一个标签"""
+        idx = self.notebook.index("current")
+        total = self.notebook.index("end")
+        self.notebook.select((idx - 1) % total)
+
+    def show_toast(self, text, duration=3000):
+        """弹出短暂Toast提示"""
+        toast = tk.Toplevel(self.root)
+        toast.overrideredirect(True)
+        toast.attributes("-topmost", True)
+        w = ttk.Label(toast, text=text, padding=15,
+                       font=("微软雅黑", 11), relief="solid",
+                       borderwidth=1, background="#313244",
+                       foreground="#cdd6f4")
+        w.pack()
+        x = self.root.winfo_x() + (self.root.winfo_width() - w.winfo_reqwidth()) // 2
+        y = self.root.winfo_y() + self.root.winfo_height() - 80
+        toast.geometry("+%d+%d" % (max(0, x), max(0, y)))
+        self.root.after(duration, toast.destroy)
 
     def show_help(self):
         """显示帮助信息"""
