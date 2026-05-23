@@ -778,7 +778,7 @@ class ChatPanel:
         cid = getattr(self, '_current_conv_id', None)
         if cid and cid == conv.id:
             self._new_conversation()
-        self._refresh_conversation_list()
+        self._refresh_conv_listbox()
         self.controller.show_toast("对话已删除")
 
     def _export_conversation(self):
