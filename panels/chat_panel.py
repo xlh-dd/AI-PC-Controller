@@ -769,15 +769,16 @@ class ChatPanel:
             self._delete_selected_conversation(sel[0])
 
     def _delete_selected_conversation(self, idx):
-        """删除指定索引的对话"""
+        """删除列表索引处的对话"""
         try:
-            conv = self._conv_mgr.conversations[idx]
-            self._conv_mgr.delete(conv.id)
+            convs = self._conv_mgr.list_conversations()
+            if idx >= len(convs):
+                return
+            conv = convs[idx]
         except Exception:
             return
-        cid = getattr(self, '_current_conv_id', None)
-        if cid and cid == conv.id:
-            self._new_conversation()
+        self._conv_mgr.delete(conv.id)
+        self._load_active_conversation()
         self._refresh_conv_listbox()
         self.controller.show_toast("对话已删除")
 
@@ -799,9 +800,9 @@ class ChatPanel:
         if not path:
             return
         lines = []
-        for turn in conv.turns:
-            lines.append(f"## {turn.role.upper()}")
-            lines.append(turn.content)
+        for turn in conv.messages:
+            lines.append(f"## {turn["role"].upper()}")
+            lines.append(turn["content"])
             lines.append("")
         with open(path, 'w', encoding='utf-8') as f:
             f.write('\n'.join(lines))
