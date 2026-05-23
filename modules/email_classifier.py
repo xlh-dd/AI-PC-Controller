@@ -18,6 +18,8 @@ from email.mime.base import MIMEBase
 from email import encoders
 from email.header import decode_header
 
+logger = logging.getLogger("EmailClassifier")
+
 # 尝试导入可选依赖
 try:
     import yagmail

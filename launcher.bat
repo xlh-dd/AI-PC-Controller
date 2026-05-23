@@ -1,5 +1,5 @@
 @echo off
-chcp 936 >nul
+chcp 65001 >nul
 title AI电脑管家 - 启动器 v2.0
 color 0B
 
@@ -10,7 +10,7 @@ echo   AI电脑管家 启动器
 echo ======================================
 echo.
 echo  [1] 标准启动 (main.py)
-echo  [2] 快速启动 (预启动WSL加速)
+echo  [2] 快速启动 (预启动WSL服务)
 echo  [3] 升级版启动 (main_upgrade.py + Hermes)
 echo  [4] Hermes 模式启动
 echo  [5] 项目健康检查
@@ -29,7 +29,7 @@ if "%choice%"=="5" goto health_check
 if "%choice%"=="6" goto install_deps
 if "%choice%"=="7" goto test_hermes
 if "%choice%"=="0" goto exit
-echo 无效选择，请重新输入
+echo 无效选择，请重新选择
 timeout /t 2 >nul
 goto menu
 
@@ -39,8 +39,8 @@ start "" python main.py
 goto menu
 
 :start_fast
-echo 预启动 WSL 保持服务...
-start /min "WSL保持服务" python tools/keep_wsl_alive.py
+echo 预启动 WSL 守护进程...
+start /min "WSL守护进程" python tools/keep_wsl_alive.py
 echo 等待 WSL 就绪 (10秒)...
 timeout /t 10 >nul
 echo 启动 AI电脑管家...
@@ -58,7 +58,7 @@ start "" python main.py --hermes
 goto menu
 
 :health_check
-echo 运行项目健康检查...
+echo 检查项目健康状态...
 python tools/health_check.py
 echo.
 pause

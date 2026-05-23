@@ -1,4 +1,11 @@
-import pyautogui
+try:
+    import pyautogui
+    PYAUTOGUI_AVAILABLE = True
+except ImportError:
+    PYAUTOGUI_AVAILABLE = False
+    pyautogui = None
+    import logging
+    logging.getLogger("MacroRecorder").warning("pyautogui未安装，宏录制功能不可用")
 import time
 import json
 import os
@@ -25,8 +32,6 @@ except ImportError:
 
 logger = logging.getLogger("MacroRecorder")
 
-pyautogui.FAILSAFE = True
-pyautogui.PAUSE = 0.05
 
 MACRO_DIR = Path.home() / "aipc_macros"
 MACRO_DIR.mkdir(exist_ok=True)

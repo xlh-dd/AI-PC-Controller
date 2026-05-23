@@ -89,8 +89,17 @@ except ImportError:
     logger.warning("pytesseract未安装，OCR功能不可用")
 
 import socket
-from comtypes import CLSCTX_ALL
-from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+
+try:
+    from comtypes import CLSCTX_ALL
+    from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+    PYCAW_AVAILABLE = True
+except ImportError:
+    PYCAW_AVAILABLE = False
+    CLSCTX_ALL = None
+    AudioUtilities = None
+    IAudioEndpointVolume = None
+    logger.warning("comtypes/pycaw未安装，精确音量控制功能受限")
 
 class SystemController:
     """系统控制器 - 提供各种系统级控制功能"""
@@ -113,8 +122,15 @@ class SystemController:
         if not WIN32_AVAILABLE:
             return {"success": False, "error": "需要pywin32库"}
 
-        try:
+        if not PYCAW_AVAILABLE:
+            return {
+                "success": True,
+                "volume": "未知",
+                "is_muted": False,
+                "note": "需要安装comtypes/pycaw库获取精确音量"
+            }
 
+        try:
             devices = AudioUtilities.GetSpeakers()
             interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
             volume = interface.QueryInterface(IAudioEndpointVolume)
@@ -124,27 +140,10 @@ class SystemController:
 
             return {
                 "success": True,
-                "volume": round(current_volume * 100, 1),  # 百分比
+                "volume": round(current_volume * 100, 1),
                 "is_muted": bool(is_muted),
                 "volume_scalar": current_volume
             }
-        except ImportError:
-            # 备选方案：使用Windows API
-            try:
-                # 使用Windows API获取音量
-
-                # 定义函数和常量
-                user32 = ctypes.windll.user32
-
-                # 简单方法：发送按键模拟
-                return {
-                    "success": True,
-                    "volume": "未知",
-                    "is_muted": False,
-                    "note": "需要安装pycaw库获取精确音量"
-                }
-            except Exception as e:
-                return {"success": False, "error": f"获取音量失败: {str(e)}"}
         except Exception as e:
             return {"success": False, "error": f"获取音量失败: {str(e)}"}
 
@@ -161,20 +160,16 @@ class SystemController:
         if not WIN32_AVAILABLE:
             return {"success": False, "error": "需要pywin32库"}
 
-        try:
-            # 尝试使用pycaw进行精确音量设置
+        if PYCAW_AVAILABLE:
             try:
-
                 pythoncom.CoInitialize()
                 devices = AudioUtilities.GetSpeakers()
                 interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
                 volume = interface.QueryInterface(IAudioEndpointVolume)
 
-                # 设置音量（0.0到1.0的浮点数）
                 target_scalar = max(0.0, min(1.0, level / 100.0))
                 volume.SetMasterVolumeLevelScalar(target_scalar, None)
 
-                # 设置静音状态
                 if mute is not None:
                     volume.SetMute(1 if mute else 0, None)
 
@@ -187,50 +182,45 @@ class SystemController:
                     "target_volume_scalar": target_scalar,
                     "method": "pycaw"
                 }
+            except Exception as e:
+                return {"success": False, "error": f"设置音量失败: {str(e)}"}
 
-            except ImportError:
-                # pycaw不可用，回退到按键模拟
-                if not PYAUTOGUI_AVAILABLE:
-                    return {"success": False, "error": "需要pyautogui库"}
+        # pycaw不可用，回退到按键模拟
+        if not PYAUTOGUI_AVAILABLE:
+            return {"success": False, "error": "需要pyautogui库"}
 
+        try:
+            current_info = self.get_volume()
+            if not current_info.get("success"):
+                return current_info
 
-                # 获取当前音量
-                current_info = self.get_volume()
-                if not current_info.get("success"):
-                    return current_info
+            current_volume = current_info.get("volume", 50)
 
-                current_volume = current_info.get("volume", 50)
+            volume_diff = level - current_volume
 
-                # 计算需要按多少次音量键
-                volume_diff = level - current_volume
+            if volume_diff > 0:
+                key = "volumeup"
+                presses = min(int(volume_diff / 2), 50)
+            elif volume_diff < 0:
+                key = "volumedown"
+                presses = min(int(abs(volume_diff) / 2), 50)
+            else:
+                presses = 0
 
-                if volume_diff > 0:
-                    # 增大音量
-                    key = "volumeup"
-                    presses = min(int(volume_diff / 2), 50)  # 每次大约增加2%
-                elif volume_diff < 0:
-                    # 减小音量
-                    key = "volumedown"
-                    presses = min(int(abs(volume_diff) / 2), 50)
-                else:
-                    presses = 0
+            for _ in range(presses):
+                pyautogui.press(key)
+                time.sleep(0.05)
 
-                # 执行按键
-                for _ in range(presses):
-                    pyautogui.press(key)
-                    time.sleep(0.05)
+            if mute is not None:
+                pyautogui.press("volumemute")
 
-                # 设置静音状态
-                if mute is not None:
-                    pyautogui.press("volumemute")
-
-                return {
-                    "success": True,
-                    "message": f"音量已调整到约{level}%（使用按键模拟，可能不精确）",
-                    "target_volume": level,
-                    "presses": presses,
-                    "method": "keyboard_simulation"
-                }
+            return {
+                "success": True,
+                "message": f"音量已调整到约{level}%（使用按键模拟，可能不精确）",
+                "target_volume": level,
+                "presses": presses,
+                "method": "keyboard_simulation"
+            }
 
         except Exception as e:
             return {"success": False, "error": f"设置音量失败: {str(e)}"}

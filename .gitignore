@@ -72,6 +72,13 @@ $RECYCLE.BIN/
 *.temp
 ~$*
 _*.py
+_*.ps1
+_refactor*
+
+# Config with sensitive data
+*.env
+config/secrets*
+aipc_helper_config.json
 
 # Database files (tracked via knowledge_base config)
 *.db
