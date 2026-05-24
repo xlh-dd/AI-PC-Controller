@@ -394,6 +394,15 @@ class ChatPanel:
                     self.controller.say("系统", f"未知命令: /{cmd}")
                 return
 
+            # 命令拦截：在送AI前先用CommandHandler正则匹配
+            cmd_handler = getattr(ctrl, 'command_handler', None)
+            if cmd_handler:
+                quick = cmd_handler.quick_parse_command(msg)
+                if quick:
+                    action, params = quick
+                    cmd_handler._execute_quick_action(action, params)
+                    return
+
             conv.add_message("user", msg)
             self._refresh_conv_listbox()
 

@@ -727,6 +727,48 @@ class AppShell:
         """检测应用可执行文件路径"""
         return self.command_handler.detect_app_executable(app_name)
 
+    def open_app(self, app_name):
+        """打开应用程序 — 供 CommandRegistry 调度"""
+        import subprocess, os
+        common = {
+            "记事本": "notepad", "计算器": "calc", "画图": "mspaint",
+            "浏览器": "start https://www.baidu.com", "资源管理器": "explorer",
+            "命令提示符": "cmd", "powershell": "powershell",
+            "控制面板": "control", "任务管理器": "taskmgr",
+            "设备管理器": "devmgmt.msc", "注册表": "regedit",
+            "服务": "services.msc", "防火墙": "wf.msc",
+        }
+        # 系统命令优先
+        if app_name in common:
+            subprocess.Popen(common[app_name], shell=True)
+            self.say("系统", f"✅ 已启动: {app_name}")
+            return
+
+        # 已登记的自定义应用
+        path = self.detect_app_executable(app_name)
+        if path:
+            os.startfile(path)
+            self.say("系统", f"✅ 已启动: {app_name}")
+            return
+
+        # 尝试系统PATH搜索
+        try:
+            subprocess.Popen([app_name], shell=True)
+            self.say("系统", f"✅ 已启动: {app_name}")
+            return
+        except Exception:
+            pass
+
+        # 尝试 start 命令 (Windows Shell 解析)
+        try:
+            subprocess.Popen(f'start "" "{app_name}"', shell=True)
+            self.say("系统", f"✅ 已启动: {app_name}")
+            return
+        except Exception:
+            pass
+
+        self.say("系统", f"⚠️ 未找到应用: {app_name}\n请通过菜单添加自定义应用路径")
+
     def add_custom_app(self):
         """添加自定义应用"""
         self.command_handler.add_custom_app()
