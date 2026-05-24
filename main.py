@@ -564,6 +564,16 @@ class AppShell:
         )
         version_label.pack(side=tk.RIGHT, padx=5)
 
+        # 快捷键提示
+        ttk.Separator(status_frame, orient="vertical").pack(side=tk.LEFT, fill=tk.Y, padx=5)
+        shortcuts_hint = ttk.Label(
+            status_frame,
+            text="Ctrl+Tab 切标签 | Ctrl+N 新建 | Ctrl+Q 退出",
+            font=("微软雅黑", 7),
+            foreground="#6c7086"
+        )
+        shortcuts_hint.pack(side=tk.LEFT, padx=5)
+
     # ---------- 消息显示 ----------
     def say(self, who, what):
         """线程安全的消息显示方法"""
@@ -919,6 +929,7 @@ class AppShell:
                        borderwidth=1, background="#313244",
                        foreground="#cdd6f4")
         w.pack()
+        w.update_idletasks()
         x = self.root.winfo_x() + (self.root.winfo_width() - w.winfo_reqwidth()) // 2
         y = self.root.winfo_y() + self.root.winfo_height() - 80
         toast.geometry("+%d+%d" % (max(0, x), max(0, y)))

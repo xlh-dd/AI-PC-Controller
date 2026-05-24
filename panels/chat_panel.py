@@ -99,6 +99,12 @@ class ChatPanel:
         )
         self.model_combo.bind("<<ComboboxSelected>>", self._on_model_selected)
         self.model_combo.pack(side=tk.LEFT, padx=2)
+        # 模型选择提示
+        model_hint = ttk.Label(
+            engine_frame, text="选择AI模型",
+            font=("微软雅黑", 7), foreground="#6c7086"
+        )
+        model_hint.pack(side=tk.LEFT, padx=(2, 0))
 
         self.auto_switch_var = tk.BooleanVar(value=True)
         self.auto_switch_btn = ttk.Button(
