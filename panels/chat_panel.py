@@ -68,8 +68,11 @@ class ChatPanel:
         self.input_text.bind("<Return>", self.send_msg)
         self.input_text.focus()
 
-        send_btn = ttk.Button(input_frame, text="🚀 发送", command=self.send_msg)
-        send_btn.pack(side=tk.RIGHT, ipady=3)
+        self.send_btn = ttk.Button(input_frame, text="🚀 发送", command=self.send_msg)
+        self.send_btn.pack(side=tk.RIGHT, ipady=3)
+
+        self.cancel_btn = ttk.Button(input_frame, text="⏹ 停止", command=self._cancel_stream,
+                                     bootstyle="danger")
 
         # 绑定快捷键
         self.controller.root.bind("<Control-n>", lambda e: self._new_conversation_named())
@@ -549,7 +552,7 @@ class ChatPanel:
                 status_label=ctrl.status_label,
                 on_complete=self._on_stream_complete,
                 on_cancel_button=lambda show: (
-                    ctrl._show_cancel_button() if show else ctrl._hide_cancel_button()
+                    self._show_cancel_button() if show else self._hide_cancel_button()
                 )
             )
         return self._streaming_manager
@@ -557,6 +560,21 @@ class ChatPanel:
     def _on_stream_complete(self):
         """流式完成回调 - 更新对话历史状态"""
         self._update_history_status()
+
+    def _cancel_stream(self):
+        """用户点击停止按钮"""
+        if self._streaming_manager:
+            self._streaming_manager.cancel()
+
+    def _show_cancel_button(self):
+        """显示取消按钮，隐藏发送按钮"""
+        self.send_btn.pack_forget()
+        self.cancel_btn.pack(side=tk.RIGHT, ipady=3, padx=(4, 0))
+
+    def _hide_cancel_button(self):
+        """隐藏取消按钮，恢复发送按钮"""
+        self.cancel_btn.pack_forget()
+        self.send_btn.pack(side=tk.RIGHT, ipady=3)
 
     def _update_history_status(self):
         """更新对话历史状态显示"""

@@ -990,7 +990,7 @@ class AppShell:
         self.config_manager.set("current_folder", self.current_folder)
         self.config_manager.set("scheduled_tasks", self.scheduled_tasks)
         self.config_manager.set("app_paths", self.app_paths)
-        self.config_manager.save()
+        self.config_manager.save_config()
 
         try:
             self.root.destroy()
