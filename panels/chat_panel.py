@@ -795,7 +795,10 @@ class ChatPanel:
             return
         idx = sel[0]
         try:
-            conv = self._conv_mgr.conversations[idx]
+            convs = self._conv_mgr.list_conversations()
+            if idx >= len(convs):
+                return
+            conv = convs[idx]
         except Exception:
             return
         path = filedialog.asksaveasfilename(
