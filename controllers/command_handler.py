@@ -138,10 +138,16 @@ _REQUIRED_AI_PARAMS = {
 
 
 QUICK_PARSE_PATTERNS = [
+    (r"(取消关机|cancel\s*shutdown)", "cancel_shutdown", {}),
+    (r"(定时关机|timer\s*shutdown)", "timer_shutdown", {}),
+    (r"(定时重启|timer\s*restart)", "timer_restart", {}),
     (r"(关机|shutdown)", "shutdown", {}),
     (r"(重启|restart|reboot)", "restart", {}),
     (r"(睡眠|sleep)", "sleep", {}),
-    (r"(锁定|lock)", "lock", {}),
+    (r"(锁定|锁屏|lock)", "lock", {}),
+    (r"(注销|log\s*out)", "logout", {}),
+    (r"(休眠|hibernat)", "hibernate", {}),
+    (r"(任务管理器|task\s*man)", "open_task_manager", {}),
     (r"整理\s*(文件|桌面|下载)", "sort_files", {}),
     (r"(查重|重复|duplicate)\s*(文件)?", "find_duplicates", {}),
     (r"大文件\s*(\d+)?\s*(GB|G|gb|g)?", "find_large", {}),

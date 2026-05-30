@@ -1025,3 +1025,19 @@ def _register_migrated_commands(registry):
         else:
             context.say("系统", "请指定闹钟时间。")
     registry.register_handler("set_alarm", cmd_set_alarm, "set_alarm")
+
+    # system_operation — 关键字分发到具体 handler (关机/重启/注销等)
+    _SYS_OP_MAP = {
+        "关机": "shutdown", "重启": "restart", "注销": "logout",
+        "锁屏": "lock", "锁屏": "lock", "休眠": "hibernate",
+        "睡眠": "sleep", "取消关机": "cancel_shutdown",
+        "定时关机": "timer_shutdown", "定时重启": "timer_restart",
+    }
+    def cmd_system_operation(context, cmd_data):
+        """分发系统操作到具体命令"""
+        op = cmd_data.get("operation", "").lower()
+        for kw, action in _SYS_OP_MAP.items():
+            if kw in op:
+                return registry.execute(action, context, cmd_data)
+        context.say("系统", f"未知系统操作: {op}")
+    registry.register_handler("system_operation", cmd_system_operation, "系统操作(关机/重启/注销等)")
