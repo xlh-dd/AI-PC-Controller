@@ -20,7 +20,7 @@ def check_wsl_running(distro="Ubuntu-22.04"):
         )
         output = result.stdout.decode('utf-8', errors='ignore')
         return distro in output
-    except:
+    except Exception:
         return False
 
 def start_wsl(distro="Ubuntu-22.04"):

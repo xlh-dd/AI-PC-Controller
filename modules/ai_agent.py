@@ -824,7 +824,7 @@ class AIAgent:
             search_url = f"https://www.baidu.com/s?wd={quote_plus(query)}"
             try:
                 os.startfile(search_url)
-            except:
+            except Exception:
                 search_url = f"https://www.bing.com/search?q={quote_plus(query)}"
                 os.startfile(search_url)
             self._publish_event("search.completed", {"query": query, "count": 0, "source": "browser", "note": "已打开浏览器"})
@@ -1573,7 +1573,7 @@ except ImportError:
         if self.driver:
             try:
                 self.driver.quit()
-            except:
+            except Exception:
                 pass
             self.driver = None
 

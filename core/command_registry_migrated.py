@@ -878,7 +878,7 @@ def _register_migrated_commands(registry):
             import winshell
             winshell.empty_recycle_bin(flags=0x00000000 | 0x00000040)
             context.say("系统", "✅ 回收站已清空")
-        except:
+        except Exception:
             os.system("rd /s /q C:\\$Recycle.Bin")
             context.say("系统", "✅ 尝试清空回收站")
     registry.register_handler("empty_recycle_bin", cmd_empty_recycle_bin, "empty_recycle_bin")
@@ -1016,7 +1016,7 @@ def _register_migrated_commands(registry):
                         engine = pyttsx3.init()
                         engine.say(message)
                         engine.runAndWait()
-                    except:
+                    except Exception:
                         import winsound
                         winsound.Beep(1000, 2000)
                 threading.Timer(delay_s, ring_alarm).start()

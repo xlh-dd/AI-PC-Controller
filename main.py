@@ -939,14 +939,14 @@ class AppShell:
             saved = self.config_manager.get("window_geometry", "")
             if saved:
                 self.root.geometry(saved)
-        except:
+        except Exception:
             self.root.geometry("1000x700")
 
     def _save_geometry(self):
         """保存当前窗口位置和大小"""
         try:
             self.config_manager.set("window_geometry", self.root.geometry())
-        except:
+        except Exception:
             pass
 
     def _switch_tab_next(self, event=None):

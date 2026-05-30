@@ -94,7 +94,7 @@ class FilePanel:
                         fp = os.path.join(folder, f)
                         if os.path.isfile(fp):
                             total_size += os.path.getsize(fp)
-                    except:
+                    except Exception:
                         pass
 
                 if total_size > 1024**3:

@@ -727,7 +727,7 @@ class EmailClassifier:
                         payload = part.get_payload(decode=True)
                         charset = part.get_content_charset() or 'utf-8'
                         content += payload.decode(charset, errors='ignore')
-                    except:
+                    except Exception:
                         pass
                 elif content_type == "text/html":
                     # HTML部分
@@ -738,7 +738,7 @@ class EmailClassifier:
                         # 简单提取文本（实际应该使用HTML解析器）
                         html_content = re.sub(r'<[^>]+>', ' ', html_content)
                         content += html_content
-                    except:
+                    except Exception:
                         pass
         else:
             # 非多部分邮件
@@ -746,7 +746,7 @@ class EmailClassifier:
                 payload = msg.get_payload(decode=True)
                 charset = msg.get_content_charset() or 'utf-8'
                 content = payload.decode(charset, errors='ignore')
-            except:
+            except Exception:
                 content = str(msg.get_payload())
 
         return content
@@ -769,7 +769,7 @@ class EmailClassifier:
                         payload = part.get_payload(decode=True)
                         charset = part.get_content_charset() or 'utf-8'
                         plain_text += payload.decode(charset, errors='ignore')
-                    except:
+                    except Exception:
                         pass
         else:
             if msg.get_content_type() == "text/plain":
@@ -777,7 +777,7 @@ class EmailClassifier:
                     payload = msg.get_payload(decode=True)
                     charset = msg.get_content_charset() or 'utf-8'
                     plain_text = payload.decode(charset, errors='ignore')
-                except:
+                except Exception:
                     plain_text = str(msg.get_payload())
 
         return plain_text

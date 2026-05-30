@@ -202,7 +202,7 @@ class WeChatPanel:
                                         ctrl.wechat_controller.send_wechat_message(
                                             ctrl.wechat_controller.contact, err
                                         )
-                                    except:
+                                    except Exception:
                                         pass
                                 finally:
                                     with ctrl.listener_lock:

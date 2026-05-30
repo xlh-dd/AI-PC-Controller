@@ -425,7 +425,7 @@ class AIHelper:
                 if json_str:
                     data = json.loads(json_str.group(1))
                     result = data
-            except:
+            except Exception:
                 pass
 
         # 设置缓存
@@ -466,7 +466,7 @@ class AIHelper:
                 if json_str:
                     del_list = json.loads(json_str.group(1))
                     result = del_list
-            except:
+            except Exception:
                 pass
 
         # 设置缓存

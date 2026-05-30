@@ -353,7 +353,7 @@ class WorkflowEngine:
                     d = json.load(fp)
                     results.append({"id": d.get("id"), "name": d.get("name"),
                                    "path": str(f), "node_count": len(d.get("nodes", []))})
-            except:
+            except Exception:
                 pass
         return results
 

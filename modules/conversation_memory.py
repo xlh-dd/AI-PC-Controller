@@ -336,7 +336,7 @@ class ConversationMemory:
             if conv.get('metadata'):
                 try:
                     conv['metadata'] = json.loads(conv['metadata'])
-                except:
+                except Exception:
                     conv['metadata'] = {}
             conversations.append(conv)
 
@@ -373,7 +373,7 @@ class ConversationMemory:
             if conv.get('metadata'):
                 try:
                     conv['metadata'] = json.loads(conv['metadata'])
-                except:
+                except Exception:
                     conv['metadata'] = {}
             conversations.append(conv)
 
@@ -423,7 +423,7 @@ class ConversationMemory:
             if conv.get('metadata'):
                 try:
                     conv['metadata'] = json.loads(conv['metadata'])
-                except:
+                except Exception:
                     conv['metadata'] = {}
             conversations.append(conv)
 

@@ -119,7 +119,7 @@ class HermesProcessPool:
                 # 临时进程，直接终止
                 try:
                     proc_info['process'].terminate()
-                except:
+                except Exception:
                     pass
                 return
 
@@ -180,7 +180,7 @@ class HermesProcessPool:
         for proc_info in self._processes:
             try:
                 proc_info['process'].terminate()
-            except:
+            except Exception:
                 pass
         self._processes.clear()
 
@@ -227,11 +227,11 @@ class HermesBridgeOptimized:
             )
             try:
                 result.stdout_text = result.stdout.decode('utf-8', errors='ignore').strip()
-            except:
+            except Exception:
                 result.stdout_text = ""
             try:
                 result.stderr_text = result.stderr.decode('utf-8', errors='ignore').strip()
-            except:
+            except Exception:
                 result.stderr_text = ""
             return result
         except Exception as e:
@@ -246,7 +246,7 @@ class HermesBridgeOptimized:
                 timeout=5
             )
             return result.returncode == 0 and "ready" in result.stdout_text
-        except:
+        except Exception:
             return False
 
     def _check_availability(self) -> bool:

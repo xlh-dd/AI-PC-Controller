@@ -296,7 +296,7 @@ class SystemController:
                     "message": f"静音已{'开启' if is_muted else '关闭'}",
                     "is_muted": is_muted
                 }
-            except:
+            except Exception:
                 return {
                     "success": True,
                     "message": "已切换静音状态"
@@ -451,7 +451,7 @@ class SystemController:
                         if len(parts) > 1:
                             ssid = parts[1].strip()
                             break
-            except:
+            except Exception:
                 pass
 
             return {
@@ -1065,7 +1065,7 @@ class SystemController:
             # 删除临时文件
             try:
                 os.remove(image_path)
-            except:
+            except Exception:
                 pass
 
             return ocr_result
@@ -1159,32 +1159,32 @@ class SystemController:
                     software = {}
                     try:
                         software["name"] = winreg.QueryValueEx(subkey, "DisplayName")[0]
-                    except:
+                    except Exception:
                         software["name"] = subkey_name
 
                     try:
                         software["version"] = winreg.QueryValueEx(subkey, "DisplayVersion")[0]
-                    except:
+                    except Exception:
                         software["version"] = "未知"
 
                     try:
                         software["publisher"] = winreg.QueryValueEx(subkey, "Publisher")[0]
-                    except:
+                    except Exception:
                         software["publisher"] = "未知"
 
                     try:
                         software["install_date"] = winreg.QueryValueEx(subkey, "InstallDate")[0]
-                    except:
+                    except Exception:
                         software["install_date"] = "未知"
 
                     try:
                         software["install_location"] = winreg.QueryValueEx(subkey, "InstallLocation")[0]
-                    except:
+                    except Exception:
                         software["install_location"] = ""
 
                     try:
                         software["uninstall_string"] = winreg.QueryValueEx(subkey, "UninstallString")[0]
-                    except:
+                    except Exception:
                         software["uninstall_string"] = ""
 
                     # 只添加有DisplayName的软件（避免系统组件）

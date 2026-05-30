@@ -181,7 +181,7 @@ class BaseMacroBuiltIn:
         try:
             import pyperclip
             return MacroValue(pyperclip.paste())
-        except:
+        except Exception:
             return MacroValue("")
 
     def _find_image(self, template_name: str) -> Optional[Tuple[int, int]]:

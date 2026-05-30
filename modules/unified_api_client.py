@@ -125,7 +125,7 @@ class UnifiedAPIClient:
                                     stream_callback(chunk['response'])  # 传递增量内容，而不是累积内容
                                 if chunk.get('done', False):
                                     break
-                            except:
+                            except Exception:
                                 pass
                     return full_response.strip()
             else:
@@ -201,7 +201,7 @@ class UnifiedAPIClient:
                                         if content:
                                             full_response += content
                                             stream_callback(content)  # 传递增量内容，而不是累积内容
-                                except:
+                                except Exception:
                                     pass
                     return full_response.strip()
             else:

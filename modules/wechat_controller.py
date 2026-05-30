@@ -571,7 +571,7 @@ class WeChatController:
         finally:
             try:
                 pyperclip.copy(original_clipboard)
-            except:
+            except Exception:
                 pass
 
     def _parse_message_from_lines(self, lines):
