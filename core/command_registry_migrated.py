@@ -1041,3 +1041,52 @@ def _register_migrated_commands(registry):
                 return registry.execute(action, context, cmd_data)
         context.say("系统", f"未知系统操作: {op}")
     registry.register_handler("system_operation", cmd_system_operation, "系统操作(关机/重启/注销等)")
+
+    # ========== list_installed_software ==========
+    def cmd_list_installed_software(context, cmd_data):
+        """扫描已安装的软件"""
+        import winreg
+        sw_list = []
+        keys = [
+            (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"),
+            (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"),
+            (winreg.HKEY_CURRENT_USER, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"),
+        ]
+        seen = set()
+        for hive, subkey in keys:
+            try:
+                with winreg.OpenKey(hive, subkey) as key:
+                    for i in range(winreg.QueryInfoKey(key)[0]):
+                        try:
+                            name = winreg.EnumKey(key, i)
+                            with winreg.OpenKey(key, name) as sk:
+                                try:
+                                    display = winreg.QueryValueEx(sk, "DisplayName")[0]
+                                    version = ""
+                                    try:
+                                        version = winreg.QueryValueEx(sk, "DisplayVersion")[0]
+                                    except Exception:
+                                        pass
+                                    if display and display not in seen:
+                                        seen.add(display)
+                                        sw_list.append((display, version))
+                                except Exception:
+                                    pass
+                        except Exception:
+                            pass
+            except Exception:
+                pass
+
+        sw_list.sort(key=lambda x: x[0].lower())
+        if not sw_list:
+            context.say("系统", "未扫描到已安装软件")
+            return
+
+        msg = f"📋 已安装软件 (共 {len(sw_list)} 个):\n" + ("─" * 50) + "\n"
+        for name, ver in sw_list[:50]:
+            v = f" v{ver}" if ver else ""
+            msg += f"  • {name}{v}\n"
+        if len(sw_list) > 50:
+            msg += f"  ... 还有 {len(sw_list) - 50} 个未显示"
+        context.say("系统", msg)
+    registry.register_handler("list_installed_software", cmd_list_installed_software, "扫描已安装软件")

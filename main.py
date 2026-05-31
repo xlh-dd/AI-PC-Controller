@@ -1029,6 +1029,14 @@ class AppShell:
             except Exception:
                 pass
 
+        # 同步保存对话（async daemon 线程在进程退出时会丢失数据）
+        try:
+            from services.conversation_manager import get_conversation_manager
+            cm = get_conversation_manager()
+            cm.save()  # 同步写入磁盘
+        except Exception:
+            pass
+
         self.config_manager.set("current_folder", self.current_folder)
         self.config_manager.set("scheduled_tasks", self.scheduled_tasks)
         self.config_manager.set("app_paths", self.app_paths)

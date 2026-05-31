@@ -159,6 +159,9 @@ QUICK_PARSE_PATTERNS = [
     (r"运行\s*(.+?)(?:\s|$)", "open_app", {}),
     (r"搜索\s*(.+?)(?:\s|$)", "search", {}),
     (r"百度\s*(.+?)(?:\s|$)", "search", {}),
+    (r"(扫描|查看|列出)\s*(电脑|系统|本机|我).{0,5}(软件|程序|应用)", "list_installed_software", {}),
+    (r"(电脑|系统|本机|我).{0,5}(有哪些|有什么)(软件|程序|应用)", "list_installed_software", {}),
+    (r"已?安装.{0,3}(软件|程序|应用)", "list_installed_software", {}),
 ]
 
 
@@ -298,10 +301,14 @@ class CommandHandler:
         """检测应用可执行文件路径"""
         app_name_lower = app_name.lower()
         ctrl = self.ctrl
-        for name, path in ctrl.app_paths.items():
+        for name, paths in ctrl.app_paths.items():
             if app_name_lower in name.lower() or name.lower() in app_name_lower:
-                if os.path.exists(path):
-                    return path
+                # app_paths 值可能是 str 或 list[str]
+                candidates = paths if isinstance(paths, list) else [paths]
+                for path in candidates:
+                    path = path.replace("/", "\\")
+                    if os.path.exists(path):
+                        return path
         common_paths = [
             os.path.expandvars(r"%ProgramFiles%"),
             os.path.expandvars(r"%ProgramFiles(x86)%"),

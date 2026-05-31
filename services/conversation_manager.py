@@ -187,7 +187,7 @@ class ConversationManager:
 
     def _save_async(self):
         """异步保存（避免阻塞 GUI）"""
-        t = threading.Thread(target=self.save, daemon=True)
+        t = threading.Thread(target=self.save, daemon=False)  # 非守护线程，确保进程退出前完成保存
         t.start()
 
     def save(self):
