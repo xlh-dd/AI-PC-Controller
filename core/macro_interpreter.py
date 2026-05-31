@@ -48,11 +48,11 @@ class MacroValue:
 
     def as_int(self) -> int:
         try: return int(self.value)
-        except: return 0
+        except (ValueError, TypeError): return 0
 
     def as_float(self) -> float:
         try: return float(self.value)
-        except: return 0.0
+        except (ValueError, TypeError): return 0.0
 
     def as_str(self) -> str:
         return str(self.value)
