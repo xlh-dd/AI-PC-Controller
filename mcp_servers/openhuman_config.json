@@ -1,0 +1,28 @@
+﻿{
+  "mcpServers": {
+    "system-control": {
+      "command": "python",
+      "args": ["mcp_servers/system_control_server.py"],
+      "cwd": "C:\\Users\\Administrator\\Desktop\\AI\\AI电脑控制器",
+      "description": "Windows system control: power management, volume, shutdown/restart, screenshots, clipboard"
+    },
+    "macro-recorder": {
+      "command": "python",
+      "args": ["mcp_servers/macro_server.py"],
+      "cwd": "C:\\Users\\Administrator\\Desktop\\AI\\AI电脑控制器",
+      "description": "Keyboard/mouse macro recording, playback, and automation"
+    },
+    "file-manager": {
+      "command": "python",
+      "args": ["mcp_servers/file_manager_server.py"],
+      "cwd": "C:\\Users\\Administrator\\Desktop\\AI\\AI电脑控制器",
+      "description": "File management: duplicate detection, sorting, batch rename, disk usage"
+    },
+    "wechat-control": {
+      "command": "python",
+      "args": ["mcp_servers/wechat_server.py"],
+      "cwd": "C:\\Users\\Administrator\\Desktop\\AI\\AI电脑控制器",
+      "description": "WeChat desktop automation: send messages, search contacts, send files"
+    }
+  }
+}
