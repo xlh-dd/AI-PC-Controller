@@ -117,11 +117,35 @@ def _register_migrated_commands(registry):
 
     def cmd_list_files(context, cmd_data):
         """list_files"""
-        path = cmd_data.get("path")
-        if path:
-            context.list_files(path)
-        else:
-            context.list_files()
+        import os
+        path = cmd_data.get("path", "")
+        if not path:
+            path = os.path.expanduser("~\\Desktop")
+        path = os.path.abspath(path)
+        if not os.path.isdir(path):
+            context.say("系统", f"路径不存在: {path}")
+            return
+        try:
+            items = os.listdir(path)
+            # 分类：文件夹/文件
+            dirs = [d for d in items if os.path.isdir(os.path.join(path, d))]
+            files = [f for f in items if os.path.isfile(os.path.join(path, f))]
+            lines = [f"📁 {os.path.basename(path)} ({len(items)}项)"]
+            if dirs:
+                lines.append(f"\n📂 文件夹 ({len(dirs)}):")
+                for d in dirs[:20]:
+                    lines.append(f"  📁 {d}")
+                if len(dirs) > 20:
+                    lines.append(f"  ... 还有 {len(dirs)-20} 个")
+            if files:
+                lines.append(f"\n📄 文件 ({len(files)}):")
+                for f in files[:30]:
+                    lines.append(f"  📄 {f}")
+                if len(files) > 30:
+                    lines.append(f"  ... 还有 {len(files)-30} 个")
+            context.say("系统", "\n".join(lines))
+        except PermissionError:
+            context.say("系统", f"没有权限访问: {path}")
     registry.register_handler("list_files", cmd_list_files, "list_files")
 
     def cmd_ai_chat(context, cmd_data):
