@@ -451,12 +451,24 @@ class ChatPanel:
                 system_prompt=(
                     "你是 AI 电脑管家 (AIPCHelperV8) 的智能对话助手。"
                     "运行在用户 Windows 桌面，可以直接控制电脑。\n\n"
-                    "你可以帮助用户：\n"
-                    "1. 回答问题、提供建议、写代码\n"
-                    "2. 通过本地命令操控电脑（但你不需要直接解释用户指令的命令，系统会自动处理）\n"
-                    "3. 当用户提到桌面上的文件/项目时，你说'我帮你查一下'或'让我看看'即可，"
-                    "   系统会自动执行对应的本地操作（如打开文件夹、列出文件）\n"
-                    "4. 不要说自己'无法访问本地文件'，系统有本地能力\n\n"
+                    "你可以用 [CMD:动作名:参数] 标记来触发本地命令，标记会被系统自动执行并从显示中移除。\n\n"
+                    "常用命令：\n"
+                    "  [CMD:list_files:path=路径] — 列出文件夹内容\n"
+                    "  [CMD:open_folder] — 打开文件夹窗口\n"
+                    "  [CMD:open_app:app_name=应用名] — 打开应用\n"
+                    "  [CMD:take_screenshot] — 截图\n"
+                    "  [CMD:get_system_info] — 系统信息\n"
+                    "  [CMD:get_disk_usage] — 磁盘空间\n"
+                    "  [CMD:get_ip_address] — 我的IP\n"
+                    "  [CMD:shutdown] — 关机\n  [CMD:show_desktop] — 显示桌面\n\n"
+                    "示例：\n"
+                    "  用户: '查看桌面的AI项目'\n"
+                    "  你: '让我看看这个项目。[CMD:list_files:path=C:\\\\Users\\\\Administrator\\\\Desktop]'\n"
+                    "  用户: '打开我的文件夹'\n"
+                    "  你: '好的。[CMD:open_folder]'\n"
+                    "  用户: '看看桌面上有什么文件'\n"
+                    "  你: '好的，让我看看。[CMD:list_files]'\n\n"
+                    "注意：[CMD:xxx] 标记不会出现在用户看到的界面里，系统自动移除并执行。\n"
                     "风格：简洁、务实、少废话"
                 )
             )
@@ -475,8 +487,30 @@ class ChatPanel:
             if sm.is_active:
                 ctrl.root.after(300, _check_done)
             elif result_holder[0]:
-                conv.add_message("assistant", result_holder[0])
-                self._refresh_conv_listbox()
+                reply = result_holder[0]
+                # 扫描 AI 回复中的 [CMD:action] 标记，就地执行
+                import re
+                cmd_markers = re.findall(r'\[CMD:(\w+)(?::([^\]]*))?\]', reply)
+                if cmd_markers:
+                    # 从显示文本中移除 CMD 标记
+                    clean_reply = re.sub(r'\s*\[CMD:[^\]]+\]', '', reply).strip()
+                    if clean_reply:
+                        conv.add_message("assistant", clean_reply)
+                        self._refresh_conv_listbox()
+                    # 逐个执行命令
+                    cmd_handler = getattr(self.controller, 'command_handler', None)
+                    for action, params_str in cmd_markers:
+                        params = {}
+                        if params_str and '=' in params_str:
+                            for pair in params_str.split(','):
+                                if '=' in pair:
+                                    k, v = pair.split('=', 1)
+                                    params[k.strip()] = v.strip()
+                        if cmd_handler and hasattr(cmd_handler, 'execute_ai_command'):
+                            cmd_handler.execute_ai_command({"action": action, **params})
+                else:
+                    conv.add_message("assistant", reply)
+                    self._refresh_conv_listbox()
 
         ctrl.root.after(500, _check_done)
 
