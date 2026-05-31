@@ -159,7 +159,7 @@ QUICK_PARSE_PATTERNS = [
     (r"运行\s*(.+?)(?:\s|$)", "open_app", {}),
     (r"搜索\s*(.+?)(?:\s|$)", "search", {}),
     (r"百度\s*(.+?)(?:\s|$)", "search", {}),
-    (r"(扫描|查看|列出)\s*(电脑|系统|本机|我).{0,5}(软件|程序|应用)", "list_installed_software", {}),
+    (r"(扫描|查看|列出)\s*(电脑|系统|本机).{0,5}(软件|程序|应用)", "list_installed_software", {}),
     (r"(电脑|系统|本机|我).{0,5}(有哪些|有什么)(软件|程序|应用)", "list_installed_software", {}),
     (r"已?安装.{0,3}(软件|程序|应用)", "list_installed_software", {}),
     (r"(截图|截屏|截个图|截张图|截取屏幕|屏幕截图|screen\s*shot)", "take_screenshot", {}),
@@ -285,6 +285,65 @@ class CommandHandler:
             ctrl.say("AI管家", "AI电脑管家 v8.0 | DeepSeek V4 + Hermes 双引擎")
         else:
             ctrl.say("AI管家", "抱歉，我还不太理解您的意思。\n可以试试: 帮我写代码 / 分析文件 / 整理桌面 / 定时任务")
+
+    # ---------- AI 指令分类 ----------
+
+    def ai_classify_intent(self, msg: str) -> dict:
+        """让 AI 判断消息是指令还是聊天
+
+        正则匹配失败后调用，使用 DS Flash 做轻量级意图分类。
+
+        Returns:
+            {"type": "chat"} 或 {"type": "command", "action": str, "params": dict}
+        """
+        try:
+            from services.deepseek_client import get_deepseek_client
+
+            ctrl = self.ctrl
+            if not hasattr(ctrl, 'config_manager') or not ctrl.config_manager:
+                return {"type": "chat"}
+
+            client = get_deepseek_client(config_manager=ctrl.config_manager)
+            client.set_model("ds-v4-flash")
+
+            system_prompt = """你是 AI 电脑管家的指令分类器，判断用户输入是系统指令还是普通聊天。
+
+可识别的系统指令：
+- 系统控制: 关机、重启、睡眠、锁屏、注销、休眠、待机、显示桌面
+- 截图：截屏、截个图、屏幕截图
+- 音量：调到XX、静音、取消静音、增大/减小音量
+- 定时：定时关机/重启 N 秒、取消关机
+- 应用：打开/启动/运行 XXX（某个软件或程序）
+- 系统信息：我的IP、磁盘空间、系统信息、查看进程、网络信息
+- 软件列表：查看已安装的软件、电脑有哪些程序
+- 文件操作：整理桌面/下载/文件、查重、大文件清理、新建文件夹
+- 微信：发送微信消息
+- 任务管理器
+
+判断规则：
+1. 如果用户描述的意图与以上任一指令相符 → CLASSIFY:command|action_name
+2. 如果用户是在闲聊、提问、寻求建议 → CLASSIFY:chat
+3. 如果用户在描述自己的项目/代码/想法，希望讨论 → CLASSIFY:chat
+4. 不确定时默认为 chat
+
+只输出 CLASSIFY:xxx 格式，不要多余文字。"""
+
+            result = client.chat(
+                messages=[{"role": "user", "content": msg}],
+                system_prompt=system_prompt,
+                timeout=15
+            )
+
+            result = result.strip()
+            if result.startswith("CLASSIFY:command"):
+                parts = result.split("|")
+                action = parts[1].strip() if len(parts) > 1 else ""
+                return {"type": "command", "action": action, "params": {}}
+
+            return {"type": "chat"}
+        except Exception as e:
+            logger.warning(f"AI 指令分类失败 (fallback to chat): {e}")
+            return {"type": "chat"}
 
     # ---------- 快速操作执行 ----------
 
