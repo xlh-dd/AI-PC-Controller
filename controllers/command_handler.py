@@ -306,27 +306,32 @@ class CommandHandler:
             client = get_deepseek_client(config_manager=ctrl.config_manager)
             client.set_model("ds-v4-flash")
 
-            system_prompt = """你是 AI 电脑管家的指令分类器，判断用户输入是系统指令还是普通聊天。
+            system_prompt = """你是 AI 电脑管家的指令分类器。判断用户输入是系统指令还是聊天。
 
-可识别的系统指令：
-- 系统控制: 关机、重启、睡眠、锁屏、注销、休眠、待机、显示桌面
-- 截图：截屏、截个图、屏幕截图
-- 音量：调到XX、静音、取消静音、增大/减小音量
-- 定时：定时关机/重启 N 秒、取消关机
-- 应用：打开/启动/运行 XXX（某个软件或程序）
-- 系统信息：我的IP、磁盘空间、系统信息、查看进程、网络信息
-- 软件列表：查看已安装的软件、电脑有哪些程序
-- 文件操作：整理桌面/下载/文件、查重、大文件清理、新建文件夹
-- 微信：发送微信消息
-- 任务管理器
+要求：只输出 CLASSIFY:xxx 格式，不要多余文字。
+- 指令 → CLASSIFY:command|精确的动作名
+- 聊天/提问/寻求建议/讨论项目 → CLASSIFY:chat
+- 转到注册表查询 → CLASSIFY:chat（AI不能直接访问用户文件）
+- 不确定 → CLASSIFY:chat
 
-判断规则：
-1. 如果用户描述的意图与以上任一指令相符 → CLASSIFY:command|action_name
-2. 如果用户是在闲聊、提问、寻求建议 → CLASSIFY:chat
-3. 如果用户在描述自己的项目/代码/想法，希望讨论 → CLASSIFY:chat
-4. 不确定时默认为 chat
+可用动作名（严格使用以下名称，不要自己编）：
+关机=shutdown 重启=restart 锁屏=lock 睡眠=sleep 注销=logout 休眠=hibernate 待机=sleep 显示桌面=show_desktop
+截图=take_screenshot
+定时关机=timer_shutdown 取消关机=cancel_shutdown 定时重启=timer_restart
+打开文件=open_file 打开文件夹=open_folder 列出文件=list_files 新建=create_folder 删除文件=delete_folder 整理桌面=sort_files 查重=find_duplicates
+我的IP=get_ip_address 磁盘空间=get_disk_usage 系统信息=get_system_info 查看进程=list_processes 网络信息=get_network_info
+静音=toggle_mute
+发送微信=send_wechat 任务管理器=open_task_manager
 
-只输出 CLASSIFY:xxx 格式，不要多余文字。"""
+示例：
+用户: "查看我桌面上的高考资料文件夹" → CLASSIFY:command|open_folder
+用户: "关机" → CLASSIFY:command|shutdown
+用户: "今天天气怎么样" → CLASSIFY:chat
+用户: "帮我写一段Python代码" → CLASSIFY:chat
+用户: "我的IP是什么" → CLASSIFY:command|get_ip_address
+用户: "看看我桌面上的项目" → CLASSIFY:chat（用户想讨论/了解项目，不是打开文件夹）
+用户: "看看桌面有什么文件" → CLASSIFY:command|list_files
+"""
 
             result = client.chat(
                 messages=[{"role": "user", "content": msg}],
@@ -366,7 +371,17 @@ class CommandHandler:
         """执行AI解析后的命令"""
         try:
             action = result.get("action", "")
+            if not action:
+                logger.warning("AI分类无action，跳过")
+                return
             from main import execute_command
+            # 验证命令是否注册
+            from core.command_registry import get_registry
+            reg = get_registry()
+            if not reg.has_command(action):
+                logger.warning(f"AI分类映射了未注册的命令: {action}")
+                # fallback: 当作普通聊天交给 AI
+                return
             execute_command(action, self.ctrl, result)
         except Exception as e:
             logger.error(f"执行AI命令失败: {e}")
