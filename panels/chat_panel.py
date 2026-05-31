@@ -408,13 +408,6 @@ class ChatPanel:
 
             task_info = self._classify_task(msg)
 
-            # AI 意图分类：正则未命中但看起来像指令时，用 DS Flash 二次判断
-            if task_info.get('type') == 'command' and cmd_handler:
-                classification = cmd_handler.ai_classify_intent(msg)
-                if classification['type'] == 'command' and classification.get('action'):
-                    cmd_handler.execute_ai_command({"action": classification['action']})
-                    return
-
             if self.controller.use_hermes and task_info.get('complexity') in ('complex', 'heavy'):
                 self._chat_with_history(msg, task_info=task_info)
             else:
