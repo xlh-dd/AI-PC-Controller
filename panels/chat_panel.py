@@ -337,7 +337,6 @@ class ChatPanel:
             selectbackground=base["blue_dim"], selectforeground=base["blue"],
             highlightthickness=0, bd=0,
             relief=tk.FLAT, activestyle="none",
-            spacing1=4, spacing3=4,
         )
         self.conv_listbox.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
         self.conv_listbox.bind("<<ListboxSelect>>", self._on_conv_selected)
