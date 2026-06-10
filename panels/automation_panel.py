@@ -1,5 +1,5 @@
-"""
-AutomationPanel — 自动化面板 (PyQt6 + Fluent 版)
+﻿"""
+AutomationPanel — 自动化面板 (PyQt5 + Fluent 版)
 
 功能：
 - 宏录制/回放
@@ -12,8 +12,8 @@ import logging
 import threading
 from datetime import datetime
 
-from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtWidgets import (
+from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QFrame,
     QPushButton, QLabel, QLineEdit, QTextEdit, QSpinBox,
     QCheckBox, QComboBox,

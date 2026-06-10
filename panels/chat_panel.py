@@ -1,5 +1,5 @@
-"""
-ChatPanel — 智能对话面板 (PyQt6 + Fluent 版)
+﻿"""
+ChatPanel — 智能对话面板 (PyQt5 + Fluent 版)
 
 功能：
 - 左侧对话列表 + 右侧聊天区域
@@ -15,13 +15,13 @@ import threading
 from datetime import datetime
 from pathlib import Path
 
-from PyQt6.QtCore import Qt, pyqtSignal, QTimer
-from PyQt6.QtWidgets import (
+from PyQt5.QtCore import Qt, pyqtSignal, QTimer
+from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QSplitter, QFrame,
     QListWidget, QListWidgetItem, QTextEdit, QPushButton,
     QLabel, QSizePolicy, QScrollArea,
 )
-from PyQt6.QtGui import QFont, QTextCursor, QColor
+from PyQt5.QtGui import QFont, QTextCursor, QColor
 from qfluentwidgets import (
     PushButton, PrimaryPushButton, PillPushButton, LineEdit,
     TextEdit, ComboBox, InfoBar, InfoBarPosition,
@@ -52,7 +52,7 @@ class MessageBubble(QFrame):
         is_user = sender == "user"
         bubble_color = self.BUBBLE_USER if is_user else self.BUBBLE_AI
         text_color = "#1e1e2e" if is_user else "#cdd6f4"
-        align = Qt.AlignmentFlag.AlignRight if is_user else Qt.AlignmentFlag.AlignLeft
+        align = Qt.AlignRight if is_user else Qt.AlignLeft
 
         # 外层布局
         outer = QVBoxLayout(self)
@@ -79,7 +79,7 @@ class MessageBubble(QFrame):
         if timestamp:
             ts_label = QLabel(timestamp.strftime("%H:%M") if timestamp else "")
             ts_label.setStyleSheet(f"color: {text_color}99; font-size: 10px;")
-            ts_label.setAlignment(Qt.AlignmentFlag.AlignRight if is_user else Qt.AlignmentFlag.AlignLeft)
+            ts_label.setAlignment(Qt.AlignRight if is_user else Qt.AlignLeft)
             bubble_layout.addWidget(ts_label)
 
         # 消息文本
@@ -362,7 +362,7 @@ class ChatPanel(QWidget):
 
     def eventFilter(self, obj, event):
         """拦截输入框按键"""
-        from PyQt6.QtCore import QEvent
+        from PyQt5.QtCore import QEvent
         if obj == self.input_box and event.type() == QEvent.Type.KeyPress:
             key = event.key()
             if key == Qt.Key.Key_Return or key == Qt.Key.Key_Enter:

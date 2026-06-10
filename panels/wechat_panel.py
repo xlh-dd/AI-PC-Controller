@@ -1,5 +1,5 @@
-"""
-WeChatPanel — 微信通讯面板 (PyQt6 + Fluent 版)
+﻿"""
+WeChatPanel — 微信通讯面板 (PyQt5 + Fluent 版)
 
 功能：
 - 微信消息监听（OCR 模式）
@@ -13,8 +13,8 @@ import threading
 import time
 from datetime import datetime
 
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal
-from PyQt6.QtWidgets import (
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal
+from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QFrame,
     QPushButton, QLabel, QLineEdit, QTextEdit, QSpinBox,
     QCheckBox, QGroupBox,

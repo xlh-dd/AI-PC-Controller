@@ -1,5 +1,5 @@
-"""
-SystemPanel — 系统控制面板 (PyQt6 + Fluent 版)
+﻿"""
+SystemPanel — 系统控制面板 (PyQt5 + Fluent 版)
 
 功能：
 - 电源操作（关机/重启/注销/锁屏/休眠/睡眠）
@@ -12,8 +12,8 @@ import logging
 import subprocess
 import threading
 
-from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtWidgets import (
+from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QFrame,
     QPushButton, QLabel, QSlider, QProgressBar,
 )
@@ -215,7 +215,7 @@ class SystemPanel(QWidget):
         """简单确认后执行"""
         from qfluentwidgets import MessageBox
         box = MessageBox("确认操作", msg, self.root)
-        if box.exec():
+        if box.exec_():
             try:
                 subprocess.Popen(command, shell=True, creationflags=subprocess.CREATE_NO_WINDOW)
                 from modules.ui_manager import show_info

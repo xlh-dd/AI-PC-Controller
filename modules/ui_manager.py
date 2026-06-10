@@ -1,5 +1,5 @@
-"""
-UIManager — PyQt6 版 UI 工具集
+﻿"""
+UIManager — PyQt5 版 UI 工具集
 
 提供：ThreadWorker、StreamingManager、消息卡片、仪表盘等通用组件。
 替代原 tkinter 版 ui_manager.py，保留窗口状态保存/恢复功能。
@@ -7,8 +7,8 @@ UIManager — PyQt6 版 UI 工具集
 
 import logging
 from datetime import datetime
-from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer
-from PyQt6.QtWidgets import (QWidget, QFrame, QVBoxLayout, QHBoxLayout, QLabel,
+from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer
+from PyQt5.QtWidgets import (QWidget, QFrame, QVBoxLayout, QHBoxLayout, QLabel,
                               QProgressBar, QPushButton, QSizePolicy, QApplication)
 from qfluentwidgets import InfoBar, InfoBarPosition, IndeterminateProgressBar
 

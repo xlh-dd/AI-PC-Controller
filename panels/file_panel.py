@@ -1,5 +1,5 @@
-"""
-FilePanel — 文件管理面板 (PyQt6 + Fluent 版)
+﻿"""
+FilePanel — 文件管理面板 (PyQt5 + Fluent 版)
 
 功能：
 - 智能整理、查重、大文件扫描、空文件清理
@@ -13,8 +13,8 @@ import logging
 import threading
 from pathlib import Path
 
-from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtWidgets import (
+from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QFrame,
     QPushButton, QLabel, QLineEdit, QTextEdit, QListWidget,
     QListWidgetItem, QTableWidget, QTableWidgetItem, QHeaderView,

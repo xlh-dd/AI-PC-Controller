@@ -1,5 +1,5 @@
-"""
-AI电脑管家 — PyQt6 + Fluent-Widgets 入口
+﻿"""
+AI电脑管家 — PyQt5 + Fluent-Widgets 入口
 
 从 tkinter+ttkbootstrap 全面迁移至 Fluent Design 风格。
 保留所有业务逻辑（controllers/services/modules），仅重写 UI 层。
@@ -15,9 +15,9 @@ import time
 from pathlib import Path
 from datetime import datetime
 
-from PyQt6.QtCore import Qt, QTimer, QSettings
-from PyQt6.QtWidgets import QApplication, QStackedWidget, QWidget
-from PyQt6.QtGui import QIcon
+from PyQt5.QtCore import Qt, QTimer, QSettings
+from PyQt5.QtWidgets import QApplication, QStackedWidget, QWidget
+from PyQt5.QtGui import QIcon
 from qfluentwidgets import (
     FluentWindow, NavigationItemPosition, FluentIcon,
     setTheme, Theme, InfoBar, InfoBarPosition,
@@ -49,18 +49,18 @@ class MainWindow(FluentWindow):
         self.resize(1200, 800)
         self.setMinimumSize(960, 640)
 
-        # ── 初始化控制器层（复用现有代码） ──
-        self._init_controllers()
-
-        # ── 创建面板 ──
+        # ── 面板引用 ──
         self._chat_panel = None
         self._system_panel = None
         self._file_panel = None
         self._wechat_panel = None
         self._automation_panel = None
 
-        # ── 导航 ──
+        # ── 导航（必须在控制器之前） ──
         self._setup_navigation()
+
+        # ── 初始化控制器层（复用现有代码） ──
+        self._init_controllers()
 
         # ── 更新原生标题栏 UI ──
         self.stackedWidget.setStyleSheet("QStackedWidget { background: #1e1e2e; }")
@@ -87,7 +87,7 @@ class MainWindow(FluentWindow):
         self.controller.root = self  # 兼容现有代码引用
 
         # 消息路由
-        self.controller.message_router = MessageRouter(self.controller)
+        self.controller.message_router = MessageRouter()
         self.controller.command_handler = CommandHandler(self.controller)
 
     # ═══ 导航设置 ══════════════════════════════════════════════════════
@@ -99,16 +99,20 @@ class MainWindow(FluentWindow):
         # 面板在第一次切换时才真正构建（与原来一样懒加载）
         self.navigationInterface.setExpandWidth(180)
 
-        # 顶部导航项
-        chat_interface = QWidget()  # 占位，实际在 _on_nav 中懒加载
-        self.addSubInterface(chat_interface, FluentIcon.CHAT, "智能对话")
-        self.addSubInterface(QWidget(), FluentIcon.FOLDER, "文件管理")
-        self.addSubInterface(QWidget(), FluentIcon.COMMAND, "系统控制")
-        self.addSubInterface(QWidget(), FluentIcon.PEOPLE, "微信通讯")
-        self.addSubInterface(QWidget(), FluentIcon.ROBOT, "自动化")
+        # 顶部导航项（占位 widget，实际在 _on_nav 中懒加载替换）
+        names = ["智能对话", "文件管理", "系统控制", "微信通讯", "自动化"]
+        icons = [FluentIcon.CHAT, FluentIcon.FOLDER, FluentIcon.COMMAND_PROMPT,
+                 FluentIcon.PEOPLE, FluentIcon.ROBOT]
+        for name, icon in zip(names, icons):
+            placeholder = QWidget()
+            placeholder.setObjectName(name)
+            self.addSubInterface(placeholder, icon, name)
 
         # 底部
-        self.addSubInterface(QWidget(), FluentIcon.SETTING, "设置", NavigationItemPosition.BOTTOM)
+        settings_placeholder = QWidget()
+        settings_placeholder.setObjectName("设置")
+        self.addSubInterface(settings_placeholder, FluentIcon.SETTING, "设置",
+                             NavigationItemPosition.BOTTOM)
 
         # 连接切换信号
         self.stackedWidget.currentChanged.connect(self._on_tab_changed)
@@ -252,10 +256,8 @@ class MainWindow(FluentWindow):
 
 def main():
     # 高 DPI 适配
-    QApplication.setHighDpiScaleFactorRoundingPolicy(
-        Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
-    )
     app = QApplication(sys.argv)
+    app.setAttribute(Qt.AA_EnableHighDpiScaling, True)
     app.setApplicationName("AI电脑管家")
     app.setOrganizationName("AI管家")
 
@@ -267,7 +269,7 @@ def main():
     window = MainWindow()
     window.show()
 
-    sys.exit(app.exec())
+    sys.exit(app.exec_())
 
 
 if __name__ == "__main__":
