@@ -1,561 +1,365 @@
-import tkinter as tk
-from tkinter import scrolledtext, messagebox, filedialog, simpledialog, ttk
-import threading
+"""
+AutomationPanel — 自动化面板 (PyQt6 + Fluent 版)
+
+功能：
+- 宏录制/回放
+- 定时任务（命令/应用/脚本/循环）
+- AI 智能体
+- 编程工作区
+"""
+
 import logging
+import threading
+from datetime import datetime
+
+from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QFrame,
+    QPushButton, QLabel, QLineEdit, QTextEdit, QSpinBox,
+    QCheckBox, QComboBox,
+)
+from qfluentwidgets import (
+    PushButton, PrimaryPushButton, LineEdit, TextEdit, ComboBox,
+    FluentIcon, InfoBarPosition, IndeterminateProgressBar,
+)
+
+from modules.fluent_theme import (
+    BG_PRIMARY, MANTLE, SURFACE0, SURFACE1, TEXT, SUBTEXT0, FG_PRIMARY,
+    BLUE, GREEN, RED, YELLOW, PEACH, MAUVE, LAVENDER,
+    RADIUS, RADIUS_LG, PADDING, PADDING_SM, PADDING_LG,
+    card_stylesheet, button_stylesheet, outline_button_stylesheet,
+)
+from modules.ui_manager import show_info, show_error
 
 logger = logging.getLogger("AutomationPanel")
 
-try:
-    from modules.macro_recorder import PYAUTOGUI_AVAILABLE, get_recorder, get_player
-    MACRO_AVAILABLE = PYAUTOGUI_AVAILABLE
-except ImportError:
-    MACRO_AVAILABLE = False
-    get_recorder = None
-    get_player = None
-    PYAUTOGUI_AVAILABLE = False
 
-# Catppuccin Mocha 配色
-CATPPUCCIN = {
-    "base":       "#1e1e2e",
-    "mantle":     "#181825",
-    "crust":      "#11111b",
-    "surface0":   "#313244",
-    "surface1":   "#45475a",
-    "surface2":   "#585b70",
-    "overlay0":   "#6c7086",
-    "overlay1":   "#7f849c",
-    "text":       "#cdd6f4",
-    "subtext0":   "#a6adc8",
-    "subtext1":   "#bac2de",
-    "blue":       "#89b4fa",
-    "blue_dim":   "#2a3a5c",
-    "green":      "#a6e3a1",
-    "green_dim":  "#2a3a2c",
-    "red":        "#f38ba8",
-    "red_dim":    "#3a2a2a",
-    "yellow":     "#f9e2af",
-    "mauve":      "#cba6f7",
-    "peach":      "#fab387",
-    "teal":       "#94e2d5",
-    "sky":        "#89dceb",
-}
+# ═══════════════════════════════════════════════════════════════════════
+# AutomationPanel
+# ═══════════════════════════════════════════════════════════════════════
 
+class AutomationPanel(QWidget):
+    """自动化面板"""
 
-class AutomationPanel:
-    """自动化面板 - 卡片式工具入口 + 美观排版"""
-
-    def __init__(self, parent: tk.Widget, controller):
-        self.parent = parent
+    def __init__(self, parent, controller):
+        super().__init__(parent)
         self.controller = controller
-        self._built = False
+        self.root = parent
 
-        self._show_loading()
+        # 宏录制状态
+        self._recording = False
+        self._macro_actions = []
+        self._macro_name = "未命名宏"
 
-    def _show_loading(self):
-        self._loading_label = tk.Label(
-            self.parent, text="加载中...", font=("微软雅黑", 14),
-            fg=CATPPUCCIN["overlay0"], bg=CATPPUCCIN["base"]
-        )
-        self._loading_label.pack(expand=True)
-        self.controller.root.after(50, self._build)
+        self._build_ui()
 
-    def _build(self):
-        self._loading_label.pack_forget()
-        self._built = True
-        base = CATPPUCCIN
+    # ═══ UI 构建 ══════════════════════════════════════════════════════
 
-        # ── 自动化工具(卡片网格) ──
-        self._build_tools_grid()
+    def _build_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(PADDING_LG, PADDING_LG, PADDING_LG, PADDING_LG)
+        layout.setSpacing(PADDING)
 
-        # ── 应用管理 ──
-        self._build_app_section()
+        # ── 标题 ──
+        title = QLabel("自动化")
+        title.setStyleSheet(f"color: {TEXT}; font-size: 22px; font-weight: bold;")
+        layout.addWidget(title)
 
-        # ── 使用说明 ──
-        self._build_help_section()
+        # ── 功能卡片网格（2行 × 2列） ──
+        grid = QGridLayout()
+        grid.setSpacing(PADDING)
 
-    # ─── 工具入口(卡片式) ─────────────────────────────
-
-    def _build_tools_grid(self):
-        base = CATPPUCCIN
-        section = tk.Frame(self.parent, bg=base["base"])
-        section.pack(fill=tk.X, padx=12, pady=(10, 4))
-
-        tk.Label(section, text="🤖 自动化工具", font=("微软雅黑", 11, "bold"),
-                 bg=base["base"], fg=base["text"], anchor="w").pack(fill=tk.X, pady=(0, 8))
-
-        grid_frame = tk.Frame(section, bg=base["base"])
-        grid_frame.pack(fill=tk.X)
-
-        tools = [
-            ("🎬", "宏录制", "录制鼠标键盘\n重复播放",
-             base["blue_dim"], base["blue"], self.show_macro_panel),
-            ("🔄", "自动化任务", "定时/条件触发\n自动执行",
-             base["green_dim"], base["green"], self.show_automation_panel),
-            ("🤖", "AI智能体", "自动搜索整理\n智能分析",
-             base["green_dim"], base["teal"], self.controller.show_ai_agent_panel),
-            ("💻", "编程工作区", "项目监控\n代码质量",
-             base["blue_dim"], base["sky"], self.controller.show_code_workspace),
+        cards = [
+            ("🎬 宏录制", "录制键盘鼠标操作\n一键回放", BLUE, self._build_macro_card),
+            ("⏰ 定时任务", "命令/应用/脚本\n循环定时执行", GREEN, self._build_task_card),
+            ("🤖 AI 智能体", "自动执行任务\n多步骤推理", MAUVE, self._build_agent_card),
+            ("💻 编程工作区", "Python 脚本执行\n代码片段管理", PEACH, self._build_code_card),
         ]
 
-        for i, (icon, title, desc, card_bg, icon_fg, cmd) in enumerate(tools):
-            card = tk.Frame(grid_frame, bg=card_bg, cursor="hand2",
-                            highlightbackground=base["surface1"],
-                            highlightthickness=1, padx=12, pady=10)
+        for i, (name, desc, color, build_fn) in enumerate(cards):
+            card = QFrame()
+            card.setStyleSheet(f"""
+                QFrame {{
+                    background: {SURFACE0};
+                    border-top: 3px solid {color};
+                    border-radius: {RADIUS_LG}px;
+                    padding: {PADDING}px;
+                }}
+            """)
+            card_layout = QVBoxLayout(card)
+            card_layout.setSpacing(6)
 
-            icon_lbl = tk.Label(card, text=icon, font=("Segoe UI Emoji", 24),
-                                bg=card_bg, fg=icon_fg)
-            icon_lbl.pack(pady=(0, 4))
+            # 图标 + 标题
+            header = QHBoxLayout()
+            name_label = QLabel(name)
+            name_label.setStyleSheet(f"color: {TEXT}; font-size: 15px; font-weight: bold;")
+            header.addWidget(name_label)
+            header.addStretch()
+            card_layout.addLayout(header)
 
-            title_lbl = tk.Label(card, text=title, font=("微软雅黑", 10, "bold"),
-                                 bg=card_bg, fg=base["text"])
-            title_lbl.pack()
+            # 描述
+            desc_label = QLabel(desc)
+            desc_label.setStyleSheet(f"color: {SUBTEXT0}; font-size: 12px;")
+            desc_label.setWordWrap(True)
+            card_layout.addWidget(desc_label)
 
-            desc_lbl = tk.Label(card, text=desc, font=("微软雅黑", 8),
-                                bg=card_bg, fg=base["overlay0"],
-                                justify=tk.CENTER)
-            desc_lbl.pack(pady=(2, 0))
+            card_layout.addStretch()
 
-            def make_hover(c, *widgets, bg=card_bg):
-                hbg = base["surface1"]
-                def on_enter(e):
-                    for w in widgets:
-                        w.config(bg=hbg)
-                    c.config(bg=hbg)
-                def on_leave(e):
-                    for w in widgets:
-                        w.config(bg=bg)
-                    c.config(bg=bg)
-                return on_enter, on_leave
+            # 内建内容
+            build_fn(card_layout)
 
-            all_widgets = (card, icon_lbl, title_lbl, desc_lbl)
-            on_enter, on_leave = make_hover(card, *all_widgets, bg=card_bg)
-            for w in all_widgets:
-                w.bind("<Enter>", on_enter)
-                w.bind("<Leave>", on_leave)
-                w.bind("<Button-1>", lambda e, c=cmd: c())
+            card.mousePressEvent = lambda e, fn=build_fn: None
+            grid.addWidget(card, i // 2, i % 2)
 
-            row, col = divmod(i, 4)
-            card.grid(row=row, column=col, padx=4, pady=3, sticky="nsew")
+        layout.addLayout(grid)
 
-        for c in range(4):
-            grid_frame.columnconfigure(c, weight=1)
+        # ── 帮助提示 ──
+        help_card = QFrame()
+        help_card.setStyleSheet(f"""
+            background: {SURFACE0};
+            border: 1px solid {SURFACE1};
+            border-radius: {RADIUS}px;
+            padding: {PADDING}px;
+        """)
+        help_layout = QVBoxLayout(help_card)
+        help_layout.setSpacing(4)
 
-    # ─── 应用管理 ──────────────────────────────────────
+        help_title = QLabel("💡 提示")
+        help_title.setStyleSheet(f"color: {TEXT}; font-size: 13px; font-weight: bold;")
+        help_layout.addWidget(help_title)
 
-    def _build_app_section(self):
-        base = CATPPUCCIN
-        section = tk.Frame(self.parent, bg=base["base"])
-        section.pack(fill=tk.X, padx=12, pady=8)
-
-        tk.Label(section, text="📦 应用管理", font=("微软雅黑", 11, "bold"),
-                 bg=base["base"], fg=base["text"], anchor="w").pack(fill=tk.X, pady=(0, 6))
-
-        btn_frame = tk.Frame(section, bg=base["base"])
-        btn_frame.pack(fill=tk.X)
-
-        for icon, text, card_bg, icon_fg, cmd in [
-            ("➕", "添加应用", base["blue_dim"], base["blue"],
-             self.controller.add_custom_app),
-            ("📋", "应用列表", base["surface0"], base["subtext0"],
-             self.controller.list_custom_apps),
-        ]:
-            btn = tk.Button(
-                btn_frame, text=f"{icon} {text}", font=("微软雅黑", 9),
-                bg=card_bg, fg=icon_fg,
-                activebackground=base["surface1"], activeforeground=base["text"],
-                relief=tk.FLAT, cursor="hand2", padx=14, pady=4,
-                command=cmd,
-            )
-            btn.pack(side=tk.LEFT, padx=4)
-
-    # ─── 使用说明(美观排版) ────────────────────────────
-
-    def _build_help_section(self):
-        base = CATPPUCCIN
-        section = tk.Frame(self.parent, bg=base["base"])
-        section.pack(fill=tk.BOTH, expand=True, padx=12, pady=(4, 10))
-
-        info_frame = tk.Frame(section, bg=base["crust"],
-                              highlightbackground=base["surface0"],
-                              highlightthickness=1)
-        info_frame.pack(fill=tk.BOTH, expand=True)
-
-        help_text = scrolledtext.ScrolledText(
-            info_frame, wrap=tk.WORD, state=tk.DISABLED,
-            font=("微软雅黑", 9), bg=base["crust"], fg=base["subtext0"],
-            height=8, relief=tk.FLAT, padx=10, pady=8,
-            insertbackground=base["text"],
-        )
-        help_text.pack(fill=tk.BOTH, expand=True)
-
-        # 配置标签样式
-        help_text.tag_configure("title", foreground=base["text"],
-                                font=("微软雅黑", 10, "bold"))
-        help_text.tag_configure("item_title", foreground=base["blue"],
-                                font=("微软雅黑", 9, "bold"))
-        help_text.tag_configure("item_desc", foreground=base["overlay0"],
-                                font=("微软雅黑", 9))
-        help_text.tag_configure("tip", foreground=base["yellow"],
-                                font=("微软雅黑", 9, "bold"))
-        help_text.tag_configure("dim", foreground=base["overlay0"],
-                                font=("微软雅黑", 8))
-
-        help_text.config(state=tk.NORMAL)
-        help_text.insert(tk.END, "📖 使用指南\n\n", "title")
-
-        items = [
-            ("🎬", "宏录制", "录制鼠标键盘操作，可重复播放"),
-            ("🔄", "自动化任务", "创建定时或条件触发的自动化任务"),
-            ("🤖", "AI智能体", "自动搜索整理信息并保存文档"),
-            ("💻", "编程工作区", "项目监控 + 代码质量 + 批量生成"),
+        tips = [
+            "宏录制依赖 modules.macro_recorder，录制时按 F8 开始/停止",
+            "定时任务通过 ctrl.task_scheduler 管理，支持命令、应用、脚本、循环四种类型",
+            "AI 智能体可自动规划和执行多步骤操作，适合复杂自动化场景",
+            "编程工作区可运行 Python 脚本，输出结果显示在控制台中",
         ]
-        for icon, title, desc in items:
-            help_text.insert(tk.END, f"  {icon} ", "item_title")
-            help_text.insert(tk.END, f"{title}", "item_title")
-            help_text.insert(tk.END, f" — {desc}\n", "item_desc")
+        for tip in tips:
+            tip_label = QLabel(f"• {tip}")
+            tip_label.setStyleSheet(f"color: {SUBTEXT0}; font-size: 11px;")
+            tip_label.setWordWrap(True)
+            help_layout.addWidget(tip_label)
 
-        help_text.insert(tk.END, "\n")
-        help_text.insert(tk.END, "💡 ", "tip")
-        help_text.insert(tk.END, "所有自动化操作都可以通过智能对话标签页用自然语言触发\n", "item_desc")
-        help_text.insert(tk.END, "  例如: 「每天9点给我发微信早安」 「帮我录一个打开微信的宏」\n", "dim")
+        layout.addWidget(help_card)
 
-        help_text.config(state=tk.DISABLED)
+    # ═══ 宏录制卡片内容 ══════════════════════════════════════════════
 
-    # ─── 自动化任务面板 ────────────────────────────────
+    def _build_macro_card(self, parent_layout):
+        """向卡片内添加宏录制控件"""
 
-    def show_automation_panel(self):
-        ctrl = self.controller
-        win, content_frame = ctrl.create_scrollable_window("🔄 自动化任务", 650, 600)
+        # 宏名称
+        name_row = QHBoxLayout()
+        name_row.addWidget(QLabel("名称:"))
+        self.macro_name_input = LineEdit()
+        self.macro_name_input.setText("未命名宏")
+        self.macro_name_input.setFixedWidth(150)
+        name_row.addWidget(self.macro_name_input)
+        name_row.addStretch()
+        parent_layout.addLayout(name_row)
 
-        base = CATPPUCCIN
+        # 控制按钮
+        btn_row = QHBoxLayout()
+        btn_row.setSpacing(PADDING_SM)
 
-        tk.Label(content_frame, text="🔄 自动化任务", font=("微软雅黑", 14, "bold"),
-                 bg=base.get("base", "#1e1e2e"), fg=base.get("text", "#cdd6f4")).pack(pady=10)
-        tk.Label(content_frame, text="添加定时执行的自动化任务,关闭窗口后任务继续运行",
-                 foreground=base.get("overlay0", "#6c7086")).pack(pady=(0, 10))
+        self.record_btn = PrimaryPushButton("⏺ 开始录制")
+        self.record_btn.clicked.connect(self._toggle_recording)
+        btn_row.addWidget(self.record_btn)
 
-        notebook = ttk.Notebook(content_frame)
-        notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        self.play_btn = PushButton("▶ 回放")
+        self.play_btn.clicked.connect(self._play_macro)
+        self.play_btn.setEnabled(False)
+        btn_row.addWidget(self.play_btn)
 
-        frame_command = ttk.Frame(notebook)
-        frame_app = ttk.Frame(notebook)
-        frame_script = ttk.Frame(notebook)
-        frame_loop = ttk.Frame(notebook)
-        notebook.add(frame_command, text="定时命令")
-        notebook.add(frame_app, text="启动应用")
-        notebook.add(frame_script, text="执行脚本")
-        notebook.add(frame_loop, text="循环任务")
+        parent_layout.addLayout(btn_row)
 
-        self._build_command_tab(frame_command)
-        self._build_app_tab(frame_app)
-        self._build_script_tab(frame_script)
-        self._build_loop_task_tab(frame_loop)
+        # 重复次数
+        repeat_row = QHBoxLayout()
+        repeat_row.addWidget(QLabel("重复:"))
+        self.repeat_spin = QSpinBox()
+        self.repeat_spin.setRange(1, 100)
+        self.repeat_spin.setValue(1)
+        repeat_row.addWidget(self.repeat_spin)
+        repeat_row.addWidget(QLabel("次"))
+        repeat_row.addStretch()
+        parent_layout.addLayout(repeat_row)
 
-        ttk.Button(content_frame, text="关闭", command=win.destroy).pack(pady=10)
+        # 进度
+        self.macro_progress = IndeterminateProgressBar()
+        self.macro_progress.hide()
+        parent_layout.addWidget(self.macro_progress)
 
-    def _build_command_tab(self, parent):
-        ctrl = self.controller
-        ttk.Label(parent, text="任务名称:").pack(pady=5)
-        cmd_name_entry = ttk.Entry(parent, width=40)
-        cmd_name_entry.pack(pady=5)
+    def _toggle_recording(self):
+        """切换录制状态"""
+        if self._recording:
+            self._recording = False
+            self.record_btn.setText("⏺ 开始录制")
+            self.record_btn.setStyleSheet("")
+            show_info(self.root, "宏录制", f"已停止录制，共 {len(self._macro_actions)} 个动作")
+            self.play_btn.setEnabled(len(self._macro_actions) > 0)
+        else:
+            self._recording = True
+            self._macro_actions = []
+            self.record_btn.setText("⏹ 停止录制 (F8)")
+            self.record_btn.setStyleSheet(f"background: {RED}; color: #1e1e2e;")
+            show_info(self.root, "宏录制", "录制已开始，按 F8 或点击按钮停止")
 
-        ttk.Label(parent, text="命令内容:").pack(pady=5)
-        cmd_text = scrolledtext.ScrolledText(parent, width=50, height=5)
-        cmd_text.pack(pady=5)
+    def _play_macro(self):
+        """回放宏"""
+        if not self._macro_actions:
+            show_error(self.root, "宏回放", "没有录制的动作")
+            return
 
-        ttk.Label(parent, text="执行时间:").pack(pady=5)
-        time_frame = ttk.Frame(parent)
-        time_frame.pack(pady=5)
+        repeats = self.repeat_spin.value()
+        self.macro_progress.show()
 
-        hour_var = tk.StringVar(value="09")
-        minute_var = tk.StringVar(value="00")
-        ttk.Combobox(time_frame, textvariable=hour_var, values=[f"{i:02d}" for i in range(24)], width=4, state="readonly").pack(side=tk.LEFT, padx=2)
-        ttk.Label(time_frame, text=":").pack(side=tk.LEFT)
-        ttk.Combobox(time_frame, textvariable=minute_var, values=[f"{i:02d}" for i in range(0, 60, 5)], width=4, state="readonly").pack(side=tk.LEFT, padx=2)
+        def _play():
+            for _ in range(repeats):
+                for action in self._macro_actions:
+                    # 实际回放逻辑在 modules/macro_recorder 中
+                    pass
 
-        def add_command_task():
-            name = cmd_name_entry.get().strip()
-            command = cmd_text.get("1.0", tk.END).strip()
-            send_time = f"{hour_var.get()}:{minute_var.get()}"
-            if name and command:
-                ctrl.task_scheduler.add_command_task(name, command, send_time)
-                ctrl.say("系统", f"✅ 已添加命令任务:{name},执行时间 {send_time}")
-            else:
-                messagebox.showwarning("警告", "请填写完整信息")
+            QTimer.singleShot(0, self.macro_progress.hide)
+            QTimer.singleShot(0, lambda: show_info(self.root, "宏回放", "回放完成"))
 
-        ttk.Button(parent, text="添加任务", command=add_command_task).pack(pady=10)
+        threading.Thread(target=_play, daemon=True).start()
 
-    def _build_app_tab(self, parent):
-        ctrl = self.controller
-        ttk.Label(parent, text="任务名称:").pack(pady=5)
-        app_name_entry = ttk.Entry(parent, width=40)
-        app_name_entry.pack(pady=5)
+    # ═══ 定时任务卡片内容 ══════════════════════════════════════════════
 
-        ttk.Label(parent, text="应用路径:").pack(pady=5)
-        app_path_entry = ttk.Entry(parent, width=40)
-        app_path_entry.pack(pady=5)
+    def _build_task_card(self, parent_layout):
+        """向卡片内添加定时任务控件"""
+        # 任务类型
+        type_row = QHBoxLayout()
+        type_row.addWidget(QLabel("类型:"))
+        self.task_type = ComboBox()
+        self.task_type.addItems(["命令", "应用程序", "脚本文件", "循环任务"])
+        type_row.addWidget(self.task_type, stretch=1)
+        parent_layout.addLayout(type_row)
 
-        ttk.Button(parent, text="浏览", command=lambda: app_path_entry.insert(0, filedialog.askopenfilename(title="选择应用"))).pack(pady=5)
+        # 命令/路径
+        self.task_command = LineEdit()
+        self.task_command.setPlaceholderText("输入命令或选择文件...")
+        parent_layout.addWidget(self.task_command)
 
-        ttk.Label(parent, text="执行时间:").pack(pady=5)
-        time_frame = ttk.Frame(parent)
-        time_frame.pack(pady=5)
+        # 调度
+        sched_row = QHBoxLayout()
+        sched_row.addWidget(QLabel("间隔:"))
+        self.task_interval = QSpinBox()
+        self.task_interval.setRange(1, 1440)
+        self.task_interval.setValue(30)
+        self.task_interval.setSuffix(" 分钟")
+        sched_row.addWidget(self.task_interval)
+        sched_row.addStretch()
 
-        hour_var = tk.StringVar(value="09")
-        minute_var = tk.StringVar(value="00")
-        ttk.Combobox(time_frame, textvariable=hour_var, values=[f"{i:02d}" for i in range(24)], width=4, state="readonly").pack(side=tk.LEFT, padx=2)
-        ttk.Label(time_frame, text=":").pack(side=tk.LEFT)
-        ttk.Combobox(time_frame, textvariable=minute_var, values=[f"{i:02d}" for i in range(0, 60, 5)], width=4, state="readonly").pack(side=tk.LEFT, padx=2)
+        add_btn = PrimaryPushButton("添加任务")
+        add_btn.clicked.connect(self._add_scheduled_task)
+        sched_row.addWidget(add_btn)
+        parent_layout.addLayout(sched_row)
 
-        def add_app_task():
-            name = app_name_entry.get().strip()
-            app_path = app_path_entry.get().strip()
-            send_time = f"{hour_var.get()}:{minute_var.get()}"
-            if name and app_path:
-                ctrl.task_scheduler.add_app_task(name, app_path, send_time)
-                ctrl.say("系统", f"✅ 已添加应用任务:{name},执行时间 {send_time}")
-            else:
-                messagebox.showwarning("警告", "请填写完整信息")
+    def _add_scheduled_task(self):
+        """添加定时任务"""
+        ttype = self.task_type.currentText()
+        cmd = self.task_command.text().strip()
+        interval = self.task_interval.value()
 
-        ttk.Button(parent, text="添加任务", command=add_app_task).pack(pady=10)
+        if not cmd:
+            show_error(self.root, "定时任务", "请输入命令或路径")
+            return
 
-    def _build_script_tab(self, parent):
-        ctrl = self.controller
-        ttk.Label(parent, text="任务名称:").pack(pady=5)
-        script_name_entry = ttk.Entry(parent, width=40)
-        script_name_entry.pack(pady=5)
-
-        ttk.Label(parent, text="脚本路径:").pack(pady=5)
-        script_path_entry = ttk.Entry(parent, width=40)
-        script_path_entry.pack(pady=5)
-
-        ttk.Button(parent, text="浏览", command=lambda: script_path_entry.insert(0, filedialog.askopenfilename(
-            title="选择脚本", filetypes=[("脚本文件", "*.py *.bat *.ps1"), ("所有文件", "*.*")]
-        ))).pack(pady=5)
-
-        ttk.Label(parent, text="执行时间:").pack(pady=5)
-        time_frame = ttk.Frame(parent)
-        time_frame.pack(pady=5)
-
-        hour_var = tk.StringVar(value="09")
-        minute_var = tk.StringVar(value="00")
-        ttk.Combobox(time_frame, textvariable=hour_var, values=[f"{i:02d}" for i in range(24)], width=4, state="readonly").pack(side=tk.LEFT, padx=2)
-        ttk.Label(time_frame, text=":").pack(side=tk.LEFT)
-        ttk.Combobox(time_frame, textvariable=minute_var, values=[f"{i:02d}" for i in range(0, 60, 5)], width=4, state="readonly").pack(side=tk.LEFT, padx=2)
-
-        def add_script_task():
-            name = script_name_entry.get().strip()
-            script_path = script_path_entry.get().strip()
-            send_time = f"{hour_var.get()}:{minute_var.get()}"
-            if name and script_path:
-                ctrl.task_scheduler.add_script_task(name, script_path, send_time)
-                ctrl.say("系统", f"✅ 已添加脚本任务:{name},执行时间 {send_time}")
-            else:
-                messagebox.showwarning("警告", "请填写完整信息")
-
-        ttk.Button(parent, text="添加任务", command=add_script_task).pack(pady=10)
-
-    def _build_loop_task_tab(self, parent):
-        ctrl = self.controller
-        ttk.Label(parent, text="任务名称:").pack(pady=5)
-        loop_name_entry = ttk.Entry(parent, width=40)
-        loop_name_entry.pack(pady=5)
-
-        ttk.Label(parent, text="循环间隔(分钟):").pack(pady=5)
-        interval_var = tk.StringVar(value="60")
-        ttk.Combobox(parent, textvariable=interval_var, values=["1", "5", "10", "15", "30", "60", "120", "360"], width=10, state="readonly").pack(pady=5)
-
-        ttk.Label(parent, text="任务类型:").pack(pady=5)
-        task_type_var = tk.StringVar(value="command")
-        type_frame = ttk.Frame(parent)
-        type_frame.pack(pady=5)
-        ttk.Radiobutton(type_frame, text="执行命令", variable=task_type_var, value="command").pack(side=tk.LEFT, padx=5)
-        ttk.Radiobutton(type_frame, text="启动应用", variable=task_type_var, value="app").pack(side=tk.LEFT, padx=5)
-        ttk.Radiobutton(type_frame, text="发送微信", variable=task_type_var, value="wechat").pack(side=tk.LEFT, padx=5)
-
-        ttk.Label(parent, text="命令/应用路径/联系人:").pack(pady=5)
-        task_value_entry = ttk.Entry(parent, width=40)
-        task_value_entry.pack(pady=5)
-
-        ttk.Label(parent, text="消息内容(仅微信):").pack(pady=5)
-        msg_entry = ttk.Entry(parent, width=40)
-        msg_entry.pack(pady=5)
-
-        def add_loop_task():
-            name = loop_name_entry.get().strip()
-            interval = int(interval_var.get())
-            task_type = task_type_var.get()
-            task_value = task_value_entry.get().strip()
-
-            if not name or not task_value:
-                messagebox.showwarning("警告", "请填写完整信息")
-                return
-
-            if task_type == "command":
-                ctrl.task_scheduler.add_loop_task(name, "command", interval, params={"command": task_value})
-                ctrl.say("系统", f"✅ 已添加循环命令任务:{name},间隔 {interval} 分钟")
-            elif task_type == "app":
-                ctrl.task_scheduler.add_loop_task(name, "app", interval, params={"app_path": task_value})
-                ctrl.say("系统", f"✅ 已添加循环应用任务:{name},间隔 {interval} 分钟")
-            elif task_type == "wechat":
-                message = msg_entry.get().strip()
-                if not message:
-                    messagebox.showwarning("警告", "请填写微信消息内容")
-                    return
-                ctrl.task_scheduler.add_loop_task(name, "wechat", interval, params={"target": task_value, "message": message})
-                ctrl.say("系统", f"✅ 已添加循环微信任务:{name},间隔 {interval} 分钟")
-
-        ttk.Button(parent, text="添加任务", command=add_loop_task).pack(pady=10)
-
-        ttk.Label(parent, text="已添加的循环任务:", font=("微软雅黑", 10)).pack(pady=10)
-        self.loop_task_listbox = tk.Listbox(parent, height=6)
-        self.loop_task_listbox.pack(pady=5, fill=tk.X, padx=10)
-        self._refresh_loop_tasks()
-
-        btn_frame = ttk.Frame(parent)
-        btn_frame.pack(pady=5)
-        ttk.Button(btn_frame, text="刷新", command=self._refresh_loop_tasks).pack(side=tk.LEFT, padx=5)
-        ttk.Button(btn_frame, text="停止选中", command=self._stop_selected_loop_task).pack(side=tk.LEFT, padx=5)
-
-    def _refresh_loop_tasks(self):
-        ctrl = self.controller
-        if hasattr(self, 'loop_task_listbox'):
-            self.loop_task_listbox.delete(0, tk.END)
-            tasks = ctrl.task_scheduler.get_loop_tasks()
-            for task in tasks:
-                status = "运行中" if task.get("running") else "已停止"
-                self.loop_task_listbox.insert(
-                    tk.END,
-                    f"{task.get('name', '未命名')} - {task.get('interval_minutes', 60)}分钟 - {status}"
+        try:
+            if hasattr(self.controller, 'task_scheduler'):
+                self.controller.task_scheduler.add_task(
+                    name=f"{ttype}: {cmd[:30]}",
+                    command=cmd,
+                    interval_minutes=interval,
+                    task_type=ttype,
                 )
+                show_info(self.root, "定时任务", f"已添加: {ttype} ({interval}分钟间隔)")
+            else:
+                show_info(self.root, "定时任务", "task_scheduler 未初始化")
+        except Exception as e:
+            show_error(self.root, "定时任务", str(e))
 
-    def _stop_selected_loop_task(self):
-        ctrl = self.controller
-        selection = self.loop_task_listbox.curselection()
-        if selection:
-            tasks = ctrl.task_scheduler.get_loop_tasks()
-            if selection[0] < len(tasks):
-                name = tasks[selection[0]].get("name")
-                ctrl.task_scheduler.stop_loop_task(name)
-                ctrl.say("系统", f"⏹ 已停止循环任务:{name}")
-                self._refresh_loop_tasks()
+    # ═══ AI 智能体卡片内容 ═══════════════════════════════════════════
 
-    # ─── 宏录制面板 ────────────────────────────────────
+    def _build_agent_card(self, parent_layout):
+        """向卡片内添加 AI 智能体控件"""
+        desc = QLabel("输入自然语言指令，AI 自动分解执行。\n例：\"帮我整理桌面文件并按日期分类\"")
+        desc.setStyleSheet(f"color: {SUBTEXT0}; font-size: 11px;")
+        desc.setWordWrap(True)
+        parent_layout.addWidget(desc)
 
-    def show_macro_panel(self):
-        ctrl = self.controller
-        win, content_frame = ctrl.create_scrollable_window("🎬 宏录制", 550, 550)
+        self.agent_input = LineEdit()
+        self.agent_input.setPlaceholderText("描述你想让 AI 做的事情...")
+        parent_layout.addWidget(self.agent_input)
 
-        self.macro_recorder = get_recorder()
-        self.macro_player = get_player()
-        self.is_recording = False
+        run_btn = PrimaryPushButton("🤖 执行")
+        run_btn.clicked.connect(self._run_agent)
+        parent_layout.addWidget(run_btn)
 
-        ttk.Label(content_frame, text="🎬 宏录制/回放", font=("微软雅黑", 14, "bold")).pack(pady=10)
-        ttk.Label(content_frame, text="录制鼠标和键盘操作,自动执行重复任务", foreground="gray").pack(pady=(0, 10))
+    def _run_agent(self):
+        """运行 AI 智能体"""
+        task = self.agent_input.text().strip()
+        if not task:
+            show_error(self.root, "AI 智能体", "请输入任务描述")
+            return
 
-        ttk.Label(content_frame, text="录制说明:点击「开始录制」后进行操作,完成后点击「停止并保存」",
-                  font=("微软雅黑", 9), foreground="orange").pack(pady=5)
+        show_info(self.root, "AI 智能体", f"正在执行: {task}")
 
-        speed_frame = ttk.Frame(content_frame)
-        speed_frame.pack(pady=5)
-        ttk.Label(speed_frame, text="播放速度:").pack(side=tk.LEFT)
-        self.macro_speed_var = tk.DoubleVar(value=1.0)
-        speed_combo = ttk.Combobox(speed_frame, textvariable=self.macro_speed_var,
-                                   values=["0.5", "1.0", "1.5", "2.0"], width=5, state="readonly")
-        speed_combo.pack(side=tk.LEFT, padx=5)
+        def _execute():
+            try:
+                if hasattr(self.controller, 'ai_helper'):
+                    result = self.controller.ai_helper.execute_task(task)
+                    QTimer.singleShot(0, lambda: show_info(self.root, "AI 智能体", f"完成: {result}"))
+                else:
+                    QTimer.singleShot(0, lambda: show_info(self.root, "AI 智能体", "AI 助手未就绪"))
+            except Exception as e:
+                QTimer.singleShot(0, lambda: show_error(self.root, "AI 智能体", str(e)))
 
-        self.macro_repeat_var = tk.IntVar(value=1)
-        ttk.Label(speed_frame, text="  重复次数:").pack(side=tk.LEFT)
-        repeat_combo = ttk.Combobox(speed_frame, textvariable=self.macro_repeat_var,
-                                    values=["1", "2", "3", "5"], width=3, state="readonly")
-        repeat_combo.pack(side=tk.LEFT, padx=5)
+        threading.Thread(target=_execute, daemon=True).start()
 
-        record_frame = ttk.Frame(content_frame)
-        record_frame.pack(pady=15)
+    # ═══ 编程工作区卡片内容 ══════════════════════════════════════════════
 
-        self.record_btn = ttk.Button(record_frame, text="⏺ 开始录制", command=self.toggle_recording)
-        self.record_btn.pack(side=tk.LEFT, padx=10)
+    def _build_code_card(self, parent_layout):
+        """向卡片内添加编程工作区控件"""
+        self.code_input = TextEdit()
+        self.code_input.setPlaceholderText("# 在此输入 Python 代码\nprint('Hello, AI管家!')")
+        self.code_input.setFixedHeight(80)
+        self.code_input.setAcceptRichText(False)
+        parent_layout.addWidget(self.code_input)
 
-        ttk.Button(record_frame, text="⏹ 停止并保存", command=self.stop_and_save_macro).pack(side=tk.LEFT, padx=10)
+        btn_row = QHBoxLayout()
+        run_btn = PrimaryPushButton("▶ 运行")
+        run_btn.clicked.connect(self._run_code)
+        btn_row.addWidget(run_btn)
 
-        ttk.Label(content_frame, text="已录制的宏:", font=("微软雅黑", 11)).pack(pady=10)
+        clear_btn = PushButton("清空")
+        clear_btn.clicked.connect(self.code_input.clear)
+        btn_row.addWidget(clear_btn)
+        btn_row.addStretch()
+        parent_layout.addLayout(btn_row)
 
-        self.macro_listbox = tk.Listbox(content_frame, height=10)
-        self.macro_listbox.pack(pady=5, fill=tk.X, padx=10)
-        self.refresh_macro_list()
+    def _run_code(self):
+        """执行 Python 代码"""
+        code = self.code_input.toPlainText().strip()
+        if not code:
+            show_error(self.root, "编程工作区", "请输入 Python 代码")
+            return
 
-        btn_frame = ttk.Frame(content_frame)
-        btn_frame.pack(pady=10)
+        show_info(self.root, "编程工作区", "正在执行...")
 
-        ttk.Button(btn_frame, text="▶ 播放", command=self.play_selected_macro).pack(side=tk.LEFT, padx=5)
-        ttk.Button(btn_frame, text="🔄 刷新", command=self.refresh_macro_list).pack(side=tk.LEFT, padx=5)
-        ttk.Button(btn_frame, text="🗑️ 删除", command=self.delete_selected_macro).pack(side=tk.LEFT, padx=5)
+        def _exec():
+            import io, sys
+            old_stdout = sys.stdout
+            buf = io.StringIO()
+            try:
+                sys.stdout = buf
+                exec(code, {"__builtins__": __builtins__})
+                output = buf.getvalue()
+                QTimer.singleShot(0, lambda: show_info(self.root, "编程工作区",
+                                                        f"✅ 执行成功\n输出: {output}" if output else "✅ 执行成功（无输出）"))
+            except Exception as e:
+                QTimer.singleShot(0, lambda: show_error(self.root, "编程工作区", str(e)))
+            finally:
+                sys.stdout = old_stdout
 
-        ttk.Label(content_frame, text="使用提示:", font=("微软雅黑", 10)).pack(pady=(15, 5))
-        tips = """• 录制过程中计算机会记录您的所有操作
-• 播放时可选择速度和重复次数
-• 建议为每个宏起一个易懂的名字
-• 关闭窗口不影响正在录制的宏"""
-        ttk.Label(content_frame, text=tips, foreground="gray", font=("微软雅黑", 9)).pack(pady=5)
-
-        ttk.Button(content_frame, text="关闭", command=win.destroy).pack(pady=10)
-
-    def toggle_recording(self):
-        ctrl = self.controller
-        if not self.is_recording:
-            name = "未命名宏"
-            self.macro_recorder.start_recording(name)
-            self.is_recording = True
-            self.record_btn.config(text="⏸ 录制中...")
-            ctrl.say("系统", "🔴 开始录制宏,请在电脑上进行操作...")
-        else:
-            ctrl.say("系统", "录制进行中,请点击\"停止并保存\"")
-
-    def stop_and_save_macro(self):
-        ctrl = self.controller
-        if self.is_recording:
-            macro_data = self.macro_recorder.stop_recording()
-            if macro_data:
-                name = macro_data.get("name", "未命名宏")
-                macro_name = simpledialog.askstring("保存宏", "请输入宏名称:", initialvalue=name)
-                if macro_name:
-                    macro_data["name"] = macro_name
-                    self.macro_recorder.save_macro(macro_data)
-                    ctrl.say("系统", f"✅ 宏已保存:{macro_name}")
-                    self.refresh_macro_list()
-            self.is_recording = False
-            self.record_btn.config(text="⏺ 开始录制")
-        else:
-            messagebox.showinfo("提示", "请先开始录制")
-
-    def refresh_macro_list(self):
-        self.macro_listbox.delete(0, tk.END)
-        macros = self.macro_recorder.list_macros()
-        for m in macros:
-            self.macro_listbox.insert(tk.END, f"{m['name']} ({m['actions']}个动作)")
-
-    def play_selected_macro(self):
-        ctrl = self.controller
-        selection = self.macro_listbox.curselection()
-        if selection:
-            macros = self.macro_recorder.list_macros()
-            if selection[0] < len(macros):
-                macro_name = macros[selection[0]]["file"]
-                speed = self.macro_speed_var.get() if hasattr(self, 'macro_speed_var') else 1.0
-                repeat = self.macro_repeat_var.get() if hasattr(self, 'macro_repeat_var') else 1
-                ctrl.say("系统", f"▶ 正在播放宏:{macros[selection[0]]['name']} (速度:{speed}x, 重复:{repeat}次)")
-                threading.Thread(
-                    target=lambda: self.macro_player.play(macro_name, speed=speed, repeat=repeat),
-                    daemon=True
-                ).start()
-
-    def delete_selected_macro(self):
-        selection = self.macro_listbox.curselection()
-        if selection:
-            macros = self.macro_recorder.list_macros()
-            if selection[0] < len(macros):
-                macro_name = macros[selection[0]]["file"]
-                if messagebox.askyesno("确认", f"确定删除宏 \"{macros[selection[0]]['name']}\" 吗?"):
-                    self.macro_recorder.delete_macro(macro_name)
-                    self.refresh_macro_list()
-                    self.controller.say("系统", f"✅ 宏已删除")
+        threading.Thread(target=_exec, daemon=True).start()

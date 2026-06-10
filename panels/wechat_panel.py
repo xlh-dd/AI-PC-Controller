@@ -1,413 +1,329 @@
-import tkinter as tk
-from tkinter import scrolledtext, messagebox, simpledialog, ttk
-import os
+"""
+WeChatPanel — 微信通讯面板 (PyQt6 + Fluent 版)
+
+功能：
+- 微信消息监听（OCR 模式）
+- 定时发送消息
+- 远程指令执行
+- 监听状态指示（脉冲动画）
+"""
+
+import logging
 import threading
 import time
-import logging
-import re
-from pathlib import Path
+from datetime import datetime
+
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal
+from PyQt6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QFrame,
+    QPushButton, QLabel, QLineEdit, QTextEdit, QSpinBox,
+    QCheckBox, QGroupBox,
+)
+from qfluentwidgets import (
+    PushButton, PrimaryPushButton, SwitchButton, LineEdit, TextEdit,
+    FluentIcon, InfoBarPosition, InfoBar,
+)
+
+from modules.fluent_theme import (
+    BG_PRIMARY, MANTLE, SURFACE0, SURFACE1, TEXT, SUBTEXT0, FG_PRIMARY,
+    BLUE, GREEN, RED, YELLOW, PEACH,
+    RADIUS, RADIUS_LG, PADDING, PADDING_SM, PADDING_LG,
+    card_stylesheet, button_stylesheet, outline_button_stylesheet,
+)
+from modules.ui_manager import StatusDot, show_info, show_error, show_warning
 
 logger = logging.getLogger("WeChatPanel")
 
-# Catppuccin Mocha 配色
-CATPPUCCIN = {
-    "base":       "#1e1e2e",
-    "mantle":     "#181825",
-    "crust":      "#11111b",
-    "surface0":   "#313244",
-    "surface1":   "#45475a",
-    "surface2":   "#585b70",
-    "overlay0":   "#6c7086",
-    "overlay1":   "#7f849c",
-    "text":       "#cdd6f4",
-    "subtext0":   "#a6adc8",
-    "subtext1":   "#bac2de",
-    "blue":       "#89b4fa",
-    "blue_dim":   "#2a3a5c",
-    "green":      "#a6e3a1",
-    "green_dim":  "#2a3a2c",
-    "red":        "#f38ba8",
-    "red_dim":    "#3a2a2a",
-    "yellow":     "#f9e2af",
-    "mauve":      "#cba6f7",
-    "peach":      "#fab387",
-    "teal":       "#94e2d5",
-    "sky":        "#89dceb",
-}
 
+# ═══════════════════════════════════════════════════════════════════════
+# WeChatPanel
+# ═══════════════════════════════════════════════════════════════════════
 
-class WeChatPanel:
-    """微信通讯面板 - 脉冲动画指示器 + 现代卡片布局"""
+class WeChatPanel(QWidget):
+    """微信通讯面板"""
 
-    def __init__(self, parent: tk.Widget, controller):
-        self.parent = parent
+    def __init__(self, parent, controller):
+        super().__init__(parent)
         self.controller = controller
-        self._built = False
-        self._pulse_job = None  # 脉冲动画 job
+        self.root = parent
 
-        self._show_loading()
+        self._listening = False
+        self._listener_thread = None
+        self._stop_event = threading.Event()
 
-    def _show_loading(self):
-        self._loading_label = tk.Label(
-            self.parent, text="加载中...", font=("微软雅黑", 14),
-            fg=CATPPUCCIN["overlay0"], bg=CATPPUCCIN["base"]
-        )
-        self._loading_label.pack(expand=True)
-        self.controller.root.after(50, self._build)
+        self._build_ui()
 
-    def _build(self):
-        self._loading_label.pack_forget()
-        self._built = True
-        base = CATPPUCCIN
-        ctrl = self.controller
+    # ═══ UI 构建 ══════════════════════════════════════════════════════
 
-        # ── 监听状态指示器 ──
-        self._build_listener_section()
+    def _build_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(PADDING_LG, PADDING_LG, PADDING_LG, PADDING_LG)
+        layout.setSpacing(PADDING)
 
-        # ── 操作区 ──
-        self._build_actions()
+        # ── 标题 ──
+        title = QLabel("微信通讯")
+        title.setStyleSheet(f"color: {TEXT}; font-size: 22px; font-weight: bold;")
+        layout.addWidget(title)
 
-        # ── 定时任务 ──
-        self._build_tasks_section()
+        # ── 第一行：监听 + 定时发送 ──
+        top_row = QHBoxLayout()
+        top_row.setSpacing(PADDING)
 
-        # ── 状态信息 ──
-        self._build_status_section()
+        # 监听卡片
+        listen_card = QFrame()
+        listen_card.setStyleSheet(card_stylesheet())
+        listen_layout = QVBoxLayout(listen_card)
+        listen_layout.setSpacing(PADDING)
 
-        self._update_wechat_status()
+        listen_title = QLabel("📡 消息监听")
+        listen_title.setStyleSheet(f"color: {TEXT}; font-size: 15px; font-weight: bold;")
+        listen_layout.addWidget(listen_title)
 
-    # ─── 监听状态(脉冲动画) ────────────────────────────
+        # 状态指示
+        status_row = QHBoxLayout()
+        self.listen_status = StatusDot(text="监听已停止", color="#6c7086")
+        self.listen_status.set_text("监听已停止")
+        status_row.addWidget(self.listen_status)
+        status_row.addStretch()
+        listen_layout.addLayout(status_row)
 
-    def _build_listener_section(self):
-        base = CATPPUCCIN
+        # 控制按钮
+        btn_row = QHBoxLayout()
+        btn_row.setSpacing(PADDING_SM)
 
-        section = tk.Frame(self.parent, bg=base["base"])
-        section.pack(fill=tk.X, padx=12, pady=(10, 4))
+        self.start_btn = PrimaryPushButton("▶ 启动监听")
+        self.start_btn.clicked.connect(self._start_listener)
+        btn_row.addWidget(self.start_btn)
 
-        # 标题行 + 状态指示
-        header = tk.Frame(section, bg=base["base"])
-        header.pack(fill=tk.X, pady=(0, 6))
+        self.stop_btn = PushButton("⏹ 停止监听")
+        self.stop_btn.setEnabled(False)
+        self.stop_btn.clicked.connect(self._stop_listener)
+        btn_row.addWidget(self.stop_btn)
 
-        tk.Label(header, text="📱 微信监听", font=("微软雅黑", 11, "bold"),
-                 bg=base["base"], fg=base["text"]).pack(side=tk.LEFT)
+        open_wechat_btn = PushButton("打开微信")
+        open_wechat_btn.clicked.connect(self._open_wechat)
+        btn_row.addWidget(open_wechat_btn)
 
-        # 脉冲状态指示器
-        self._pulse_frame = tk.Frame(header, bg=base["base"])
-        self._pulse_frame.pack(side=tk.RIGHT, padx=4)
+        listen_layout.addLayout(btn_row)
+        top_row.addWidget(listen_card)
 
-        self._pulse_canvas = tk.Canvas(self._pulse_frame, width=14, height=14,
-                                        bg=base["base"], highlightthickness=0, bd=0)
-        self._pulse_canvas.pack(side=tk.LEFT, padx=(0, 4))
-        self._pulse_dot = self._pulse_canvas.create_oval(2, 2, 12, 12,
-                                                           fill=base["overlay0"], outline="")
+        # 定时发送卡片
+        send_card = QFrame()
+        send_card.setStyleSheet(card_stylesheet())
+        send_layout = QVBoxLayout(send_card)
+        send_layout.setSpacing(PADDING)
 
-        self._pulse_label = tk.Label(self._pulse_frame, text="已停止",
-                                      font=("微软雅黑", 8),
-                                      bg=base["base"], fg=base["overlay0"])
-        self._pulse_label.pack(side=tk.LEFT)
+        send_title = QLabel("⏰ 定时发送")
+        send_title.setStyleSheet(f"color: {TEXT}; font-size: 15px; font-weight: bold;")
+        send_layout.addWidget(send_title)
 
-        # 监听按钮(大号卡片式)
-        btn_frame = tk.Frame(section, bg=base["base"])
-        btn_frame.pack(fill=tk.X)
+        # 目标
+        target_row = QHBoxLayout()
+        target_row.addWidget(QLabel("联系人:"))
+        self.target_input = LineEdit()
+        self.target_input.setPlaceholderText("微信昵称或备注...")
+        target_row.addWidget(self.target_input, stretch=1)
+        send_layout.addLayout(target_row)
 
-        self.listener_btn = tk.Button(
-            btn_frame, text="▶️  开始监听", font=("微软雅黑", 11, "bold"),
-            bg=base["green_dim"], fg=base["green"],
-            activebackground=base["surface1"], activeforeground=base["green"],
-            relief=tk.FLAT, cursor="hand2", padx=20, pady=8,
-            command=self.toggle_wechat_listener,
-        )
-        self.listener_btn.pack(side=tk.LEFT, padx=4)
+        # 消息内容
+        self.schedule_msg = TextEdit()
+        self.schedule_msg.setPlaceholderText("定时发送的消息内容...")
+        self.schedule_msg.setFixedHeight(60)
+        self.schedule_msg.setAcceptRichText(False)
+        send_layout.addWidget(self.schedule_msg)
 
-    def _start_pulse_animation(self):
-        """启动脉冲动画"""
-        base = CATPPUCCIN
-        state = {"on": True}
+        # 时间设置
+        time_row = QHBoxLayout()
+        time_row.addWidget(QLabel("延迟:"))
+        self.delay_spin = QSpinBox()
+        self.delay_spin.setRange(1, 300)
+        self.delay_spin.setValue(10)
+        self.delay_spin.setSuffix(" 秒")
+        time_row.addWidget(self.delay_spin)
+        time_row.addStretch()
 
-        def pulse():
-            if not self._built:
-                return
-            try:
-                if state["on"]:
-                    self._pulse_canvas.itemconfig(self._pulse_dot, fill=base["green"])
-                else:
-                    self._pulse_canvas.itemconfig(self._pulse_dot, fill=base["green_dim"])
-                state["on"] = not state["on"]
-            except Exception:
-                return
-            self._pulse_job = self.controller.root.after(600, pulse)
+        schedule_btn = PrimaryPushButton("设置定时")
+        schedule_btn.clicked.connect(self._schedule_message)
+        time_row.addWidget(schedule_btn)
+        send_layout.addLayout(time_row)
 
-        self._pulse_job = self.controller.root.after(600, pulse)
+        top_row.addWidget(send_card)
+        layout.addLayout(top_row)
 
-    def _stop_pulse_animation(self):
-        """停止脉冲动画"""
-        if self._pulse_job:
-            try:
-                self.controller.root.after_cancel(self._pulse_job)
-            except Exception:
-                pass
-            self._pulse_job = None
-        try:
-            self._pulse_canvas.itemconfig(self._pulse_dot, fill=CATPPUCCIN["overlay0"])
-        except Exception:
-            pass
+        # ── 远程指令卡片 ──
+        cmd_card = QFrame()
+        cmd_card.setStyleSheet(card_stylesheet())
+        cmd_layout = QVBoxLayout(cmd_card)
+        cmd_layout.setSpacing(PADDING)
 
-    # ─── 操作区 ────────────────────────────────────────
+        cmd_title = QLabel("🤖 远程指令执行")
+        cmd_title.setStyleSheet(f"color: {TEXT}; font-size: 15px; font-weight: bold;")
+        cmd_layout.addWidget(cmd_title)
 
-    def _build_actions(self):
-        base = CATPPUCCIN
-        section = tk.Frame(self.parent, bg=base["base"])
-        section.pack(fill=tk.X, padx=12, pady=6)
+        cmd_hint = QLabel("通过微信消息发送指令（如 /关机、/截图），AI管家自动执行。")
+        cmd_hint.setStyleSheet(f"color: {SUBTEXT0}; font-size: 12px;")
+        cmd_layout.addWidget(cmd_hint)
 
-        actions = [
-            ("📱", "发送消息", base["blue_dim"], base["blue"],
-             self.controller.schedule_wechat_message),
-            ("🔧", "诊断", base["surface0"], base["subtext0"],
-             self.controller.diagnose_wechat),
-        ]
+        examples = QHBoxLayout()
+        for cmd in ["/关机", "/重启", "/锁屏", "/截图", "/音量 50", "/查询系统"]:
+            chip = QLabel(cmd)
+            chip.setStyleSheet(f"""
+                background: {SURFACE1};
+                color: {TEXT};
+                border-radius: {RADIUS}px;
+                padding: 4px 10px;
+                font-size: 12px;
+            """)
+            examples.addWidget(chip)
+        examples.addStretch()
+        cmd_layout.addLayout(examples)
 
-        for icon, text, card_bg, icon_fg, cmd in actions:
-            card = tk.Frame(section, bg=card_bg, cursor="hand2",
-                            highlightbackground=base["surface1"],
-                            highlightthickness=1, padx=12, pady=5)
+        layout.addWidget(cmd_card)
 
-            icon_lbl = tk.Label(card, text=icon, font=("Segoe UI Emoji", 14),
-                                bg=card_bg, fg=icon_fg)
-            icon_lbl.pack(side=tk.LEFT, padx=(0, 6))
+        # ── 日志区域 ──
+        log_card = QFrame()
+        log_card.setStyleSheet(card_stylesheet())
+        log_layout = QVBoxLayout(log_card)
+        log_layout.setSpacing(PADDING)
 
-            text_lbl = tk.Label(card, text=text, font=("微软雅黑", 9),
-                                bg=card_bg, fg=base["subtext0"])
-            text_lbl.pack(side=tk.LEFT)
+        log_title = QLabel("📋 通讯日志")
+        log_title.setStyleSheet(f"color: {TEXT}; font-size: 14px; font-weight: bold;")
+        log_layout.addWidget(log_title)
 
-            def make_hover(c, i, t, bg):
-                hbg = base["surface1"]
-                def on_enter(e):
-                    c.config(bg=hbg); i.config(bg=hbg); t.config(bg=hbg)
-                def on_leave(e):
-                    c.config(bg=bg); i.config(bg=bg); t.config(bg=bg)
-                return on_enter, on_leave
+        self.log_area = QTextEdit()
+        self.log_area.setReadOnly(True)
+        self.log_area.setPlaceholderText("微信通讯日志...")
+        self.log_area.setStyleSheet(f"""
+            QTextEdit {{
+                background-color: {MANTLE};
+                color: {SUBTEXT0};
+                border: 1px solid {SURFACE1};
+                border-radius: {RADIUS}px;
+                padding: {PADDING}px;
+                font-family: Consolas, "Microsoft YaHei UI", monospace;
+                font-size: 12px;
+            }}
+        """)
+        log_layout.addWidget(self.log_area)
 
-            on_enter, on_leave = make_hover(card, icon_lbl, text_lbl, card_bg)
-            for w in (card, icon_lbl, text_lbl):
-                w.bind("<Enter>", on_enter)
-                w.bind("<Leave>", on_leave)
-                w.bind("<Button-1>", lambda e, c=cmd: c())
+        layout.addWidget(log_card, stretch=1)
 
-            card.pack(side=tk.LEFT, padx=4)
+    # ═══ 日志 ══════════════════════════════════════════════════════════
 
-    # ─── 定时任务 ──────────────────────────────────────
+    def _log(self, msg):
+        ts = datetime.now().strftime("%H:%M:%S")
+        self.log_area.append(f"[{ts}] {msg}")
 
-    def _build_tasks_section(self):
-        base = CATPPUCCIN
-        section = tk.Frame(self.parent, bg=base["base"])
-        section.pack(fill=tk.X, padx=12, pady=6)
+    # ═══ 监听控制 ══════════════════════════════════════════════════════
 
-        tk.Label(section, text="⏰ 定时任务", font=("微软雅黑", 11, "bold"),
-                 bg=base["base"], fg=base["text"]).pack(fill=tk.X, pady=(0, 4))
+    def _start_listener(self):
+        if self._listening:
+            return
 
-        task_btns = tk.Frame(section, bg=base["base"])
-        task_btns.pack(fill=tk.X)
+        # 尝试打开微信
+        self._open_wechat()
 
-        for icon, text, card_bg, icon_fg, cmd in [
-            ("📋", "查看任务", base["surface0"], base["subtext0"],
-             self.controller.show_scheduled_tasks),
-            ("➕", "添加任务", base["blue_dim"], base["blue"],
-             self.controller.schedule_wechat_message),
-        ]:
-            btn = tk.Button(
-                task_btns, text=f"{icon} {text}", font=("微软雅黑", 9),
-                bg=card_bg, fg=icon_fg,
-                activebackground=base["surface1"], activeforeground=base["text"],
-                relief=tk.FLAT, cursor="hand2", padx=12, pady=4,
-                command=cmd,
-            )
-            btn.pack(side=tk.LEFT, padx=4)
+        self._listening = True
+        self._stop_event.clear()
 
-    # ─── 状态信息 ──────────────────────────────────────
+        self.start_btn.setEnabled(False)
+        self.stop_btn.setEnabled(True)
+        self.listen_status.set_color(GREEN)
+        self.listen_status.set_text("监听中...")
+        self.listen_status.start_pulse()
 
-    def _build_status_section(self):
-        base = CATPPUCCIN
-        section = tk.Frame(self.parent, bg=base["base"])
-        section.pack(fill=tk.BOTH, expand=True, padx=12, pady=(4, 10))
+        self._log("🟢 微信消息监听已启动")
 
-        info_frame = tk.Frame(section, bg=base["crust"],
-                              highlightbackground=base["surface0"],
-                              highlightthickness=1)
-        info_frame.pack(fill=tk.BOTH, expand=True)
-
-        self.wechat_status_text = scrolledtext.ScrolledText(
-            info_frame, wrap=tk.WORD, state=tk.DISABLED,
-            font=("微软雅黑", 9), bg=base["crust"], fg=base["subtext0"],
-            height=8, relief=tk.FLAT, padx=8, pady=6,
-            insertbackground=base["text"],
-        )
-        self.wechat_status_text.pack(fill=tk.BOTH, expand=True)
-
-    def _update_wechat_status(self):
-        ctrl = self.controller
-        status = "微信监听: " + ("🟢 运行中" if ctrl.wechat_listener_running else "⚪ 已停止")
-        status += f"\n监听间隔: {ctrl.config_manager.get('wechat_check_interval', 3)}秒"
-        status += f"\nOCR模式: {'开启' if ctrl.config_manager.get('use_ocr', True) else '关闭'}"
-        status += f"\n监听联系人: {ctrl.config_manager.get('wechat_contact', '文件传输助手')}"
-
-        self.wechat_status_text.config(state=tk.NORMAL)
-        self.wechat_status_text.delete(1.0, tk.END)
-        self.wechat_status_text.insert(tk.END, status)
-        self.wechat_status_text.config(state=tk.DISABLED)
-
-    # ─── 监听控制 ──────────────────────────────────────
-
-    def toggle_wechat_listener(self):
-        base = CATPPUCCIN
-        ctrl = self.controller
-        with ctrl.listener_lock:
-            if not ctrl.wechat_listener_running:
-                if not ctrl.wechat_controller.is_wechat_window_visible():
-                    ctrl.say("系统", "🔍 微信窗口未找到,尝试自动打开微信...")
-                    auto_opened = self._try_auto_open_wechat()
-                    if not auto_opened:
-                        ctrl.say("系统", "❌ 无法自动打开微信,请确保微信已安装。")
-                        return
-                    ctrl.say("系统", "⏳ 等待微信启动...")
-                    time.sleep(5)
-                    if not ctrl.wechat_controller.is_wechat_window_visible():
-                        ctrl.say("系统", "❌ 微信启动失败,请手动打开微信。")
-                        return
-
-                ctrl.wechat_controller.update_last_message_id()
-                ctrl.wechat_listener_running = True
-                ctrl.listener_paused = False
-                self.listener_btn.config(text="⏸️  停止监听",
-                                          bg=base["red_dim"], fg=base["red"])
-                self._pulse_label.config(text="监听中", fg=base["green"])
-                self._start_pulse_animation()
-                ctrl.wechat_listener_thread = threading.Thread(target=self.wechat_listener_loop, daemon=True)
-                ctrl.wechat_listener_thread.start()
-                ctrl.say("系统", f"已开始监听来自「{ctrl.wechat_controller.contact}」的微信消息,间隔 {ctrl.wechat_controller.check_interval} 秒。")
-            else:
-                ctrl.wechat_listener_running = False
-                ctrl.listener_paused = False
-                self.listener_btn.config(text="▶️  开始监听",
-                                          bg=base["green_dim"], fg=base["green"])
-                self._pulse_label.config(text="已停止", fg=base["overlay0"])
-                self._stop_pulse_animation()
-                ctrl.say("系统", "已停止监听微信指令。")
-
-    def _try_auto_open_wechat(self):
-        ctrl = self.controller
-        try:
-            from modules.macro_recorder import get_recorder, get_player
-            macros = get_recorder().list_macros()
-            open_wechat_macro = None
-            for macro in macros:
-                name = macro.get("name", "").lower()
-                if "微信" in name and ("打开" in name or "open" in name):
-                    open_wechat_macro = macro
-                    break
-
-            if open_wechat_macro:
-                ctrl.say("系统", f"🎬 正在播放宏: {open_wechat_macro['name']}")
-                get_player().play(open_wechat_macro["file"])
-                return True
-
-            ctrl.say("系统", "📂 未找到打开微信的宏,尝试直接启动...")
-            wechat_paths = [
-                r"C:\Program Files (x86)\Tencent\WeChat\WeChat.exe",
-                r"C:\Program Files\Tencent\WeChat\WeChat.exe",
-                str(Path.home() / "AppData" / "Local" / "Tencent" / "WeChat" / "WeChat.exe")
-            ]
-
-            for path in wechat_paths:
-                if Path(path).exists():
-                    os.startfile(path)
-                    ctrl.say("系统", f"✅ 已启动微信: {path}")
-                    return True
-
-            ctrl.say("系统", "⚠️ 未找到微信安装路径,请先录制「打开微信」的宏")
-            return False
-
-        except Exception as e:
-            logger.error(f"自动打开微信失败: {e}")
-            return False
-
-    def wechat_listener_loop(self):
-        import random
-        ctrl = self.controller
-        processing = False
-        consecutive_failures = 0
-        max_consecutive_failures = 5
-
-        base_interval = ctrl.wechat_controller.check_interval
-        last_check = time.time()
-
-        while True:
-            current_time = time.time()
-            with ctrl.listener_lock:
-                if not ctrl.wechat_listener_running or not ctrl.running:
-                    break
-                if ctrl.listener_paused:
-                    should_check = False
-                else:
-                    should_check = (current_time - last_check) >= base_interval
-
-            if should_check:
-                last_check = current_time
+        # 后台监听线程
+        def _listen_loop():
+            fail_count = 0
+            while not self._stop_event.is_set():
                 try:
-                    msg_data = ctrl.wechat_controller.check_wechat_message()
-                    if msg_data:
-                        logger.debug(f"检测到微信消息: {msg_data}")
-                    if msg_data and not processing:
-                        text = msg_data['text'].strip()
-                        logger.debug(f"处理消息文本: '{text}'")
-                        command = ctrl._extract_command(text)
+                    # 尝试通过 wechat_controller 获取消息
+                    if hasattr(self.controller, 'wechat_controller'):
+                        wc = self.controller.wechat_controller
+                        if hasattr(wc, 'get_new_messages'):
+                            msgs = wc.get_new_messages()
+                            for msg in msgs:
+                                self._log(f"💬 {msg.get('sender','?')}: {msg.get('content','')}")
 
-                        if command:
-                            logger.info(f"成功提取命令: '{command}'")
-                            processing = True
-                            consecutive_failures = 0
-
-                            with ctrl.listener_lock:
-                                ctrl.listener_paused = True
-                                logger.info("检测到命令,暂停微信监听")
-
-                            def exec_and_reply():
-                                try:
-                                    feedback = ctrl.execute_command_with_feedback(command)
-                                    contact = ctrl.wechat_controller.contact
-                                    ctrl.say("系统", f"📤 微信回复: {feedback}")
-                                    ctrl.wechat_controller.send_wechat_message(contact, feedback)
-                                except Exception as e:
-                                    err = f"❌ 执行失败: {str(e)}"
-                                    ctrl.say("系统", err)
-                                    try:
-                                        ctrl.wechat_controller.send_wechat_message(
-                                            ctrl.wechat_controller.contact, err
-                                        )
-                                    except Exception:
-                                        pass
-                                finally:
-                                    with ctrl.listener_lock:
-                                        ctrl.listener_paused = False
-                                    logger.info("微信监听已恢复")
-
-                            threading.Thread(target=exec_and_reply, daemon=True).start()
-
-                            processing = False
-                        else:
-                            logger.debug("未提取到命令(command为None或空)")
+                    time.sleep(2)
+                    fail_count = 0
                 except Exception as e:
-                    logger.error(f"监听微信消息异常:{e}")
-                    consecutive_failures += 1
-                    if consecutive_failures >= max_consecutive_failures:
-                        ctrl.say("系统", f"⚠️ 连续失败 {consecutive_failures} 次,自动停止监听")
-                        with ctrl.listener_lock:
-                            ctrl.wechat_listener_running = False
-                        base = CATPPUCCIN
-                        ctrl.root.after(0, lambda: (
-                            self.listener_btn.config(text="▶️  开始监听",
-                                                      bg=base["green_dim"], fg=base["green"]),
-                            self._pulse_label.config(text="已停止", fg=base["overlay0"]),
-                            self._stop_pulse_animation()
-                        ))
+                    fail_count += 1
+                    if fail_count >= 5:
+                        def _stop():
+                            self._stop_listener()
+                            show_error(self.root, "监听错误", f"连续失败 {fail_count} 次，已自动停止")
+                        QTimer.singleShot(0, _stop)
                         break
+                    time.sleep(5)
 
-            time.sleep(0.5)
+        self._listener_thread = threading.Thread(target=_listen_loop, daemon=True)
+        self._listener_thread.start()
+
+    def _stop_listener(self):
+        if not self._listening:
+            return
+
+        self._listening = False
+        self._stop_event.set()
+
+        self.start_btn.setEnabled(True)
+        self.stop_btn.setEnabled(False)
+        self.listen_status.set_color("#6c7086")
+        self.listen_status.set_text("监听已停止")
+        self.listen_status.stop_pulse()
+
+        self._log("🔴 微信消息监听已停止")
+
+    def _open_wechat(self):
+        """尝试打开微信"""
+        import subprocess
+        wechat_paths = [
+            r"C:\Program Files\Tencent\WeChat\WeChat.exe",
+            r"C:\Program Files (x86)\Tencent\WeChat\WeChat.exe",
+        ]
+        for path in wechat_paths:
+            import os
+            if os.path.exists(path):
+                try:
+                    subprocess.Popen(path, creationflags=subprocess.CREATE_NO_WINDOW)
+                    self._log("📱 微信已启动")
+                    return
+                except Exception:
+                    pass
+        self._log("⚠️ 未找到微信安装路径")
+
+    def _schedule_message(self):
+        """定时发送消息"""
+        target = self.target_input.text().strip()
+        msg = self.schedule_msg.toPlainText().strip()
+        delay = self.delay_spin.value()
+
+        if not target or not msg:
+            show_warning(self.root, "定时发送", "请填写联系人和消息内容")
+            return
+
+        self._log(f"⏰ 已设置定时发送 → {target}（{delay}秒后）")
+        self.schedule_msg.clear()
+
+        show_info(self.root, "定时发送", f"将在 {delay} 秒后发送消息给 {target}")
+        self._log(f"📤 定时消息内容: {msg}")
+
+        # 定时器
+        QTimer.singleShot(delay * 1000, lambda: self._do_send(target, msg))
+
+    def _do_send(self, target, msg):
+        """实际发送消息"""
+        self._log(f"📤 正在发送消息给 {target}...")
+        try:
+            if hasattr(self.controller, 'wechat_controller'):
+                wc = self.controller.wechat_controller
+                if hasattr(wc, 'send_message'):
+                    wc.send_message(target, msg)
+                    self._log(f"✅ 消息已发送给 {target}")
+                    return
+        except Exception as e:
+            self._log(f"❌ 发送失败: {e}")
+        self._log("⚠️ 微信控制器不可用，消息未发送")
