@@ -139,3 +139,62 @@ def apply_global_stylesheet(app):
             background-color: {SURFACE0};
         }}
     """)
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# 组件样式生成函数
+# ═══════════════════════════════════════════════════════════════════════
+
+def card_stylesheet(radius=RADIUS_LG, bg=SURFACE0):
+    """卡片背景 QSS"""
+    return f"""
+        background-color: {bg};
+        border-radius: {radius}px;
+        padding: {PADDING}px;
+    """
+
+
+def button_stylesheet(base_color=BLUE, radius=RADIUS):
+    """按钮 QSS"""
+    return f"""
+        QPushButton {{
+            background-color: {base_color};
+            color: {BG_PRIMARY};
+            border: none;
+            border-radius: {radius}px;
+            padding: 6px 16px;
+            font-weight: bold;
+        }}
+        QPushButton:hover {{
+            background-color: {base_color}CC;
+        }}
+        QPushButton:pressed {{
+            background-color: {base_color}99;
+        }}
+        QPushButton:disabled {{
+            background-color: {SURFACE1};
+            color: {SUBTEXT0};
+        }}
+    """
+
+
+def outline_button_stylesheet(base_color=BLUE, radius=RADIUS):
+    """轮廓按钮 QSS"""
+    return f"""
+        QPushButton {{
+            background: transparent;
+            color: {base_color};
+            border: 1px solid {base_color}40;
+            border-radius: {radius}px;
+            padding: 6px 16px;
+        }}
+        QPushButton:hover {{
+            border: 1px solid {base_color};
+            background-color: {base_color}15;
+        }}
+    """
+
+
+def danger_button_stylesheet(radius=RADIUS):
+    """危险按钮 QSS"""
+    return button_stylesheet(base_color=RED, radius=radius)
