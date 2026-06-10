@@ -8,17 +8,36 @@ from datetime import datetime
 
 logger = logging.getLogger("FilePanel")
 
+# Catppuccin Mocha 配色
+CATPPUCCIN = {
+    "base":       "#1e1e2e",
+    "mantle":     "#181825",
+    "crust":      "#11111b",
+    "surface0":   "#313244",
+    "surface1":   "#45475a",
+    "surface2":   "#585b70",
+    "overlay0":   "#6c7086",
+    "overlay1":   "#7f849c",
+    "text":       "#cdd6f4",
+    "subtext0":   "#a6adc8",
+    "subtext1":   "#bac2de",
+    "blue":       "#89b4fa",
+    "blue_dim":   "#2a3a5c",
+    "green":      "#a6e3a1",
+    "green_dim":  "#2a3a2c",
+    "red":        "#f38ba8",
+    "red_dim":    "#3a2a2a",
+    "yellow":     "#f9e2af",
+    "mauve":      "#cba6f7",
+    "peach":      "#fab387",
+    "teal":       "#94e2d5",
+}
+
 
 class FilePanel:
-    """文件管理面板 - 智能整理、查重、大文件扫描等功能"""
+    """文件管理面板 - 工具栏风格按钮 + 磁盘使用可视化"""
 
     def __init__(self, parent: tk.Widget, controller):
-        """构建文件管理标签页
-
-        Args:
-            parent: 父容器(tk.Widget)
-            controller: AppController / AIPCHelperV8 主控制器实例
-        """
         self.parent = parent
         self.controller = controller
         self._built = False
@@ -26,55 +45,125 @@ class FilePanel:
         self._show_loading()
 
     def _show_loading(self):
-        """显示加载中提示"""
-        self._loading_label = ttk.Label(
-            self.parent, text="加载中...",
-            font=("微软雅黑", 14), foreground="gray"
+        self._loading_label = tk.Label(
+            self.parent, text="加载中...", font=("微软雅黑", 14),
+            fg=CATPPUCCIN["overlay0"], bg=CATPPUCCIN["base"]
         )
         self._loading_label.pack(expand=True)
-
         self.controller.root.after(50, self._build)
 
     def _build(self):
-        """实际构建文件管理UI"""
         self._loading_label.pack_forget()
         self._built = True
-
+        base = CATPPUCCIN
         ctrl = self.controller
 
-        btn_frame = ttk.LabelFrame(self.parent, text="文件操作", padding=10)
-        btn_frame.pack(fill=tk.X, padx=10, pady=10)
+        # ── 工具栏 ──
+        self._build_toolbar()
 
-        row1 = ttk.Frame(btn_frame)
-        row1.pack(fill=tk.X, pady=3)
-
-        ttk.Button(row1, text="🗂️ 智能整理", command=self.auto_sort_files, bootstyle="primary", width=15).pack(side=tk.LEFT, padx=3)
-        ttk.Button(row1, text="🔍 查找重复", command=self.find_duplicate_files, bootstyle="primary", width=15).pack(side=tk.LEFT, padx=3)
-        ttk.Button(row1, text="💽 大文件", command=self.find_large_files, bootstyle="primary", width=15).pack(side=tk.LEFT, padx=3)
-        ttk.Button(row1, text="🧹 清理空文件", command=self.clean_empty_files, bootstyle="warning", width=15).pack(side=tk.LEFT, padx=3)
-
-        row2 = ttk.Frame(btn_frame)
-        row2.pack(fill=tk.X, pady=3)
-
-        ttk.Button(row2, text="📂 选择目录", command=self.choose_folder, bootstyle="secondary", width=15).pack(side=tk.LEFT, padx=3)
-        ttk.Button(row2, text="📋 列出文件", command=self.list_files, bootstyle="secondary", width=15).pack(side=tk.LEFT, padx=3)
-        ttk.Button(row2, text="✏️ 批量重命名", command=lambda: self.rename_folder(""), bootstyle="secondary", width=15).pack(side=tk.LEFT, padx=3)
-        ttk.Button(row2, text="↶ 撤销", command=self.undo, bootstyle="secondary", width=15).pack(side=tk.LEFT, padx=3)
-
-        info_frame = ttk.LabelFrame(self.parent, text="目录信息", padding=10)
-        info_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-
-        self.file_info_text = scrolledtext.ScrolledText(
-            info_frame, wrap=tk.WORD, state=tk.DISABLED,
-            font=("微软雅黑", 9), bg="#1e1e2e", fg="#cdd6f4",
-            height=10
-        )
-        self.file_info_text.pack(fill=tk.BOTH, expand=True)
+        # ── 目录信息(含磁盘可视化) ──
+        self._build_info_section()
 
         self._update_file_info()
 
+    # ─── 工具栏(图标+文字竖排) ──────────────────────────
+
+    def _build_toolbar(self):
+        base = CATPPUCCIN
+        toolbar = tk.Frame(self.parent, bg=base["mantle"],
+                           highlightbackground=base["surface0"],
+                           highlightthickness=1)
+        toolbar.pack(fill=tk.X, padx=10, pady=(10, 4))
+
+        # 第一行: 主要操作
+        row1 = tk.Frame(toolbar, bg=base["mantle"])
+        row1.pack(fill=tk.X, padx=6, pady=(6, 2))
+
+        primary_actions = [
+            ("🗂️", "智能整理", base["blue_dim"], base["blue"], self.auto_sort_files),
+            ("🔍", "查找重复", base["blue_dim"], base["teal"], self.find_duplicate_files),
+            ("💽", "大文件", base["blue_dim"], base["sky"], self.find_large_files),
+            ("🧹", "清理空文件", base["green_dim"], base["green"], self.clean_empty_files),
+        ]
+
+        for icon, text, card_bg, icon_fg, cmd in primary_actions:
+            self._make_tool_button(row1, icon, text, card_bg, icon_fg, cmd)
+
+        # 第二行: 辅助操作
+        row2 = tk.Frame(toolbar, bg=base["mantle"])
+        row2.pack(fill=tk.X, padx=6, pady=(2, 6))
+
+        secondary_actions = [
+            ("📂", "选择目录", base["surface0"], base["subtext0"], self.choose_folder),
+            ("📋", "列出文件", base["surface0"], base["subtext0"], self.list_files),
+            ("✏️", "批量重命名", base["surface0"], base["subtext0"], lambda: self.rename_folder("")),
+            ("↶", "撤销", base["surface0"], base["subtext0"], self.undo),
+        ]
+
+        for icon, text, card_bg, icon_fg, cmd in secondary_actions:
+            self._make_tool_button(row2, icon, text, card_bg, icon_fg, cmd)
+
+    def _make_tool_button(self, parent, icon, text, card_bg, icon_fg, command):
+        """创建工具栏按钮(图标+文字竖排)"""
+        base = CATPPUCCIN
+
+        card = tk.Frame(parent, bg=card_bg, cursor="hand2",
+                        highlightbackground=base["surface1"],
+                        highlightthickness=1, padx=8, pady=5)
+
+        icon_lbl = tk.Label(card, text=icon, font=("Segoe UI Emoji", 16),
+                            bg=card_bg, fg=icon_fg)
+        icon_lbl.pack(pady=(0, 1))
+
+        text_lbl = tk.Label(card, text=text, font=("微软雅黑", 8),
+                            bg=card_bg, fg=base["subtext0"])
+        text_lbl.pack()
+
+        def make_hover(c, i, t, bg):
+            hbg = base["surface1"]
+            def on_enter(e):
+                c.config(bg=hbg); i.config(bg=hbg); t.config(bg=hbg)
+            def on_leave(e):
+                c.config(bg=bg); i.config(bg=bg); t.config(bg=bg)
+            return on_enter, on_leave
+
+        on_enter, on_leave = make_hover(card, icon_lbl, text_lbl, card_bg)
+        for w in (card, icon_lbl, text_lbl):
+            w.bind("<Enter>", on_enter)
+            w.bind("<Leave>", on_leave)
+            w.bind("<Button-1>", lambda e, c=command: c())
+
+        card.pack(side=tk.LEFT, padx=3, pady=2)
+
+    # ─── 目录信息(含磁盘可视化) ─────────────────────────
+
+    def _build_info_section(self):
+        base = CATPPUCCIN
+
+        info_outer = tk.Frame(self.parent, bg=base["base"])
+        info_outer.pack(fill=tk.BOTH, expand=True, padx=10, pady=(4, 10))
+
+        # 磁盘使用进度条区
+        self._disk_bar_frame = tk.Frame(info_outer, bg=base["base"])
+        self._disk_bar_frame.pack(fill=tk.X, pady=(0, 6))
+
+        # 详细信息文本
+        info_frame = tk.Frame(info_outer, bg=base["crust"],
+                              highlightbackground=base["surface0"],
+                              highlightthickness=1)
+        info_frame.pack(fill=tk.BOTH, expand=True)
+
+        self.file_info_text = scrolledtext.ScrolledText(
+            info_frame, wrap=tk.WORD, state=tk.DISABLED,
+            font=("微软雅黑", 9), bg=base["crust"], fg=base["subtext0"],
+            height=8, relief=tk.FLAT, padx=8, pady=6,
+            insertbackground=base["text"],
+        )
+        self.file_info_text.pack(fill=tk.BOTH, expand=True)
+
     def _update_file_info(self):
-        """更新文件信息显示"""
+        """更新文件信息 + 磁盘可视化"""
+        base = CATPPUCCIN
         try:
             ctrl = self.controller
             folder = ctrl.current_folder
@@ -82,11 +171,6 @@ class FilePanel:
                 files = os.listdir(folder)
                 file_count = len([f for f in files if os.path.isfile(os.path.join(folder, f))])
                 dir_count = len([f for f in files if os.path.isdir(os.path.join(folder, f))])
-
-                info = f"📁 当前目录: {folder}\n"
-                info += f"📄 文件数: {file_count}\n"
-                info += f"📂 文件夹数: {dir_count}\n"
-                info += f"📊 总计: {len(files)} 项\n"
 
                 total_size = 0
                 for f in files:
@@ -98,21 +182,77 @@ class FilePanel:
                         pass
 
                 if total_size > 1024**3:
-                    info += f"💾 总大小: {total_size / 1024**3:.2f} GB"
+                    size_str = f"{total_size / 1024**3:.2f} GB"
                 elif total_size > 1024**2:
-                    info += f"💾 总大小: {total_size / 1024**2:.2f} MB"
+                    size_str = f"{total_size / 1024**2:.2f} MB"
                 else:
-                    info += f"💾 总大小: {total_size / 1024:.2f} KB"
+                    size_str = f"{total_size / 1024:.2f} KB"
+
+                info = f"📁 当前目录: {folder}\n"
+                info += f"📄 文件数: {file_count}  |  📂 文件夹数: {dir_count}  |  📊 总计: {len(files)} 项\n"
+                info += f"💾 总大小: {size_str}"
 
                 self.file_info_text.config(state=tk.NORMAL)
                 self.file_info_text.delete(1.0, tk.END)
                 self.file_info_text.insert(tk.END, info)
                 self.file_info_text.config(state=tk.DISABLED)
+
+                # 更新磁盘进度条
+                self._update_disk_bars(folder)
         except Exception as e:
             pass
 
+    def _update_disk_bars(self, folder):
+        """更新磁盘使用进度条"""
+        base = CATPPUCCIN
+
+        # 清空旧进度条
+        for w in self._disk_bar_frame.winfo_children():
+            w.destroy()
+
+        try:
+            import psutil
+            # 获取文件夹所在磁盘
+            drive = os.path.splitdrive(folder)[0] or "C:"
+            disk = psutil.disk_usage(drive)
+
+            # 磁盘使用条
+            row = tk.Frame(self._disk_bar_frame, bg=base["base"])
+            row.pack(fill=tk.X, pady=2)
+
+            tk.Label(row, text=f"💿 {drive}", font=("微软雅黑", 9, "bold"),
+                     bg=base["base"], fg=base["text"]).pack(side=tk.LEFT)
+
+            pct = disk.percent
+            pct_color = base["blue"] if pct < 70 else (base["yellow"] if pct < 90 else base["red"])
+            tk.Label(row, text=f"{pct}%", font=("微软雅黑", 9, "bold"),
+                     bg=base["base"], fg=pct_color).pack(side=tk.RIGHT)
+
+            bar_canvas = tk.Canvas(self._disk_bar_frame, height=12,
+                                   bg=base["surface0"], highlightthickness=0, bd=0)
+            bar_canvas.pack(fill=tk.X, pady=(2, 0))
+
+            bar_id = bar_canvas.create_rectangle(0, 0, 0, 12, fill=pct_color, outline="")
+
+            def on_resize(event, bid=bar_id, p=pct/100.0, c=bar_canvas, clr=pct_color):
+                bar_w = int(p * event.width)
+                c.coords(bid, 0, 0, bar_w, 12)
+
+            bar_canvas.bind("<Configure>", on_resize)
+
+            used_gb = disk.used // (1024**3)
+            total_gb = disk.total // (1024**3)
+            tk.Label(self._disk_bar_frame,
+                     text=f"  {used_gb} GB / {total_gb} GB 已使用",
+                     font=("微软雅黑", 8), bg=base["base"], fg=base["overlay0"]).pack(anchor="w")
+
+        except Exception:
+            # psutil 不可用时静默跳过
+            pass
+
+    # ─── 文件操作方法(保持原有逻辑不变) ──────────────────
+
     def auto_sort_files(self):
-        """智能整理文件 - 按类型分类"""
         ctrl = self.controller
         target_base = filedialog.askdirectory(title="选择分类后的根目录")
         if not target_base:
@@ -154,7 +294,6 @@ class FilePanel:
         threading.Thread(target=sort_files_thread, daemon=True).start()
 
     def find_duplicate_files(self):
-        """查找重复文件"""
         ctrl = self.controller
 
         def find_duplicates_thread():
@@ -197,7 +336,6 @@ class FilePanel:
         threading.Thread(target=find_duplicates_thread, daemon=True).start()
 
     def smart_duplicate_cleanup(self, duplicates):
-        """AI智能分析重复文件"""
         ctrl = self.controller
         ctrl.say("AI管家", "正在分析重复文件,请稍候...")
         to_delete = []
@@ -231,7 +369,6 @@ class FilePanel:
             ctrl.say("系统", "AI未给出有效建议,请手动处理。")
 
     def clean_empty_files(self):
-        """清理空文件"""
         ctrl = self.controller
 
         def clean_empty_thread():
@@ -268,7 +405,6 @@ class FilePanel:
         threading.Thread(target=clean_empty_thread, daemon=True).start()
 
     def find_large_files(self, min_size_gb=1):
-        """查找大文件"""
         ctrl = self.controller
 
         def find_large_files_thread():
@@ -289,7 +425,6 @@ class FilePanel:
         threading.Thread(target=find_large_files_thread, daemon=True).start()
 
     def list_files(self):
-        """列出当前目录文件"""
         ctrl = self.controller
 
         def list_files_thread():
@@ -312,7 +447,6 @@ class FilePanel:
         threading.Thread(target=list_files_thread, daemon=True).start()
 
     def rename_folder(self, msg):
-        """批量重命名文件夹"""
         ctrl = self.controller
         try:
             ctrl.say("AI管家", "正在分析改名需求...")
@@ -364,7 +498,6 @@ class FilePanel:
             ctrl.say("系统", f"❌ 改名失败:{e}")
 
     def choose_folder(self):
-        """选择工作目录"""
         ctrl = self.controller
         folder = filedialog.askdirectory(title="选择工作目录")
         if folder:
@@ -375,7 +508,6 @@ class FilePanel:
             self._update_file_info()
 
     def undo(self):
-        """撤销上次重命名操作"""
         ctrl = self.controller
         if not ctrl.rename_history:
             ctrl.say("系统", "❌ 没有可撤销的操作")

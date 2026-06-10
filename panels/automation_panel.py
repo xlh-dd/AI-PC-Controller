@@ -14,17 +14,37 @@ except ImportError:
     get_player = None
     PYAUTOGUI_AVAILABLE = False
 
+# Catppuccin Mocha 配色
+CATPPUCCIN = {
+    "base":       "#1e1e2e",
+    "mantle":     "#181825",
+    "crust":      "#11111b",
+    "surface0":   "#313244",
+    "surface1":   "#45475a",
+    "surface2":   "#585b70",
+    "overlay0":   "#6c7086",
+    "overlay1":   "#7f849c",
+    "text":       "#cdd6f4",
+    "subtext0":   "#a6adc8",
+    "subtext1":   "#bac2de",
+    "blue":       "#89b4fa",
+    "blue_dim":   "#2a3a5c",
+    "green":      "#a6e3a1",
+    "green_dim":  "#2a3a2c",
+    "red":        "#f38ba8",
+    "red_dim":    "#3a2a2a",
+    "yellow":     "#f9e2af",
+    "mauve":      "#cba6f7",
+    "peach":      "#fab387",
+    "teal":       "#94e2d5",
+    "sky":        "#89dceb",
+}
+
 
 class AutomationPanel:
-    """自动化面板 - 宏录制、自动化任务、AI智能体、编程工作区"""
+    """自动化面板 - 卡片式工具入口 + 美观排版"""
 
     def __init__(self, parent: tk.Widget, controller):
-        """构建自动化标签页
-
-        Args:
-            parent: 父容器(tk.Widget)
-            controller: AppController / AIPCHelperV8 主控制器实例
-        """
         self.parent = parent
         self.controller = controller
         self._built = False
@@ -32,64 +52,187 @@ class AutomationPanel:
         self._show_loading()
 
     def _show_loading(self):
-        """显示加载中提示"""
-        self._loading_label = ttk.Label(
-            self.parent, text="加载中...",
-            font=("微软雅黑", 14), foreground="gray"
+        self._loading_label = tk.Label(
+            self.parent, text="加载中...", font=("微软雅黑", 14),
+            fg=CATPPUCCIN["overlay0"], bg=CATPPUCCIN["base"]
         )
         self._loading_label.pack(expand=True)
-
         self.controller.root.after(50, self._build)
 
     def _build(self):
-        """实际构建自动化UI"""
         self._loading_label.pack_forget()
         self._built = True
+        base = CATPPUCCIN
 
-        ctrl = self.controller
+        # ── 自动化工具(卡片网格) ──
+        self._build_tools_grid()
 
-        tools_frame = ttk.LabelFrame(self.parent, text="自动化工具", padding=10)
-        tools_frame.pack(fill=tk.X, padx=10, pady=10)
+        # ── 应用管理 ──
+        self._build_app_section()
 
-        ttk.Button(tools_frame, text="🎬 宏录制", command=self.show_macro_panel, bootstyle="primary", width=15).pack(side=tk.LEFT, padx=3)
-        ttk.Button(tools_frame, text="🔄 自动化任务", command=self.show_automation_panel, bootstyle="primary", width=15).pack(side=tk.LEFT, padx=3)
-        ttk.Button(tools_frame, text="🤖 AI智能体", command=ctrl.show_ai_agent_panel, bootstyle="success", width=15).pack(side=tk.LEFT, padx=3)
-        ttk.Button(tools_frame, text="💻 编程工作区", command=ctrl.show_code_workspace, bootstyle="info", width=15).pack(side=tk.LEFT, padx=3)
+        # ── 使用说明 ──
+        self._build_help_section()
 
-        app_frame = ttk.LabelFrame(self.parent, text="应用管理", padding=10)
-        app_frame.pack(fill=tk.X, padx=10, pady=10)
+    # ─── 工具入口(卡片式) ─────────────────────────────
 
-        ttk.Button(app_frame, text="➕ 添加应用", command=ctrl.add_custom_app, width=15).pack(side=tk.LEFT, padx=5)
-        ttk.Button(app_frame, text="📋 应用列表", command=ctrl.list_custom_apps, width=15).pack(side=tk.LEFT, padx=5)
+    def _build_tools_grid(self):
+        base = CATPPUCCIN
+        section = tk.Frame(self.parent, bg=base["base"])
+        section.pack(fill=tk.X, padx=12, pady=(10, 4))
 
-        help_frame = ttk.LabelFrame(self.parent, text="使用说明", padding=10)
-        help_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        tk.Label(section, text="🤖 自动化工具", font=("微软雅黑", 11, "bold"),
+                 bg=base["base"], fg=base["text"], anchor="w").pack(fill=tk.X, pady=(0, 8))
+
+        grid_frame = tk.Frame(section, bg=base["base"])
+        grid_frame.pack(fill=tk.X)
+
+        tools = [
+            ("🎬", "宏录制", "录制鼠标键盘\n重复播放",
+             base["blue_dim"], base["blue"], self.show_macro_panel),
+            ("🔄", "自动化任务", "定时/条件触发\n自动执行",
+             base["green_dim"], base["green"], self.show_automation_panel),
+            ("🤖", "AI智能体", "自动搜索整理\n智能分析",
+             base["green_dim"], base["teal"], self.controller.show_ai_agent_panel),
+            ("💻", "编程工作区", "项目监控\n代码质量",
+             base["blue_dim"], base["sky"], self.controller.show_code_workspace),
+        ]
+
+        for i, (icon, title, desc, card_bg, icon_fg, cmd) in enumerate(tools):
+            card = tk.Frame(grid_frame, bg=card_bg, cursor="hand2",
+                            highlightbackground=base["surface1"],
+                            highlightthickness=1, padx=12, pady=10)
+
+            icon_lbl = tk.Label(card, text=icon, font=("Segoe UI Emoji", 24),
+                                bg=card_bg, fg=icon_fg)
+            icon_lbl.pack(pady=(0, 4))
+
+            title_lbl = tk.Label(card, text=title, font=("微软雅黑", 10, "bold"),
+                                 bg=card_bg, fg=base["text"])
+            title_lbl.pack()
+
+            desc_lbl = tk.Label(card, text=desc, font=("微软雅黑", 8),
+                                bg=card_bg, fg=base["overlay0"],
+                                justify=tk.CENTER)
+            desc_lbl.pack(pady=(2, 0))
+
+            def make_hover(c, *widgets, bg=card_bg):
+                hbg = base["surface1"]
+                def on_enter(e):
+                    for w in widgets:
+                        w.config(bg=hbg)
+                    c.config(bg=hbg)
+                def on_leave(e):
+                    for w in widgets:
+                        w.config(bg=bg)
+                    c.config(bg=bg)
+                return on_enter, on_leave
+
+            all_widgets = (card, icon_lbl, title_lbl, desc_lbl)
+            on_enter, on_leave = make_hover(card, *all_widgets, bg=card_bg)
+            for w in all_widgets:
+                w.bind("<Enter>", on_enter)
+                w.bind("<Leave>", on_leave)
+                w.bind("<Button-1>", lambda e, c=cmd: c())
+
+            row, col = divmod(i, 4)
+            card.grid(row=row, column=col, padx=4, pady=3, sticky="nsew")
+
+        for c in range(4):
+            grid_frame.columnconfigure(c, weight=1)
+
+    # ─── 应用管理 ──────────────────────────────────────
+
+    def _build_app_section(self):
+        base = CATPPUCCIN
+        section = tk.Frame(self.parent, bg=base["base"])
+        section.pack(fill=tk.X, padx=12, pady=8)
+
+        tk.Label(section, text="📦 应用管理", font=("微软雅黑", 11, "bold"),
+                 bg=base["base"], fg=base["text"], anchor="w").pack(fill=tk.X, pady=(0, 6))
+
+        btn_frame = tk.Frame(section, bg=base["base"])
+        btn_frame.pack(fill=tk.X)
+
+        for icon, text, card_bg, icon_fg, cmd in [
+            ("➕", "添加应用", base["blue_dim"], base["blue"],
+             self.controller.add_custom_app),
+            ("📋", "应用列表", base["surface0"], base["subtext0"],
+             self.controller.list_custom_apps),
+        ]:
+            btn = tk.Button(
+                btn_frame, text=f"{icon} {text}", font=("微软雅黑", 9),
+                bg=card_bg, fg=icon_fg,
+                activebackground=base["surface1"], activeforeground=base["text"],
+                relief=tk.FLAT, cursor="hand2", padx=14, pady=4,
+                command=cmd,
+            )
+            btn.pack(side=tk.LEFT, padx=4)
+
+    # ─── 使用说明(美观排版) ────────────────────────────
+
+    def _build_help_section(self):
+        base = CATPPUCCIN
+        section = tk.Frame(self.parent, bg=base["base"])
+        section.pack(fill=tk.BOTH, expand=True, padx=12, pady=(4, 10))
+
+        info_frame = tk.Frame(section, bg=base["crust"],
+                              highlightbackground=base["surface0"],
+                              highlightthickness=1)
+        info_frame.pack(fill=tk.BOTH, expand=True)
 
         help_text = scrolledtext.ScrolledText(
-            help_frame, wrap=tk.WORD, state=tk.DISABLED,
-            font=("微软雅黑", 9), bg="#1e1e2e", fg="#cdd6f4",
-            height=8
+            info_frame, wrap=tk.WORD, state=tk.DISABLED,
+            font=("微软雅黑", 9), bg=base["crust"], fg=base["subtext0"],
+            height=8, relief=tk.FLAT, padx=10, pady=8,
+            insertbackground=base["text"],
         )
         help_text.pack(fill=tk.BOTH, expand=True)
 
-        help_content = """🎬 宏录制: 录制鼠标键盘操作,可重复播放
-🔄 自动化任务: 创建定时或条件触发的自动化任务
-🤖 AI智能体: 自动搜索整理信息并保存文档
-💻 编程工作区: 项目监控 + 代码质量 + 批量生成
+        # 配置标签样式
+        help_text.tag_configure("title", foreground=base["text"],
+                                font=("微软雅黑", 10, "bold"))
+        help_text.tag_configure("item_title", foreground=base["blue"],
+                                font=("微软雅黑", 9, "bold"))
+        help_text.tag_configure("item_desc", foreground=base["overlay0"],
+                                font=("微软雅黑", 9))
+        help_text.tag_configure("tip", foreground=base["yellow"],
+                                font=("微软雅黑", 9, "bold"))
+        help_text.tag_configure("dim", foreground=base["overlay0"],
+                                font=("微软雅黑", 8))
 
-💡 提示: 所有自动化操作都可以通过智能对话标签页用自然语言触发
-"""
         help_text.config(state=tk.NORMAL)
-        help_text.insert(tk.END, help_content)
+        help_text.insert(tk.END, "📖 使用指南\n\n", "title")
+
+        items = [
+            ("🎬", "宏录制", "录制鼠标键盘操作，可重复播放"),
+            ("🔄", "自动化任务", "创建定时或条件触发的自动化任务"),
+            ("🤖", "AI智能体", "自动搜索整理信息并保存文档"),
+            ("💻", "编程工作区", "项目监控 + 代码质量 + 批量生成"),
+        ]
+        for icon, title, desc in items:
+            help_text.insert(tk.END, f"  {icon} ", "item_title")
+            help_text.insert(tk.END, f"{title}", "item_title")
+            help_text.insert(tk.END, f" — {desc}\n", "item_desc")
+
+        help_text.insert(tk.END, "\n")
+        help_text.insert(tk.END, "💡 ", "tip")
+        help_text.insert(tk.END, "所有自动化操作都可以通过智能对话标签页用自然语言触发\n", "item_desc")
+        help_text.insert(tk.END, "  例如: 「每天9点给我发微信早安」 「帮我录一个打开微信的宏」\n", "dim")
+
         help_text.config(state=tk.DISABLED)
 
+    # ─── 自动化任务面板 ────────────────────────────────
+
     def show_automation_panel(self):
-        """显示自动化任务面板"""
         ctrl = self.controller
         win, content_frame = ctrl.create_scrollable_window("🔄 自动化任务", 650, 600)
 
-        ttk.Label(content_frame, text="🔄 自动化任务", font=("微软雅黑", 14, "bold")).pack(pady=10)
-        ttk.Label(content_frame, text="添加定时执行的自动化任务,关闭窗口后任务继续运行", foreground="gray").pack(pady=(0, 10))
+        base = CATPPUCCIN
+
+        tk.Label(content_frame, text="🔄 自动化任务", font=("微软雅黑", 14, "bold"),
+                 bg=base.get("base", "#1e1e2e"), fg=base.get("text", "#cdd6f4")).pack(pady=10)
+        tk.Label(content_frame, text="添加定时执行的自动化任务,关闭窗口后任务继续运行",
+                 foreground=base.get("overlay0", "#6c7086")).pack(pady=(0, 10))
 
         notebook = ttk.Notebook(content_frame)
         notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
@@ -111,7 +254,6 @@ class AutomationPanel:
         ttk.Button(content_frame, text="关闭", command=win.destroy).pack(pady=10)
 
     def _build_command_tab(self, parent):
-        """定时命令标签"""
         ctrl = self.controller
         ttk.Label(parent, text="任务名称:").pack(pady=5)
         cmd_name_entry = ttk.Entry(parent, width=40)
@@ -144,7 +286,6 @@ class AutomationPanel:
         ttk.Button(parent, text="添加任务", command=add_command_task).pack(pady=10)
 
     def _build_app_tab(self, parent):
-        """启动应用标签"""
         ctrl = self.controller
         ttk.Label(parent, text="任务名称:").pack(pady=5)
         app_name_entry = ttk.Entry(parent, width=40)
@@ -179,7 +320,6 @@ class AutomationPanel:
         ttk.Button(parent, text="添加任务", command=add_app_task).pack(pady=10)
 
     def _build_script_tab(self, parent):
-        """执行脚本标签"""
         ctrl = self.controller
         ttk.Label(parent, text="任务名称:").pack(pady=5)
         script_name_entry = ttk.Entry(parent, width=40)
@@ -216,7 +356,6 @@ class AutomationPanel:
         ttk.Button(parent, text="添加任务", command=add_script_task).pack(pady=10)
 
     def _build_loop_task_tab(self, parent):
-        """循环任务标签"""
         ctrl = self.controller
         ttk.Label(parent, text="任务名称:").pack(pady=5)
         loop_name_entry = ttk.Entry(parent, width=40)
@@ -279,7 +418,6 @@ class AutomationPanel:
         ttk.Button(btn_frame, text="停止选中", command=self._stop_selected_loop_task).pack(side=tk.LEFT, padx=5)
 
     def _refresh_loop_tasks(self):
-        """刷新循环任务列表"""
         ctrl = self.controller
         if hasattr(self, 'loop_task_listbox'):
             self.loop_task_listbox.delete(0, tk.END)
@@ -292,7 +430,6 @@ class AutomationPanel:
                 )
 
     def _stop_selected_loop_task(self):
-        """停止选中的循环任务"""
         ctrl = self.controller
         selection = self.loop_task_listbox.curselection()
         if selection:
@@ -303,8 +440,9 @@ class AutomationPanel:
                 ctrl.say("系统", f"⏹ 已停止循环任务:{name}")
                 self._refresh_loop_tasks()
 
+    # ─── 宏录制面板 ────────────────────────────────────
+
     def show_macro_panel(self):
-        """显示宏录制面板"""
         ctrl = self.controller
         win, content_frame = ctrl.create_scrollable_window("🎬 宏录制", 550, 550)
 
@@ -363,7 +501,6 @@ class AutomationPanel:
         ttk.Button(content_frame, text="关闭", command=win.destroy).pack(pady=10)
 
     def toggle_recording(self):
-        """切换录制状态"""
         ctrl = self.controller
         if not self.is_recording:
             name = "未命名宏"
@@ -375,7 +512,6 @@ class AutomationPanel:
             ctrl.say("系统", "录制进行中,请点击\"停止并保存\"")
 
     def stop_and_save_macro(self):
-        """停止并保存宏"""
         ctrl = self.controller
         if self.is_recording:
             macro_data = self.macro_recorder.stop_recording()
@@ -393,14 +529,12 @@ class AutomationPanel:
             messagebox.showinfo("提示", "请先开始录制")
 
     def refresh_macro_list(self):
-        """刷新宏列表"""
         self.macro_listbox.delete(0, tk.END)
         macros = self.macro_recorder.list_macros()
         for m in macros:
             self.macro_listbox.insert(tk.END, f"{m['name']} ({m['actions']}个动作)")
 
     def play_selected_macro(self):
-        """播放选中的宏"""
         ctrl = self.controller
         selection = self.macro_listbox.curselection()
         if selection:
@@ -416,7 +550,6 @@ class AutomationPanel:
                 ).start()
 
     def delete_selected_macro(self):
-        """删除选中的宏"""
         selection = self.macro_listbox.curselection()
         if selection:
             macros = self.macro_recorder.list_macros()

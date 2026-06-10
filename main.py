@@ -70,6 +70,29 @@ except ImportError:
     Style = None
     logging.warning("ttkbootstrap未安装,将使用ttk主题")
 
+# Catppuccin Mocha 配色方案
+CATPPUCCIN = {
+    "base":       "#1e1e2e",
+    "mantle":     "#181825",
+    "crust":      "#11111b",
+    "surface0":   "#313244",
+    "surface1":   "#45475a",
+    "surface2":   "#585b70",
+    "overlay0":   "#6c7086",
+    "overlay1":   "#7f849c",
+    "text":       "#cdd6f4",
+    "subtext0":   "#a6adc8",
+    "subtext1":   "#bac2de",
+    "blue":       "#89b4fa",
+    "green":      "#a6e3a1",
+    "red":        "#f38ba8",
+    "yellow":     "#f9e2af",
+    "mauve":      "#cba6f7",
+    "peach":      "#fab387",
+    "teal":       "#94e2d5",
+    "sky":        "#89dceb",
+}
+
 # 配置日志
 log_path = Path.home() / "aipc_helper.log"
 logging.basicConfig(
@@ -88,10 +111,13 @@ class AppShell:
     def __init__(self, root):
         self.root = root
         self.root.title("Hermes | AI电脑管家 8.0")
-        # 恢复上次窗口位置
         self._restore_geometry()
-        self.root.minsize(900, 600)
+        self.root.minsize(1000, 650)
         self.root.resizable(True, True)
+        try:
+            self.root.iconbitmap(default='')
+        except Exception:
+            pass
 
         # 注册全局异常处理器，防止闪退
         self.root.report_callback_exception = self._report_callback_exception
@@ -193,9 +219,35 @@ class AppShell:
 
     def _safe_status_update(self, text: str, color: str = "green"):
         """安全更新状态标签(防止 UI 未就绪时崩溃)"""
+        base = CATPPUCCIN
         if hasattr(self, 'status_label') and self.status_label is not None:
             try:
                 self.status_label.config(text=text, foreground=color)
+            except Exception:
+                pass
+        # 更新状态点颜色
+        color_map = {
+            "green": base["green"], "#a6e3a1": base["green"],
+            "orange": base["peach"], "red": base["red"],
+        }
+        dot_color = color_map.get(color, base["green"])
+        if hasattr(self, '_status_dot_id'):
+            try:
+                self._status_dot.itemconfig(self._status_dot_id, fill=dot_color)
+            except Exception:
+                pass
+        # 更新底部 chip
+        if hasattr(self, 'hermes_status_chip'):
+            try:
+                self.hermes_status_chip.config(text=text[:25], fg=color_map.get(color, base["text"]))
+            except Exception:
+                pass
+        if hasattr(self, 'ai_engine_chip'):
+            try:
+                ai_engine = "Hermes" if self.use_hermes else "Ollama"
+                engine_color = base["green"] if self.use_hermes else base["yellow"]
+                engine_bg = base["green_dim"] if self.use_hermes else "#3a3a2a"
+                self.ai_engine_chip.config(text=f"🧠 {ai_engine}", fg=engine_color, bg=engine_bg)
             except Exception:
                 pass
 
@@ -361,31 +413,110 @@ class AppShell:
 
     # ---------- 主题设置 ----------
     def setup_theme(self):
+        base = CATPPUCCIN
         if USE_BOOTSTRAP:
             self.style = Style(theme="darkly")
-            # 自定义 ttkbootstrap 配置
-            self.style.configure('TNotebook.Tab', font=('微软雅黑', 10), padding=[12, 6])
-            self.style.configure('TLabelframe.Label', font=('微软雅黑', 9, 'bold'))
-            self.style.configure('TLabel', font=('微软雅黑', 9))
-            self.style.configure('TButton', font=('微软雅黑', 9))
-            self.style.configure('Treeview', rowheight=28, font=('微软雅黑', 9))
+            self.style.configure(
+                '.', background=base["base"], foreground=base["text"],
+                fieldbackground=base["surface0"],
+                selectbackground=base["blue"],
+                selectforeground=base["base"],
+            )
+            self.style.configure('TFrame', background=base["base"])
+            self.style.configure('TLabel', background=base["base"], foreground=base["text"],
+                                 font=('微软雅黑', 9))
+            self.style.configure('TButton', background=base["surface0"],
+                                 foreground=base["text"], font=('微软雅黑', 9),
+                                 borderwidth=1, focusthickness=0)
+            self.style.map('TButton',
+                background=[('active', base["surface1"]), ('pressed', base["surface2"])],
+                foreground=[('active', base["text"]), ('pressed', base["text"])],
+            )
+            self.style.configure('TNotebook', background=base["base"],
+                                 borderwidth=0, tabmargins=[0, 2, 0, 0])
+            self.style.configure('TNotebook.Tab',
+                background=base["surface0"], foreground=base["overlay0"],
+                font=('微软雅黑', 10), padding=[16, 7], borderwidth=0)
+            self.style.map('TNotebook.Tab',
+                background=[('selected', base["base"]), ('active', base["surface1"])],
+                foreground=[('selected', base["text"]), ('active', base["text"])],
+                borderwidth=[('selected', 0)],
+            )
+            self.style.configure('TLabelframe', background=base["base"],
+                                 foreground=base["text"], borderwidth=1,
+                                 relief='solid', bordercolor=base["surface1"])
+            self.style.configure('TLabelframe.Label', background=base["base"],
+                                 foreground=base["subtext0"], font=('微软雅黑', 9, 'bold'))
+            self.style.configure('TEntry', background=base["surface0"],
+                                 foreground=base["text"], fieldbackground=base["surface0"],
+                                 borderwidth=1, insertcolor=base["text"])
+            self.style.map('TEntry',
+                fieldbackground=[('focus', base["mantle"])],
+                bordercolor=[('focus', base["blue"])],
+            )
+            self.style.configure('TCombobox', background=base["surface0"],
+                                 foreground=base["text"], fieldbackground=base["surface0"],
+                                 borderwidth=1, arrowcolor=base["subtext0"])
+            self.style.map('TCombobox',
+                fieldbackground=[('readonly', base["surface0"])],
+                background=[('readonly', base["surface0"])],
+                foreground=[('readonly', base["text"])],
+            )
+            self.style.configure('TSeparator', background=base["surface1"])
+            self.style.configure('Treeview', background=base["surface0"],
+                                 foreground=base["text"], rowheight=30,
+                                 font=('微软雅黑', 9), borderwidth=0)
+            self.style.map('Treeview',
+                background=[('selected', base["blue"] + '40')],
+                foreground=[('selected', base["text"])],
+            )
+            self.style.configure('TRadiobutton', background=base["base"],
+                                 foreground=base["text"], font=('微软雅黑', 9))
+            self.style.map('TRadiobutton',
+                background=[('active', base["base"])],
+                foreground=[('active', base["text"])],
+            )
+            self.style.configure('primary.TButton', background=base["blue"],
+                                 foreground=base["base"], font=('微软雅黑', 9, 'bold'))
+            self.style.map('primary.TButton',
+                background=[('active', base["sky"]), ('pressed', base["blue"])],
+            )
+            self.style.configure('success.TButton', background=base["green"],
+                                 foreground=base["base"], font=('微软雅黑', 9, 'bold'))
+            self.style.map('success.TButton',
+                background=[('active', base["teal"]), ('pressed', base["green"])],
+            )
+            self.style.configure('secondary.TButton', background=base["surface1"],
+                                 foreground=base["subtext0"])
+            self.style.configure('info.TButton', background=base["sky"],
+                                 foreground=base["base"])
+            self.style.configure('warning.TButton', background=base["peach"],
+                                 foreground=base["base"])
+            self.style.configure('danger.TButton', background=base["red"],
+                                 foreground=base["base"])
         else:
-            # 先设置 Tk 根窗口背景(tk 组件,不受 ttk.Style 控制)
-            self.root.configure(bg='#1e1e2e')
-
+            self.root.configure(bg=base["base"])
             self.style = ttk.Style()
             self.style.theme_use('clam')
-            self.style.configure('.', background='#1e1e2e', foreground='#cdd6f4')
-            self.style.configure('TButton', background='#313244', foreground='#cdd6f4')
-            self.style.configure('TEntry', background='#313244', foreground='#cdd6f4', fieldbackground='#313244')
-            self.style.configure('TLabel', background='#1e1e2e', foreground='#cdd6f4')
-            self.style.configure('TFrame', background='#1e1e2e')
-            self.style.configure('TLabelframe', background='#1e1e2e', foreground='#cdd6f4')
-            self.style.configure('TLabelframe.Label', background='#1e1e2e', foreground='#cdd6f4')
+            self.style.configure('.', background=base["base"], foreground=base["text"])
+            self.style.configure('TButton', background=base["surface0"], foreground=base["text"])
+            self.style.configure('TEntry', background=base["surface0"], foreground=base["text"],
+                                 fieldbackground=base["surface0"])
+            self.style.configure('TLabel', background=base["base"], foreground=base["text"])
+            self.style.configure('TFrame', background=base["base"])
+            self.style.configure('TLabelframe', background=base["base"], foreground=base["text"])
+            self.style.configure('TLabelframe.Label', background=base["base"], foreground=base["text"])
+            self.style.configure('TNotebook', background=base["base"], borderwidth=0)
+            self.style.configure('TNotebook.Tab', background=base["surface0"], foreground=base["overlay0"],
+                                 font=('微软雅黑', 10), padding=[14, 5])
+            self.style.map('TNotebook.Tab',
+                background=[('selected', base["base"])],
+                foreground=[('selected', base["text"])],
+            )
             self.style.map('TCombobox',
-                fieldbackground=[('readonly', '#313244')],
-                background=[('readonly', '#313244')],
-                foreground=[('readonly', '#cdd6f4')])
+                fieldbackground=[('readonly', base["surface0"])],
+                background=[('readonly', base["surface0"])],
+                foreground=[('readonly', base["text"])])
 
     def create_scrollable_frame(self, parent):
         """创建可滚动的框架"""
@@ -446,13 +577,18 @@ class AppShell:
     # ---------- 界面构建 ----------
     def _build_shell_ui(self):
         """构建主界面 - Shell架构,使用Panel组件"""
+        base = CATPPUCCIN
 
         # ========== 顶部状态栏 ==========
         self._build_status_bar()
 
+        # ========== 装饰分割线 ==========
+        sep_frame = tk.Frame(self.root, bg=base["surface1"], height=1)
+        sep_frame.pack(fill=tk.X, padx=10)
+
         # ========== 核心功能区(标签页) ==========
         self.notebook = ttk.Notebook(self.root)
-        self.notebook.pack(padx=10, pady=5, fill=tk.BOTH, expand=True)
+        self.notebook.pack(padx=10, pady=(4, 2), fill=tk.BOTH, expand=True)
 
         self._tab_built = {"file": False, "system": False, "wechat": False, "auto": False}
 
@@ -481,30 +617,43 @@ class AppShell:
         self.root.bind("<Control-ISO_Left_Tab>", self._switch_tab_prev)
         self.root.bind("<Control-Shift-Tab>", self._switch_tab_prev)
 
+        # ========== 底部装饰线 ==========
+        sep_bottom = tk.Frame(self.root, bg=base["surface1"], height=1)
+        sep_bottom.pack(fill=tk.X, padx=10)
+
         # ========== 底部状态栏 ==========
         self._build_bottom_status()
 
     def _build_status_bar(self):
-        """构建顶部状态栏"""
-        self.status_frame = ttk.Frame(self.root)
-        self.status_frame.pack(fill=tk.X, padx=10, pady=(8, 2))
+        """构建顶部状态栏 - 现代风格"""
+        base = CATPPUCCIN
+        self.status_frame = tk.Frame(self.root, bg=base["base"])
+        self.status_frame.pack(fill=tk.X, padx=12, pady=(7, 3))
+
+        # 状态指示器(圆点+文字)
+        self._status_dot = tk.Canvas(self.status_frame, width=10, height=10,
+                                     bg=base["base"], highlightthickness=0, bd=0)
+        self._status_dot.pack(side=tk.LEFT, padx=(0, 5))
+        self._status_dot_id = self._status_dot.create_oval(1, 1, 9, 9,
+                                                            fill=base["green"], outline="")
 
         self.status_label = ttk.Label(
             self.status_frame, text="✅ 就绪",
-            font=("微软雅黑", 10, "bold")
+            font=("微软雅黑", 10, "bold"),
         )
-        self.status_label.pack(side=tk.LEFT)
+        self.status_label.pack(side=tk.LEFT, padx=(0, 8))
 
         self._cancel_btn = ttk.Button(
             self.status_frame, text="⏹ 停止", command=self._cancel_hermes,
-            width=8
+            width=6, bootstyle="secondary"
         )
 
-        ttk.Separator(self.status_frame, orient="vertical").pack(side=tk.LEFT, fill=tk.Y, padx=10)
+        sepl = tk.Frame(self.status_frame, bg=base["surface1"], width=1)
+        sepl.pack(side=tk.LEFT, fill=tk.Y, padx=8, pady=2)
 
         self.folder_label = ttk.Label(
             self.status_frame, text=f"📁 {self.current_folder}",
-            foreground="gray", font=("微软雅黑", 9)
+            foreground=base["overlay0"], font=("微软雅黑", 9)
         )
         self.folder_label.pack(side=tk.RIGHT)
 
@@ -531,48 +680,48 @@ class AppShell:
             self.automation_panel = AutomationPanel(self.auto_tab, self)
 
     def _build_bottom_status(self):
-        """构建底部状态栏"""
-        status_frame = ttk.Frame(self.root)
-        status_frame.pack(fill=tk.X, padx=10, pady=(2, 8))
+        """构建底部状态栏 - Chip风格"""
+        base = CATPPUCCIN
+        self.bottom_frame = tk.Frame(self.root, bg=base["base"])
+        self.bottom_frame.pack(fill=tk.X, padx=12, pady=(3, 7))
 
-        ttk.Separator(self.root, orient="horizontal").pack(fill=tk.X, padx=10)
+        def make_chip(parent, text, bg, fg, padx=8, pady=1):
+            from modules.ui_manager import get_ui_manager
+            um = get_ui_manager()
+            return um.create_chip(parent, text=text, color=bg, padx=padx, pady=pady)
 
-        self.hermes_status_label = ttk.Label(
-            status_frame,
-            text="Hermes: ⏳ 检查中...",
-            font=("微软雅黑", 8),
-            foreground="#888888"
+        # Hermes 状态 chip
+        self.hermes_status_chip = make_chip(
+            self.bottom_frame, "Hermes: ⏳ 检查中",
+            base["surface0"], base["overlay0"]
         )
-        self.hermes_status_label.pack(side=tk.LEFT, padx=5)
-        self.root.after(500, lambda: self._safe_status_update("Hermes 状态: 运行中" if self.use_hermes else "Hermes 状态: 未启用"))
+        self.hermes_status_chip.pack(side=tk.LEFT, padx=(0, 4))
 
-        ttk.Separator(status_frame, orient="vertical").pack(side=tk.LEFT, fill=tk.Y, padx=5)
-
+        # AI 引擎 chip
         ai_engine = "Hermes" if self.use_hermes else "Ollama"
-        self.ai_engine_label = ttk.Label(
-            status_frame,
-            text=f"AI引擎: {ai_engine}",
-            font=("微软雅黑", 8)
+        engine_color = base["green"] if self.use_hermes else base["yellow"]
+        engine_bg = base["green_dim"] if self.use_hermes else "#3a3a2a"
+        self.ai_engine_chip = make_chip(
+            self.bottom_frame, f"🧠 {ai_engine}",
+            engine_bg, engine_color
         )
-        self.ai_engine_label.pack(side=tk.LEFT, padx=5)
+        self.ai_engine_chip.pack(side=tk.LEFT, padx=4)
 
-        version_label = ttk.Label(
-            status_frame,
-            text="v8.0",
-            font=("微软雅黑", 8),
-            foreground="gray"
+        # 版本 chip
+        self.version_chip = make_chip(
+            self.bottom_frame, "v8.0",
+            base["mantle"], base["overlay0"]
         )
-        version_label.pack(side=tk.RIGHT, padx=5)
+        self.version_chip.pack(side=tk.RIGHT, padx=4)
 
         # 快捷键提示
-        ttk.Separator(status_frame, orient="vertical").pack(side=tk.LEFT, fill=tk.Y, padx=5)
         shortcuts_hint = ttk.Label(
-            status_frame,
-            text="Ctrl+Tab 切标签 | Ctrl+N 新建 | Ctrl+Q 退出",
+            self.bottom_frame,
+            text="Ctrl+Tab 切标签 · Ctrl+N 新建 · Ctrl+Q 退出",
             font=("微软雅黑", 7),
-            foreground="#6c7086"
+            foreground=base["overlay0"]
         )
-        shortcuts_hint.pack(side=tk.LEFT, padx=5)
+        shortcuts_hint.pack(side=tk.RIGHT, padx=8)
 
     # ---------- 消息显示 ----------
     def say(self, who, what):
@@ -599,14 +748,10 @@ class AppShell:
             pass
 
     def _say(self, who, what):
-        """内部方法:实际更新 UI"""
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        """内部方法:实际更新 UI(使用气泡渲染)"""
+        timestamp = datetime.now().strftime("%H:%M")
         if hasattr(self, 'chat_panel') and self.chat_panel is not None:
-            chat = self.chat_panel.chat
-            chat.config(state=tk.NORMAL)
-            chat.insert(tk.END, f"[{timestamp}] [{who}] {what}\n\n")
-            chat.config(state=tk.DISABLED)
-            chat.see(tk.END)
+            self.chat_panel._render_message(who, what, timestamp=timestamp)
 
     def _parse_time_to_minutes(self, time_str):
         """将时间字符串转换为分钟"""
@@ -940,7 +1085,7 @@ class AppShell:
             if saved:
                 self.root.geometry(saved)
         except Exception:
-            self.root.geometry("1000x700")
+            self.root.geometry("1100x750")
 
     def _save_geometry(self):
         """保存当前窗口位置和大小"""

@@ -10,95 +10,396 @@ from pathlib import Path
 
 logger = logging.getLogger("SystemPanel")
 
+# Catppuccin Mocha 配色
+CATPPUCCIN = {
+    "base":       "#1e1e2e",
+    "mantle":     "#181825",
+    "crust":      "#11111b",
+    "surface0":   "#313244",
+    "surface1":   "#45475a",
+    "surface2":   "#585b70",
+    "overlay0":   "#6c7086",
+    "overlay1":   "#7f849c",
+    "text":       "#cdd6f4",
+    "subtext0":   "#a6adc8",
+    "subtext1":   "#bac2de",
+    "blue":       "#89b4fa",
+    "blue_dim":   "#2a3a5c",
+    "green":      "#a6e3a1",
+    "green_dim":  "#2a3a2c",
+    "red":        "#f38ba8",
+    "red_dim":    "#3a2a2a",
+    "yellow":     "#f9e2af",
+    "mauve":      "#cba6f7",
+    "peach":      "#fab387",
+    "teal":       "#94e2d5",
+    "sky":        "#89dceb",
+}
+
 
 class SystemPanel:
-    """系统控制面板 - 电源控制、系统工具、音量控制、系统信息"""
+    """系统控制面板 - 电源控制(卡片按钮)、仪表盘、系统工具(图标网格)"""
 
     def __init__(self, parent: tk.Widget, controller):
-        """构建系统控制标签页
-
-        Args:
-            parent: 父容器(tk.Widget)
-            controller: AppController / AIPCHelperV8 主控制器实例
-        """
         self.parent = parent
         self.controller = controller
         self._built = False
+        self._monitor_bars = {}  # 进度条引用
+        self._monitor_job = None
 
         self._show_loading()
 
     def _show_loading(self):
-        """显示加载中提示"""
-        self._loading_label = ttk.Label(
-            self.parent, text="加载中...",
-            font=("微软雅黑", 14), foreground="gray"
+        self._loading_label = tk.Label(
+            self.parent, text="加载中...", font=("微软雅黑", 14),
+            fg=CATPPUCCIN["overlay0"], bg=CATPPUCCIN["base"]
         )
         self._loading_label.pack(expand=True)
-
         self.controller.root.after(50, self._build)
 
     def _build(self):
-        """实际构建系统控制UI"""
         self._loading_label.pack_forget()
         self._built = True
+        base = CATPPUCCIN
 
-        ctrl = self.controller
+        # 可滚动容器
+        canvas = tk.Canvas(self.parent, bg=base["base"], highlightthickness=0)
+        scrollbar = tk.Scrollbar(self.parent, orient="vertical", command=canvas.yview,
+                                 bg=base["surface0"], troughcolor=base["crust"])
+        self._scroll_frame = tk.Frame(canvas, bg=base["base"])
 
-        power_frame = ttk.LabelFrame(self.parent, text="电源控制", padding=10)
-        power_frame.pack(fill=tk.X, padx=10, pady=10)
+        self._scroll_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        canvas.create_window((0, 0), window=self._scroll_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
 
-        power_row1 = ttk.Frame(power_frame)
-        power_row1.pack(fill=tk.X, pady=2)
-        ttk.Button(power_row1, text="🔴 关机", command=lambda: self.system_operation("关机"), width=12).pack(side=tk.LEFT, padx=3)
-        ttk.Button(power_row1, text="🔄 重启", command=lambda: self.system_operation("重启"), width=12).pack(side=tk.LEFT, padx=3)
-        ttk.Button(power_row1, text="💤 睡眠", command=lambda: self.system_operation("睡眠"), width=12).pack(side=tk.LEFT, padx=3)
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-        power_row2 = ttk.Frame(power_frame)
-        power_row2.pack(fill=tk.X, pady=2)
-        ttk.Button(power_row2, text="🔒 锁定", command=lambda: self.system_operation("锁定"), width=12).pack(side=tk.LEFT, padx=3)
-        ttk.Button(power_row2, text="❌ 取消关机", command=lambda: self.system_operation("取消关机"), width=12).pack(side=tk.LEFT, padx=3)
+        # 鼠标滚轮
+        def _on_mousewheel(event):
+            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        canvas.bind_all("<MouseWheel>", _on_mousewheel)
 
-        tools_frame = ttk.LabelFrame(self.parent, text="系统工具", padding=10)
-        tools_frame.pack(fill=tk.X, padx=10, pady=10)
+        parent = self._scroll_frame
 
-        ttk.Button(tools_frame, text="🖥️ 任务管理器", command=lambda: self._safe_execute_command("open_task_manager", "taskmgr"), bootstyle="primary", width=15).pack(side=tk.LEFT, padx=3)
-        ttk.Button(tools_frame, text="⚙️ 系统设置", command=lambda: self._safe_execute_command("open_settings", "start ms-settings:"), bootstyle="primary", width=15).pack(side=tk.LEFT, padx=3)
-        ttk.Button(tools_frame, text="🖥️ CMD", command=lambda: self._safe_execute_command("open_cmd", "start cmd"), bootstyle="primary", width=15).pack(side=tk.LEFT, padx=3)
-        ttk.Button(tools_frame, text="💻 PowerShell", command=lambda: self._safe_execute_command("open_powershell", "start powershell"), bootstyle="primary", width=15).pack(side=tk.LEFT, padx=3)
+        # ── 电源控制(卡片按钮) ──
+        self._build_power_section(parent)
 
-        vol_frame = ttk.LabelFrame(self.parent, text="音量控制", padding=10)
-        vol_frame.pack(fill=tk.X, padx=10, pady=10)
+        # ── 系统工具(图标网格) ──
+        self._build_tools_grid(parent)
 
-        ttk.Button(vol_frame, text="🔊 增大", command=lambda: self.execute_ai_command({"action": "volume_up"}), bootstyle="info", width=12).pack(side=tk.LEFT, padx=3)
-        ttk.Button(vol_frame, text="🔉 减小", command=lambda: self.execute_ai_command({"action": "volume_down"}), bootstyle="info", width=12).pack(side=tk.LEFT, padx=3)
-        ttk.Button(vol_frame, text="🔇 静音", command=lambda: self.execute_ai_command({"action": "toggle_mute"}), bootstyle="info", width=12).pack(side=tk.LEFT, padx=3)
+        # ── 音量控制 ──
+        self._build_volume_section(parent)
 
-        info_frame = ttk.LabelFrame(self.parent, text="系统信息", padding=10)
-        info_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        # ── 仪表盘 ──
+        self._build_dashboard(parent)
+
+        # 初始刷新
+        self._refresh_dashboard()
+
+    # ─── 电源控制(卡片式) ──────────────────────────────
+
+    def _build_power_section(self, parent):
+        base = CATPPUCCIN
+        section = tk.Frame(parent, bg=base["base"])
+        section.pack(fill=tk.X, padx=12, pady=(10, 4))
+
+        tk.Label(section, text="⚡ 电源控制", font=("微软雅黑", 11, "bold"),
+                 bg=base["base"], fg=base["text"], anchor="w").pack(fill=tk.X, pady=(0, 6))
+
+        cards_frame = tk.Frame(section, bg=base["base"])
+        cards_frame.pack(fill=tk.X)
+
+        power_actions = [
+            ("🔴", "关机", base["red_dim"], base["red"], lambda: self.system_operation("关机")),
+            ("🔄", "重启", base["blue_dim"], base["blue"], lambda: self.system_operation("重启")),
+            ("💤", "睡眠", base["green_dim"], base["green"], lambda: self.system_operation("睡眠")),
+            ("🔒", "锁定", base["surface0"], base["mauve"], lambda: self.system_operation("锁定")),
+            ("❌", "取消关机", base["surface0"], base["yellow"], lambda: self.system_operation("取消关机")),
+        ]
+
+        for icon, text, card_bg, icon_fg, cmd in power_actions:
+            card = tk.Frame(cards_frame, bg=card_bg, cursor="hand2",
+                            highlightbackground=base["surface1"],
+                            highlightthickness=1, padx=10, pady=8)
+
+            icon_lbl = tk.Label(card, text=icon, font=("Segoe UI Emoji", 18),
+                                bg=card_bg, fg=icon_fg)
+            icon_lbl.pack(pady=(0, 2))
+
+            text_lbl = tk.Label(card, text=text, font=("微软雅黑", 9),
+                                bg=card_bg, fg=base["subtext0"])
+            text_lbl.pack()
+
+            # Hover
+            def make_hover(c, i, t, bg, hbg=base["surface1"]):
+                def on_enter(e):
+                    c.config(bg=hbg); i.config(bg=hbg); t.config(bg=hbg)
+                def on_leave(e):
+                    c.config(bg=bg); i.config(bg=bg); t.config(bg=bg)
+                return on_enter, on_leave
+
+            on_enter, on_leave = make_hover(card, icon_lbl, text_lbl, card_bg)
+            for w in (card, icon_lbl, text_lbl):
+                w.bind("<Enter>", on_enter)
+                w.bind("<Leave>", on_leave)
+                w.bind("<Button-1>", lambda e, c=cmd: c())
+
+            card.pack(side=tk.LEFT, padx=4, pady=2)
+
+    # ─── 系统工具(图标网格) ──────────────────────────────
+
+    def _build_tools_grid(self, parent):
+        base = CATPPUCCIN
+        section = tk.Frame(parent, bg=base["base"])
+        section.pack(fill=tk.X, padx=12, pady=8)
+
+        tk.Label(section, text="🛠️ 系统工具", font=("微软雅黑", 11, "bold"),
+                 bg=base["base"], fg=base["text"], anchor="w").pack(fill=tk.X, pady=(0, 6))
+
+        grid_frame = tk.Frame(section, bg=base["base"])
+        grid_frame.pack(fill=tk.X)
+
+        tools = [
+            ("🖥️", "任务管理器", base["blue_dim"], base["blue"],
+             lambda: self._safe_execute_command("open_task_manager", "taskmgr")),
+            ("⚙️", "系统设置", base["surface0"], base["mauve"],
+             lambda: self._safe_execute_command("open_settings", "start ms-settings:")),
+            ("📟", "CMD", base["surface0"], base["teal"],
+             lambda: self._safe_execute_command("open_cmd", "start cmd")),
+            ("💻", "PowerShell", base["blue_dim"], base["sky"],
+             lambda: self._safe_execute_command("open_powershell", "start powershell")),
+        ]
+
+        for i, (icon, text, card_bg, icon_fg, cmd) in enumerate(tools):
+            card = tk.Frame(grid_frame, bg=card_bg, cursor="hand2",
+                            highlightbackground=base["surface1"],
+                            highlightthickness=1, padx=12, pady=8)
+
+            icon_lbl = tk.Label(card, text=icon, font=("Segoe UI Emoji", 16),
+                                bg=card_bg, fg=icon_fg)
+            icon_lbl.pack(pady=(0, 2))
+
+            text_lbl = tk.Label(card, text=text, font=("微软雅黑", 8),
+                                bg=card_bg, fg=base["subtext0"])
+            text_lbl.pack()
+
+            def make_hover(c, i, t, bg, hbg=base["surface1"]):
+                def on_enter(e):
+                    c.config(bg=hbg); i.config(bg=hbg); t.config(bg=hbg)
+                def on_leave(e):
+                    c.config(bg=bg); i.config(bg=bg); t.config(bg=bg)
+                return on_enter, on_leave
+
+            on_enter, on_leave = make_hover(card, icon_lbl, text_lbl, card_bg)
+            for w in (card, icon_lbl, text_lbl):
+                w.bind("<Enter>", on_enter)
+                w.bind("<Leave>", on_leave)
+                w.bind("<Button-1>", lambda e, c=cmd: c())
+
+            row, col = divmod(i, 4)
+            card.grid(row=row, column=col, padx=4, pady=3, sticky="nsew")
+
+        for c in range(4):
+            grid_frame.columnconfigure(c, weight=1)
+
+    # ─── 音量控制 ──────────────────────────────────────
+
+    def _build_volume_section(self, parent):
+        base = CATPPUCCIN
+        section = tk.Frame(parent, bg=base["base"])
+        section.pack(fill=tk.X, padx=12, pady=8)
+
+        tk.Label(section, text="🔊 音量控制", font=("微软雅黑", 11, "bold"),
+                 bg=base["base"], fg=base["text"], anchor="w").pack(fill=tk.X, pady=(0, 6))
+
+        vol_frame = tk.Frame(section, bg=base["base"])
+        vol_frame.pack(fill=tk.X)
+
+        vol_actions = [
+            ("🔊", "增大", base["blue_dim"], base["blue"],
+             lambda: self.execute_ai_command({"action": "volume_up"})),
+            ("🔉", "减小", base["surface0"], base["teal"],
+             lambda: self.execute_ai_command({"action": "volume_down"})),
+            ("🔇", "静音", base["red_dim"], base["red"],
+             lambda: self.execute_ai_command({"action": "toggle_mute"})),
+        ]
+
+        for icon, text, card_bg, icon_fg, cmd in vol_actions:
+            card = tk.Frame(vol_frame, bg=card_bg, cursor="hand2",
+                            highlightbackground=base["surface1"],
+                            highlightthickness=1, padx=14, pady=6)
+
+            icon_lbl = tk.Label(card, text=icon, font=("Segoe UI Emoji", 14),
+                                bg=card_bg, fg=icon_fg)
+            icon_lbl.pack(side=tk.LEFT, padx=(0, 4))
+
+            text_lbl = tk.Label(card, text=text, font=("微软雅黑", 9),
+                                bg=card_bg, fg=base["subtext0"])
+            text_lbl.pack(side=tk.LEFT)
+
+            def make_hover(c, i, t, bg, hbg=base["surface1"]):
+                def on_enter(e):
+                    c.config(bg=hbg); i.config(bg=hbg); t.config(bg=hbg)
+                def on_leave(e):
+                    c.config(bg=bg); i.config(bg=bg); t.config(bg=bg)
+                return on_enter, on_leave
+
+            on_enter, on_leave = make_hover(card, icon_lbl, text_lbl, card_bg)
+            for w in (card, icon_lbl, text_lbl):
+                w.bind("<Enter>", on_enter)
+                w.bind("<Leave>", on_leave)
+                w.bind("<Button-1>", lambda e, c=cmd: c())
+
+            card.pack(side=tk.LEFT, padx=4, pady=2)
+
+    # ─── 仪表盘 ────────────────────────────────────────
+
+    def _build_dashboard(self, parent):
+        base = CATPPUCCIN
+        section = tk.Frame(parent, bg=base["base"])
+        section.pack(fill=tk.BOTH, expand=True, padx=12, pady=(4, 10))
+
+        header_frame = tk.Frame(section, bg=base["base"])
+        header_frame.pack(fill=tk.X, pady=(0, 6))
+
+        tk.Label(header_frame, text="📊 系统仪表盘", font=("微软雅黑", 11, "bold"),
+                 bg=base["base"], fg=base["text"], anchor="w").pack(side=tk.LEFT)
+
+        refresh_btn = tk.Button(
+            header_frame, text="🔄 刷新", font=("微软雅黑", 8),
+            bg=base["surface0"], fg=base["overlay0"],
+            activebackground=base["surface1"], activeforeground=base["text"],
+            relief=tk.FLAT, cursor="hand2", padx=8, pady=1,
+            command=self._refresh_dashboard,
+        )
+        refresh_btn.pack(side=tk.RIGHT)
+
+        dashboard = tk.Frame(section, bg=base["base"])
+        dashboard.pack(fill=tk.BOTH, expand=True)
+
+        # CPU 进度条
+        self._monitor_bars["cpu"] = self._create_dashboard_bar(
+            dashboard, "🧠 CPU", base["blue"]
+        )
+        # 内存进度条
+        self._monitor_bars["memory"] = self._create_dashboard_bar(
+            dashboard, "💾 内存", base["green"]
+        )
+        # 磁盘进度条
+        self._monitor_bars["disk"] = self._create_dashboard_bar(
+            dashboard, "💿 磁盘", base["mauve"]
+        )
+
+        # 系统信息文本
+        info_frame = tk.Frame(dashboard, bg=base["crust"],
+                              highlightbackground=base["surface0"],
+                              highlightthickness=1)
+        info_frame.pack(fill=tk.BOTH, expand=True, pady=(8, 0))
 
         self.system_info_text = scrolledtext.ScrolledText(
             info_frame, wrap=tk.WORD, state=tk.DISABLED,
-            font=("微软雅黑", 9), bg="#1e1e2e", fg="#cdd6f4",
-            height=8
+            font=("微软雅黑", 9), bg=base["crust"], fg=base["subtext0"],
+            height=4, relief=tk.FLAT, padx=8, pady=6,
+            insertbackground=base["text"],
         )
         self.system_info_text.pack(fill=tk.BOTH, expand=True)
 
-        ttk.Button(self.parent, text="🔄 刷新信息", command=self._update_system_info).pack(pady=5)
+    def _create_dashboard_bar(self, parent, label_text, bar_color):
+        base = CATPPUCCIN
+        frame = tk.Frame(parent, bg=base["base"])
+        frame.pack(fill=tk.X, pady=3)
 
-        self._update_system_info()
+        # 标签行
+        label_row = tk.Frame(frame, bg=base["base"])
+        label_row.pack(fill=tk.X)
 
-    def _update_system_info(self):
-        """更新系统信息"""
+        tk.Label(label_row, text=label_text, font=("微软雅黑", 9, "bold"),
+                 bg=base["base"], fg=base["text"]).pack(side=tk.LEFT)
+
+        pct_label = tk.Label(label_row, text="0%", font=("微软雅黑", 9, "bold"),
+                             bg=base["base"], fg=bar_color)
+        pct_label.pack(side=tk.RIGHT)
+
+        # 进度条 Canvas
+        canvas = tk.Canvas(frame, height=14, bg=base["surface0"],
+                           highlightthickness=0, bd=0)
+        canvas.pack(fill=tk.X, pady=(2, 0))
+
+        bar_id = canvas.create_rectangle(0, 0, 0, 14, fill=bar_color, outline="")
+
+        result = {
+            "canvas": canvas,
+            "bar_id": bar_id,
+            "pct_label": pct_label,
+            "color": bar_color,
+        }
+
+        def on_resize(event):
+            pct = result.get("_pct", 0)
+            bar_w = int(pct * event.width)
+            canvas.coords(bar_id, 0, 0, bar_w, 14)
+
+        canvas.bind("<Configure>", on_resize)
+        return result
+
+    def _update_bar(self, bar_name, value, max_value=100):
+        bar = self._monitor_bars.get(bar_name)
+        if not bar:
+            return
+        pct = min(value / max_value, 1.0) if max_value > 0 else 0
+        bar["_pct"] = pct
+
+        canvas = bar["canvas"]
+        bar_id = bar["bar_id"]
+        pct_label = bar["pct_label"]
+
+        # 颜色根据使用率变化
+        base = CATPPUCCIN
+        if pct < 0.7:
+            color = bar["color"]
+        elif pct < 0.9:
+            color = base["yellow"]
+        else:
+            color = base["red"]
+
+        try:
+            w = canvas.winfo_width()
+            bar_w = int(pct * w)
+            canvas.coords(bar_id, 0, 0, bar_w, 14)
+            canvas.itemconfig(bar_id, fill=color)
+            pct_label.config(text=f"{value:.0f}%", fg=color)
+        except Exception:
+            pass
+
+    def _refresh_dashboard(self):
+        """刷新仪表盘数据"""
         try:
             import platform
             import psutil
 
-            info = f"🖥️ 系统: {platform.system()} {platform.release()}\n"
-            info += f"💻 处理器: {platform.processor()}\n"
-            info += f"🧠 内存: {psutil.virtual_memory().percent}% 使用率\n"
-            info += f"💾 CPU: {psutil.cpu_percent()}% 使用率\n"
-            info += f"📊 磁盘: {psutil.disk_usage('/').percent}% 已用\n"
-            info += f"🔋 电池: {psutil.sensors_battery().percent if psutil.sensors_battery() else 'N/A'}%\n"
+            cpu_pct = psutil.cpu_percent(interval=0.5)
+            mem = psutil.virtual_memory()
+            disk = psutil.disk_usage('/')
+
+            self._update_bar("cpu", cpu_pct)
+            self._update_bar("memory", mem.percent)
+            self._update_bar("disk", disk.percent)
+
+            info = f"🖥️ {platform.system()} {platform.release()}  |  "
+            info += f"💻 {platform.processor()[:40]}\n"
+            info += f"🧠 CPU {cpu_pct}%  |  💾 内存 {mem.percent}% ({mem.used//1024**3}/{mem.total//1024**3} GB)  |  "
+            info += f"💿 磁盘 {disk.percent}% ({disk.used//1024**3}/{disk.total//1024**3} GB)\n"
+
+            try:
+                battery = psutil.sensors_battery()
+                if battery:
+                    info += f"🔋 电池 {battery.percent}%{' (充电中)' if battery.power_plugged else ''}"
+            except Exception:
+                pass
 
             self.system_info_text.config(state=tk.NORMAL)
             self.system_info_text.delete(1.0, tk.END)
@@ -110,12 +411,13 @@ class SystemPanel:
             self.system_info_text.insert(tk.END, f"获取系统信息失败: {e}")
             self.system_info_text.config(state=tk.DISABLED)
 
-    def system_operation(self, msg):
-        """处理系统操作指令
+        # 自动刷新(5秒)
+        if self._built:
+            self._monitor_job = self.controller.root.after(5000, self._refresh_dashboard)
 
-        Args:
-            msg: 操作描述字符串(如"关机"、"重启"等)
-        """
+    # ─── 系统操作 ──────────────────────────────────────
+
+    def system_operation(self, msg):
         ctrl = self.controller
         msg_lower = msg.lower() if isinstance(msg, str) else ""
 
@@ -148,13 +450,11 @@ class SystemPanel:
             ctrl.say("系统", f"⚠️ 未知系统操作: {msg}")
 
     def _safe_execute_command(self, action_name, cmd_str):
-        """安全执行系统命令 - 自动处理权限提升"""
         ctrl = self.controller
         try:
             import ctypes
 
             def elevated_run(executable, args=None):
-                """以管理员权限运行程序(自动提权)"""
                 try:
                     ctypes.windll.shell32.ShellExecuteW(
                         None, "runas", executable, args or "", None, 1
@@ -180,7 +480,6 @@ class SystemPanel:
             ctrl.say("系统", f"❌ 执行失败: {e}")
 
     def custom_command(self, cmd):
-        """执行自定义命令(白名单模式)"""
         ctrl = self.controller
         safe_commands = {
             "shutdown": ["shutdown", "/s", "/t", "0"],
@@ -209,7 +508,6 @@ class SystemPanel:
             ctrl.say("系统", f"❌ 不允许执行该命令。安全命令列表:{', '.join(safe_commands.keys())}")
 
     def open_app(self, msg):
-        """打开应用程序"""
         ctrl = self.controller
         app_name = msg.replace("打开", "").replace("启动", "").replace("运行", "").replace("开启", "").strip()
 
@@ -247,5 +545,4 @@ class SystemPanel:
                 ctrl.add_custom_app()
 
     def execute_ai_command(self, cmd_data):
-        """执行AI命令 - 委托给 controller"""
         self.controller.execute_ai_command(cmd_data)

@@ -4,13 +4,40 @@ import threading
 import logging
 import traceback
 import os
+import re
 from datetime import datetime
 
 logger = logging.getLogger("ChatPanel")
 
+# Catppuccin Mocha 配色(与 main.py 保持一致)
+CATPPUCCIN = {
+    "base":       "#1e1e2e",
+    "mantle":     "#181825",
+    "crust":      "#11111b",
+    "surface0":   "#313244",
+    "surface1":   "#45475a",
+    "surface2":   "#585b70",
+    "overlay0":   "#6c7086",
+    "overlay1":   "#7f849c",
+    "text":       "#cdd6f4",
+    "subtext0":   "#a6adc8",
+    "subtext1":   "#bac2de",
+    "blue":       "#89b4fa",
+    "blue_dim":   "#2a3a5c",
+    "green":      "#a6e3a1",
+    "green_dim":  "#2a3a2c",
+    "red":        "#f38ba8",
+    "yellow":     "#f9e2af",
+    "mauve":      "#cba6f7",
+    "peach":      "#fab387",
+    "teal":       "#94e2d5",
+    "sky":        "#89dceb",
+    "lavender":   "#b4befe",
+}
+
 
 class ChatPanel:
-    """智能对话面板 - 左侧对话列表 + 右侧聊天区"""
+    """智能对话面板 - 左侧对话列表 + 右侧聊天区(气泡样式)"""
 
     MODEL_DISPLAY_MAP = {
         "DeepSeek V4 Flash · 快速": "ds-v4-flash",
@@ -30,155 +57,420 @@ class ChatPanel:
         self.parent = parent
         self.controller = controller
         self._streaming_manager = None
+        self._bubble_tags_configured = False
 
         from services.conversation_manager import get_conversation_manager
         self._conv_mgr = get_conversation_manager()
 
         self._build_chat_tab()
 
+    # ─── 标签页构建 ──────────────────────────────────────────
+
     def _build_chat_tab(self):
         """构建智能对话标签页 - 左侧对话列表 + 右侧聊天区"""
+        base = CATPPUCCIN
         ctrl = self.controller
 
         self.chat_paned = tk.PanedWindow(
             self.parent, orient=tk.HORIZONTAL, sashwidth=3,
-            bg="#45475a", sashrelief=tk.RAISED
+            bg=base["surface1"], sashrelief=tk.FLAT
         )
         self.chat_paned.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
 
-        self.conv_panel = ttk.Frame(self.chat_paned)
+        # ── 左侧对话列表 ──
+        self.conv_panel = tk.Frame(self.chat_paned, bg=base["mantle"])
         self._build_conversation_sidebar()
-        self.chat_paned.add(self.conv_panel, minsize=120, stretch="never")
+        self.chat_paned.add(self.conv_panel, minsize=160, stretch="never")
 
-        self.chat_right = ttk.Frame(self.chat_paned)
-        self.chat_paned.add(self.chat_right, minsize=250, stretch="always")
+        # ── 右侧聊天区 ──
+        self.chat_right = tk.Frame(self.chat_paned, bg=base["base"])
+        self.chat_paned.add(self.chat_right, minsize=300, stretch="always")
 
+        # 聊天显示区(气泡式)
         self.chat = scrolledtext.ScrolledText(
             self.chat_right, wrap=tk.WORD, state=tk.DISABLED,
-            font=("微软雅黑", 10), bg="#1e1e2e", fg="#cdd6f4",
-            relief=tk.FLAT, padx=8, pady=5
+            font=("微软雅黑", 10), bg=base["base"], fg=base["text"],
+            relief=tk.FLAT, padx=12, pady=8,
+            insertbackground=base["text"],
+            selectbackground=base["surface1"],
+            selectforeground=base["text"],
+            spacing1=2, spacing3=2,
         )
         self.chat.pack(fill=tk.BOTH, expand=True)
+        self._configure_chat_tags()
 
-        input_frame = ttk.Frame(self.chat_right)
-        input_frame.pack(fill=tk.X, padx=3, pady=3)
+        # ── 多行输入框 ──
+        input_outer = tk.Frame(self.chat_right, bg=base["base"])
+        input_outer.pack(fill=tk.X, padx=6, pady=(2, 4))
 
-        self.input_text = ttk.Entry(input_frame, font=("微软雅黑", 10), foreground="#cdd6f4")
-        self.input_text.pack(fill=tk.X, side=tk.LEFT, expand=True, padx=(0, 8), ipady=5)
-        self.input_text.bind("<Return>", self.send_msg)
+        input_frame = tk.Frame(input_outer, bg=base["surface0"],
+                               highlightbackground=base["surface1"],
+                               highlightthickness=1)
+        input_frame.pack(fill=tk.X)
+
+        self.input_text = tk.Text(
+            input_frame, font=("微软雅黑", 10),
+            bg=base["surface0"], fg=base["text"],
+            insertbackground=base["text"],
+            relief=tk.FLAT, height=3, padx=8, pady=6,
+            selectbackground=base["surface1"],
+            selectforeground=base["text"],
+            wrap=tk.WORD,
+        )
+        self.input_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 4))
+        self.input_text.bind("<Return>", self._on_input_return)
+        self.input_text.bind("<Shift-Return>", self._on_input_shift_return)
         self.input_text.focus()
 
-        self.send_btn = ttk.Button(input_frame, text="🚀 发送", command=self.send_msg)
-        self.send_btn.pack(side=tk.RIGHT, ipady=3)
+        btn_col = tk.Frame(input_frame, bg=base["surface0"])
+        btn_col.pack(side=tk.RIGHT, fill=tk.Y, padx=(0, 4), pady=4)
 
-        self.cancel_btn = ttk.Button(input_frame, text="⏹ 停止", command=self._cancel_stream,
-                                     bootstyle="danger")
+        self.send_btn = tk.Button(
+            btn_col, text="🚀 发送", font=("微软雅黑", 9, "bold"),
+            bg=base["blue"], fg=base["base"],
+            activebackground=base["sky"], activeforeground=base["base"],
+            relief=tk.FLAT, cursor="hand2", padx=10, pady=4,
+            command=self.send_msg,
+        )
+        self.send_btn.pack(pady=(0, 2))
 
-        # 绑定快捷键
+        self.cancel_btn = tk.Button(
+            btn_col, text="⏹ 停止", font=("微软雅黑", 9),
+            bg=base["red"], fg=base["base"],
+            activebackground=base["peach"], activeforeground=base["base"],
+            relief=tk.FLAT, cursor="hand2", padx=10, pady=4,
+            command=self._cancel_stream,
+        )
+
+        # ── 引擎控制区(Chip 风格) ──
+        self._build_engine_controls()
+
+        # ── 底部操作条 ──
+        self._build_action_bar()
+
+        # 快捷键
         self.controller.root.bind("<Control-n>", lambda e: self._new_conversation_named())
         self.controller.root.bind("<Control-N>", lambda e: self._new_conversation_named())
 
-        engine_frame = ttk.LabelFrame(self.chat_right, text="引擎控制", padding=5)
-        engine_frame.pack(fill=tk.X, padx=3, pady=(0, 2))
+        self._load_active_conversation()
+
+    def _configure_chat_tags(self):
+        """配置聊天区文本标签(气泡样式)"""
+        base = CATPPUCCIN
+        self.chat.tag_configure("timestamp",
+            foreground=base["overlay0"], font=("微软雅黑", 8),
+            justify=tk.RIGHT,
+        )
+        self.chat.tag_configure("user_name",
+            foreground=base["blue"], font=("微软雅黑", 9, "bold"),
+            justify=tk.RIGHT,
+        )
+        self.chat.tag_configure("user_text",
+            foreground=base["blue"], font=("微软雅黑", 10),
+            lmargin1=80, lmargin2=80, rmargin=12,
+            justify=tk.RIGHT,
+        )
+        self.chat.tag_configure("ai_name",
+            foreground=base["green"], font=("微软雅黑", 9, "bold"),
+        )
+        self.chat.tag_configure("ai_text",
+            foreground=base["text"], font=("微软雅黑", 10),
+            lmargin1=12, lmargin2=20, rmargin=80,
+        )
+        self.chat.tag_configure("code_block",
+            background=base["crust"], foreground=base["green"],
+            font=("Cascadia Code", 9) if self._font_exists("Cascadia Code") else ("Consolas", 9),
+            lmargin1=20, lmargin2=20, rmargin=20,
+            spacing1=6, spacing3=6,
+            relief=tk.FLAT, borderwidth=0,
+        )
+        self.chat.tag_configure("separator",
+            foreground=base["surface1"], font=("微软雅黑", 7),
+            justify=tk.CENTER,
+        )
+        self.chat.tag_configure("system_name",
+            foreground=base["yellow"], font=("微软雅黑", 9, "bold"),
+        )
+        self.chat.tag_configure("system_text",
+            foreground=base["subtext0"], font=("微软雅黑", 9),
+            lmargin1=12, lmargin2=20,
+        )
+        self._bubble_tags_configured = True
+
+    @staticmethod
+    def _font_exists(font_name):
+        try:
+            import tkinter.font as tkfont
+            root = tk._default_root
+            if root:
+                return font_name in tkfont.families(root)
+        except Exception:
+            pass
+        return False
+
+    def _on_input_return(self, event=None):
+        """Enter 发送消息"""
+        self.send_msg()
+        return "break"
+
+    def _on_input_shift_return(self, event=None):
+        """Shift+Enter 换行(默认行为)"""
+        return None
+
+    # ─── 引擎控制区(Chip 风格) ─────────────────────────────
+
+    def _build_engine_controls(self):
+        """构建引擎控制区 - Chip/Badge 风格"""
+        base = CATPPUCCIN
+        ctrl = self.controller
+
+        engine_frame = tk.Frame(self.chat_right, bg=base["mantle"],
+                                highlightbackground=base["surface0"],
+                                highlightthickness=1)
+        engine_frame.pack(fill=tk.X, padx=6, pady=(0, 2))
+
+        # 左侧 chip 按钮
+        chips_frame = tk.Frame(engine_frame, bg=base["mantle"])
+        chips_frame.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4, pady=4)
 
         self.hermes_toggle_var = tk.BooleanVar(value=getattr(ctrl, 'use_hermes', False))
-        self.hermes_toggle_btn = ttk.Button(
-            engine_frame, text="🤖 Hermes",
+        self.hermes_toggle_btn = tk.Button(
+            chips_frame, text="🤖 Hermes", font=("微软雅黑", 8, "bold"),
+            bg=base["surface0"], fg=base["overlay0"],
+            activebackground=base["surface1"], activeforeground=base["text"],
+            relief=tk.FLAT, cursor="hand2", padx=10, pady=2,
             command=self._toggle_hermes_switch,
-            bootstyle="secondary", width=10
         )
-        self.hermes_toggle_btn.pack(side=tk.LEFT, padx=2)
+        self.hermes_toggle_btn.pack(side=tk.LEFT, padx=(0, 4))
 
         self.model_var = tk.StringVar(value="DeepSeek V4 Flash · 快速")
         self.model_combo = ttk.Combobox(
-            engine_frame, textvariable=self.model_var,
+            chips_frame, textvariable=self.model_var,
             values=[
                 "DeepSeek V4 Flash · 快速",
                 "DeepSeek V4 Flash · 深度",
                 "DeepSeek V4 Pro · 通用",
                 "DeepSeek V4 Pro · 推理",
             ],
-            state="readonly", width=24, font=("微软雅黑", 9)
+            state="readonly", width=22, font=("微软雅黑", 8),
         )
         self.model_combo.bind("<<ComboboxSelected>>", self._on_model_selected)
-        self.model_combo.pack(side=tk.LEFT, padx=2)
-        # 模型选择提示
-        model_hint = ttk.Label(
-            engine_frame, text="选择AI模型",
-            font=("微软雅黑", 7), foreground="#6c7086"
-        )
-        model_hint.pack(side=tk.LEFT, padx=(2, 0))
+        self.model_combo.pack(side=tk.LEFT, padx=4)
 
         self.auto_switch_var = tk.BooleanVar(value=True)
-        self.auto_switch_btn = ttk.Button(
-            engine_frame, text="🔄 自动",
+        self.auto_switch_btn = tk.Button(
+            chips_frame, text="🔄 自动", font=("微软雅黑", 8, "bold"),
+            bg=base["green_dim"], fg=base["green"],
+            activebackground=base["surface1"], activeforeground=base["green"],
+            relief=tk.FLAT, cursor="hand2", padx=8, pady=2,
             command=self._toggle_auto_switch,
-            bootstyle="success", width=8
         )
-        self.auto_switch_btn.pack(side=tk.LEFT, padx=2)
+        self.auto_switch_btn.pack(side=tk.LEFT, padx=4)
 
-        ttk.Label(engine_frame, text=" ").pack(side=tk.LEFT, fill=tk.X, expand=True)
-        ttk.Button(engine_frame, text="⚙️ 设置", command=ctrl.ai_settings, width=8).pack(side=tk.RIGHT, padx=2)
+        # 右侧设置按钮
+        settings_btn = tk.Button(
+            engine_frame, text="⚙️", font=("Segoe UI Emoji", 10),
+            bg=base["mantle"], fg=base["overlay0"],
+            activebackground=base["surface0"], activeforeground=base["text"],
+            relief=tk.FLAT, cursor="hand2", padx=6, pady=2,
+            command=ctrl.ai_settings,
+        )
+        settings_btn.pack(side=tk.RIGHT, padx=6, pady=4)
 
         self._update_hermes_toggle_ui()
 
-        action_frame = ttk.Frame(self.chat_right)
-        action_frame.pack(fill=tk.X, padx=3, pady=(0, 3))
+    def _build_action_bar(self):
+        """底部操作条"""
+        base = CATPPUCCIN
+        ctrl = self.controller
 
-        ttk.Button(action_frame, text="🗑️ 清空聊天", command=self._clear_chat_display, width=10).pack(side=tk.LEFT, padx=2)
-        self._history_label = ttk.Label(action_frame, text="💬 新对话", font=("微软雅黑", 8))
-        self._history_label.pack(side=tk.RIGHT, padx=5)
-        ttk.Button(action_frame, text="❓ 帮助", command=ctrl.show_help, width=8).pack(side=tk.RIGHT, padx=2)
+        action_frame = tk.Frame(self.chat_right, bg=base["base"])
+        action_frame.pack(fill=tk.X, padx=6, pady=(0, 3))
 
-        self._load_active_conversation()
+        clear_btn = tk.Button(
+            action_frame, text="🗑️ 清空", font=("微软雅黑", 8),
+            bg=base["surface0"], fg=base["overlay0"],
+            activebackground=base["surface1"], activeforeground=base["text"],
+            relief=tk.FLAT, cursor="hand2", padx=8, pady=1,
+            command=self._clear_chat_display,
+        )
+        clear_btn.pack(side=tk.LEFT, padx=(0, 4))
+
+        help_btn = tk.Button(
+            action_frame, text="❓ 帮助", font=("微软雅黑", 8),
+            bg=base["surface0"], fg=base["overlay0"],
+            activebackground=base["surface1"], activeforeground=base["text"],
+            relief=tk.FLAT, cursor="hand2", padx=8, pady=1,
+            command=ctrl.show_help,
+        )
+        help_btn.pack(side=tk.RIGHT, padx=4)
+
+        self._history_label = tk.Label(
+            action_frame, text="💬 新对话", font=("微软雅黑", 8),
+            bg=base["base"], fg=base["overlay0"],
+        )
+        self._history_label.pack(side=tk.RIGHT, padx=8)
+
+    # ─── 对话列表侧边栏 ────────────────────────────────────
 
     def _build_conversation_sidebar(self):
         """构建对话列表侧边栏"""
+        base = CATPPUCCIN
         panel = self.conv_panel
 
-        header = ttk.Frame(panel)
-        header.pack(fill=tk.X, pady=3)
-        ttk.Label(header, text="💬 对话", font=("微软雅黑", 10, "bold"), width=18, anchor="w").pack(side=tk.LEFT, padx=3)
-        ttk.Button(header, text="≡", width=2, command=self._toggle_conv_sidebar).pack(side=tk.RIGHT, padx=3)
+        header = tk.Frame(panel, bg=base["mantle"])
+        header.pack(fill=tk.X, pady=4, padx=4)
+        tk.Label(header, text="💬 对话", font=("微软雅黑", 10, "bold"),
+                 bg=base["mantle"], fg=base["text"], anchor="w").pack(side=tk.LEFT, padx=4)
+        tk.Button(header, text="≡", font=("微软雅黑", 9),
+                  bg=base["mantle"], fg=base["overlay0"],
+                  activebackground=base["surface0"], activeforeground=base["text"],
+                  relief=tk.FLAT, cursor="hand2", padx=4,
+                  command=self._toggle_conv_sidebar).pack(side=tk.RIGHT, padx=4)
 
-        list_frame = ttk.Frame(panel)
-        list_frame.pack(fill=tk.BOTH, expand=True, pady=3)
+        list_frame = tk.Frame(panel, bg=base["mantle"])
+        list_frame.pack(fill=tk.BOTH, expand=True, pady=2, padx=4)
 
         self.conv_listbox = tk.Listbox(
             list_frame, font=("微软雅黑", 9),
-            bg="#313244", fg="#cdd6f4",
-            selectbackground="#45475a",
+            bg=base["crust"], fg=base["text"],
+            selectbackground=base["blue_dim"], selectforeground=base["blue"],
             highlightthickness=0, bd=0,
-            relief=tk.FLAT, activestyle="none"
+            relief=tk.FLAT, activestyle="none",
+            spacing1=4, spacing3=4,
         )
         self.conv_listbox.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
         self.conv_listbox.bind("<<ListboxSelect>>", self._on_conv_selected)
         self.conv_listbox.bind("<Double-Button-1>", lambda e: self._rename_conversation())
         self.conv_listbox.bind("<Button-3>", self._on_conv_right_click)
+        # Hover 效果
+        self.conv_listbox.bind("<Motion>", self._on_conv_hover)
+        self.conv_listbox.bind("<Leave>", self._on_conv_leave)
+        self._hover_idx = -1
 
-        v_scroll = ttk.Scrollbar(list_frame, command=self.conv_listbox.yview)
+        v_scroll = tk.Scrollbar(list_frame, command=self.conv_listbox.yview,
+                                bg=base["surface0"], troughcolor=base["crust"])
         v_scroll.pack(side=tk.RIGHT, fill=tk.Y)
         self.conv_listbox.config(yscrollcommand=v_scroll.set)
 
-        btn_frame = ttk.Frame(panel)
-        btn_frame.pack(fill=tk.X, pady=3)
-        ttk.Button(btn_frame, text="+ 新建", command=self._new_conversation, width=9).pack(side=tk.LEFT, padx=2)
-        ttk.Button(btn_frame, text="🗑", command=self._delete_conversation, width=3).pack(side=tk.RIGHT, padx=2)
+        btn_frame = tk.Frame(panel, bg=base["mantle"])
+        btn_frame.pack(fill=tk.X, pady=4, padx=4)
+        tk.Button(btn_frame, text="+ 新建", font=("微软雅黑", 8),
+                  bg=base["surface0"], fg=base["text"],
+                  activebackground=base["surface1"], activeforeground=base["text"],
+                  relief=tk.FLAT, cursor="hand2", padx=8, pady=2,
+                  command=self._new_conversation).pack(side=tk.LEFT, padx=2)
+        tk.Button(btn_frame, text="🗑", font=("微软雅黑", 8),
+                  bg=base["surface0"], fg=base["overlay0"],
+                  activebackground=base["surface1"], activeforeground=base["text"],
+                  relief=tk.FLAT, cursor="hand2", padx=6, pady=2,
+                  command=self._delete_conversation).pack(side=tk.RIGHT, padx=2)
 
-        # 提示标签
-        tip_label = ttk.Label(panel, text="Ctrl+N 命名新建", font=("微软雅黑", 7), foreground="#666666")
+        tip_label = tk.Label(panel, text="Ctrl+N 命名新建", font=("微软雅黑", 7),
+                             bg=base["mantle"], fg=base["overlay0"])
         tip_label.pack(side=tk.BOTTOM, pady=(0, 4))
 
         self._refresh_conv_listbox()
 
+    def _on_conv_hover(self, event):
+        idx = self.conv_listbox.nearest(event.y)
+        if idx != self._hover_idx:
+            if self._hover_idx >= 0:
+                try:
+                    self.conv_listbox.itemconfig(self._hover_idx, bg=CATPPUCCIN["crust"])
+                except Exception:
+                    pass
+            if idx >= 0:
+                try:
+                    self.conv_listbox.itemconfig(idx, bg=CATPPUCCIN["surface0"])
+                except Exception:
+                    pass
+            self._hover_idx = idx
+
+    def _on_conv_leave(self, event):
+        if self._hover_idx >= 0:
+            try:
+                self.conv_listbox.itemconfig(self._hover_idx, bg=CATPPUCCIN["crust"])
+            except Exception:
+                pass
+            self._hover_idx = -1
+
+    # ─── 气泡式消息渲染 ────────────────────────────────────
+
+    def _render_message(self, who, what, timestamp=""):
+        """在聊天区渲染气泡消息"""
+        base = CATPPUCCIN
+        chat = self.chat
+        chat.config(state=tk.NORMAL)
+
+        ts = timestamp or datetime.now().strftime("%H:%M")
+        is_user = who in ("user", "你", "我")
+        is_system = who in ("系统", "AI管家")
+
+        if is_user:
+            chat.insert(tk.END, f"     {ts}\n", "timestamp")
+            chat.insert(tk.END, f"            👤 你\n", "user_name")
+            parts = self._split_code_blocks(what)
+            for ptype, ptext in parts:
+                if ptype == "code":
+                    chat.insert(tk.END, f"  {ptext.strip()}\n", "code_block")
+                else:
+                    chat.insert(tk.END, f"{ptext}", "user_text")
+            chat.insert(tk.END, "\n")
+        elif is_system:
+            chat.insert(tk.END, f"⚙️ {who}  {ts}\n", "system_name")
+            chat.insert(tk.END, f"  {what}\n", "system_text")
+        else:
+            chat.insert(tk.END, f"{ts}\n", "timestamp")
+            chat.insert(tk.END, f"🤖 AI\n", "ai_name")
+            parts = self._split_code_blocks(what)
+            for ptype, ptext in parts:
+                if ptype == "code":
+                    chat.insert(tk.END, f"  {ptext.strip()}\n", "code_block")
+                else:
+                    chat.insert(tk.END, f"{ptext}", "ai_text")
+            chat.insert(tk.END, "\n")
+
+        chat.insert(tk.END, "  ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─\n", "separator")
+        chat.config(state=tk.DISABLED)
+        chat.see(tk.END)
+
+    def _split_code_blocks(self, text):
+        """将消息拆分为 (type, content) 列表"""
+        pattern = r'(```[\s\S]*?```|`[^`\n]+`)'
+        parts = []
+        last = 0
+        for m in re.finditer(pattern, text):
+            if m.start() > last:
+                parts.append(("text", text[last:m.start()]))
+            code = m.group(0)
+            if code.startswith("```"):
+                lines = code.split("\n")
+                if len(lines) > 2:
+                    code_body = "\n".join(lines[1:-1])
+                elif len(lines) == 2:
+                    code_body = lines[1].rstrip("`")
+                else:
+                    code_body = code[3:].rstrip("`")
+                parts.append(("code", code_body))
+            else:
+                parts.append(("code", code[1:-1]))
+            last = m.end()
+        if last < len(text):
+            parts.append(("text", text[last:]))
+        if not parts:
+            parts.append(("text", text))
+        return parts
+
+    # ─── 对话列表操作 ──────────────────────────────────────
+
     def _refresh_conv_listbox(self):
-        """刷新对话列表"""
         self.conv_listbox.delete(0, tk.END)
         convs = self._conv_mgr.list_conversations()
         for conv in convs:
             title = conv.title or "新对话"
             count = len([m for m in conv.messages if m.get("role") == "user"])
-            display = f"{title} [{count}]"
+            display = f"  {title}  [{count}]"
             self.conv_listbox.insert(tk.END, display)
         active = self._conv_mgr.active_id
         if active:
@@ -190,7 +482,6 @@ class ChatPanel:
                     break
 
     def _on_conv_selected(self, event=None):
-        """切换对话"""
         sel = self.conv_listbox.curselection()
         if not sel:
             return
@@ -204,7 +495,6 @@ class ChatPanel:
             self._refresh_conv_listbox()
 
     def _new_conversation(self):
-        """新建对话"""
         conv = self._conv_mgr.create()
         self._conv_mgr.switch_to(conv.id)
         self._clear_chat_display()
@@ -212,12 +502,11 @@ class ChatPanel:
         self._update_conv_label()
 
     def _new_conversation_named(self):
-        """新建对话 — 带命名对话框"""
         title = simpledialog.askstring(
             "新建对话", "请输入对话名称（留空自动命名）:",
             parent=self.controller.root
         )
-        if title is None:  # 用户点了取消
+        if title is None:
             return
         title = title.strip() or "新对话"
         conv = self._conv_mgr.create(title=title)
@@ -228,7 +517,6 @@ class ChatPanel:
         self.controller.say("系统", f"✅ 新建对话「{title}」")
 
     def _delete_conversation(self):
-        """删除当前对话"""
         active = self._conv_mgr.active_id
         if not active:
             return
@@ -246,7 +534,6 @@ class ChatPanel:
         self._update_conv_label()
 
     def _rename_conversation(self):
-        """重命名对话"""
         active = self._conv_mgr.active_id
         conv = self._conv_mgr.get(active)
         if not conv:
@@ -258,7 +545,6 @@ class ChatPanel:
             self._update_conv_label()
 
     def _toggle_conv_sidebar(self):
-        """折叠/展开对话侧边栏"""
         try:
             x, _ = self.chat_paned.sash_coord(0)
             if x < 10:
@@ -269,7 +555,6 @@ class ChatPanel:
             pass
 
     def _load_active_conversation(self):
-        """加载当前对话的历史到聊天区"""
         self._clear_chat_display()
         conv = self._conv_mgr.active
         if conv and conv.messages:
@@ -277,37 +562,31 @@ class ChatPanel:
                 role = msg.get("role", "user")
                 content = msg.get("content", "")
                 if role == "user":
-                    self.controller.say("你", content)
+                    self._render_message("你", content)
                 elif role == "assistant":
-                    self.controller.say("AI", content)
+                    self._render_message("AI", content)
         self._update_conv_label()
 
     def _update_conv_label(self):
-        """更新对话标签"""
         conv = self._conv_mgr.active
         if conv:
-            self._history_label.config(text=f"💬 {conv.title[:15]}")
+            base = CATPPUCCIN
+            self._history_label.config(text=f"💬 {conv.title[:15]}", fg=base["overlay0"])
 
     def _clear_chat_display(self):
-        """清空聊天显示(保留对话管理器中的数据)"""
         self.chat.config(state=tk.NORMAL)
         self.chat.delete(1.0, tk.END)
         self.chat.config(state=tk.DISABLED)
 
     def _get_active_conversation(self):
-        """获取当前对话"""
         return self._conv_mgr.active
 
     def say(self, who, what):
-        """面板内消息显示 - 委托给 controller.say"""
         self.controller.say(who, what)
 
-    def _classify_task(self, msg: str):
-        """分析任务复杂度,推荐最优模型/超时/路由
+    # ─── 任务分类 ──────────────────────────────────────────
 
-        Returns:
-            dict: {type, complexity, model, timeout, reasoning}
-        """
+    def _classify_task(self, msg: str):
         msg_lower = msg.lower()
         result = {
             'type': 'chat', 'complexity': 'simple',
@@ -366,15 +645,17 @@ class ChatPanel:
 
         return result
 
+    # ─── 发送消息 ──────────────────────────────────────────
+
     def send_msg(self, event=None):
-        """发送消息 - 主入口(日常对话直达 DeepSeek,复杂任务走 Hermes)"""
+        """发送消息 - 主入口"""
         try:
-            msg = self.input_text.get().strip()
+            msg = self.input_text.get("1.0", tk.END).strip()
             if not msg:
                 return
 
-            self.input_text.delete(0, tk.END)
-            self.controller.say("你", msg)
+            self.input_text.delete("1.0", tk.END)
+            self._render_message("你", msg)
 
             conv = self._get_active_conversation()
 
@@ -383,7 +664,7 @@ class ChatPanel:
                 if cmd == 'clear' or cmd == 'cls':
                     self._conv_mgr.clear_conversation(conv.id)
                     self._clear_chat_display()
-                    self.controller.say("系统", "✅ 对话历史已清空")
+                    self._render_message("系统", "✅ 对话历史已清空")
                 elif cmd in ('hermes', 'h'):
                     self.launch_hermes_task(msg)
                 elif cmd == 'history':
@@ -391,10 +672,9 @@ class ChatPanel:
                 elif cmd == 'new':
                     self._new_conversation()
                 else:
-                    self.controller.say("系统", f"未知命令: /{cmd}")
+                    self._render_message("系统", f"未知命令: /{cmd}")
                 return
 
-            # 命令拦截：在送AI前先用CommandHandler正则匹配
             cmd_handler = getattr(self.controller, 'command_handler', None)
             if cmd_handler:
                 quick = cmd_handler.quick_parse_command(msg)
@@ -418,7 +698,7 @@ class ChatPanel:
             self.controller.say("系统", f"❌ 发送消息时发生错误:{str(e)}")
 
     def _chat_with_deepseek(self, msg: str, conv):
-        """使用 DeepSeek API 直连进行对话 - 轻量快速,不走 Hermes/WSL"""
+        """使用 DeepSeek API 直连进行对话"""
         from services.deepseek_client import get_deepseek_client
 
         ctrl = self.controller
@@ -426,7 +706,7 @@ class ChatPanel:
         sm = self._get_streaming_manager()
 
         if not sm.can_start():
-            ctrl.say("系统", "⏳ 正在处理中,请稍候...")
+            self._render_message("系统", "⏳ 正在处理中,请稍候...")
             return
 
         model_id = self._current_model_id()
@@ -482,16 +762,12 @@ class ChatPanel:
                 ctrl.root.after(300, _check_done)
             elif result_holder[0]:
                 reply = result_holder[0]
-                # 扫描 AI 回复中的 [CMD:action] 标记，就地执行
-                import re
                 cmd_markers = re.findall(r'\[CMD:(\w+)(?::([^\]]*))?\]', reply)
                 if cmd_markers:
-                    # 从显示文本中移除 CMD 标记
                     clean_reply = re.sub(r'\s*\[CMD:[^\]]+\]', '', reply).strip()
                     if clean_reply:
                         conv.add_message("assistant", clean_reply)
                         self._refresh_conv_listbox()
-                    # 逐个执行命令
                     cmd_handler = getattr(self.controller, 'command_handler', None)
                     for action, params_str in cmd_markers:
                         params = {}
@@ -509,7 +785,6 @@ class ChatPanel:
         ctrl.root.after(500, _check_done)
 
     def _current_model_id(self) -> str:
-        """从 UI 下拉框获取当前模型 ID"""
         display = self.model_var.get()
         MODEL_TABLE = {
             "DeepSeek V4 Flash · 快速": "ds-v4-flash",
@@ -528,7 +803,7 @@ class ChatPanel:
         sm = self._get_streaming_manager()
 
         if not sm.can_start():
-            ctrl.say("系统", "⏳ Hermes 正在处理上一轮对话,请稍候...")
+            self._render_message("系统", "⏳ Hermes 正在处理上一轮对话,请稍候...")
             return
 
         if task_info is None:
@@ -575,7 +850,6 @@ class ChatPanel:
         )
 
     def _show_conversation_history(self):
-        """显示对话历史摘要"""
         try:
             from services.agent_service import get_agent_service
             ctrl = self.controller
@@ -584,7 +858,7 @@ class ChatPanel:
             turns = agent.history_turns
 
             if not history:
-                ctrl.say("系统", "📜 对话历史为空")
+                self._render_message("系统", "📜 对话历史为空")
                 return
 
             summary = f"📜 对话历史 ({turns} 轮)\n" + "─" * 40 + "\n"
@@ -592,12 +866,11 @@ class ChatPanel:
                 role = "👤" if msg["role"] == "user" else "🤖"
                 content = msg["content"][:80] + ("..." if len(msg["content"]) > 80 else "")
                 summary += f"{i+1}. {role} {content}\n"
-            ctrl.say("系统", summary)
+            self._render_message("系统", summary)
         except Exception as e:
-            ctrl.say("系统", f"❌ 获取历史失败: {e}")
+            self._render_message("系统", f"❌ 获取历史失败: {e}")
 
     def _get_streaming_manager(self):
-        """懒加载 StreamingManager 单例"""
         if self._streaming_manager is None:
             from services.streaming_manager import StreamingManager
             ctrl = self.controller
@@ -613,26 +886,23 @@ class ChatPanel:
         return self._streaming_manager
 
     def _on_stream_complete(self):
-        """流式完成回调 - 更新对话历史状态"""
         self._update_history_status()
 
     def _cancel_stream(self):
-        """用户点击停止按钮"""
         if self._streaming_manager:
             self._streaming_manager.cancel()
 
     def _show_cancel_button(self):
-        """显示取消按钮，隐藏发送按钮"""
+        base = CATPPUCCIN
         self.send_btn.pack_forget()
-        self.cancel_btn.pack(side=tk.RIGHT, ipady=3, padx=(4, 0))
+        self.cancel_btn.pack(pady=(0, 2))
 
     def _hide_cancel_button(self):
-        """隐藏取消按钮，恢复发送按钮"""
+        base = CATPPUCCIN
         self.cancel_btn.pack_forget()
-        self.send_btn.pack(side=tk.RIGHT, ipady=3)
+        self.send_btn.pack(pady=(0, 2))
 
     def _update_history_status(self):
-        """更新对话历史状态显示"""
         if not hasattr(self, '_history_label'):
             return
         try:
@@ -640,12 +910,17 @@ class ChatPanel:
             ctrl = self.controller
             agent = get_agent_service(ctrl.config_manager)
             turns = agent.history_turns
-            self._history_label.config(text=f"💬 {turns}轮" if turns > 0 else "💬 新对话")
+            base = CATPPUCCIN
+            self._history_label.config(
+                text=f"💬 {turns}轮" if turns > 0 else "💬 新对话",
+                fg=base["overlay0"]
+            )
         except Exception:
             pass
 
+    # ─── 引擎控制 ──────────────────────────────────────────
+
     def _toggle_hermes_switch(self):
-        """Hermes 开关按钮点击处理"""
         ctrl = self.controller
         hermes_available = ctrl.hermes_bridge.available or (
             ctrl._agent_service and ctrl._agent_service.get_status().get("hermes")
@@ -668,18 +943,21 @@ class ChatPanel:
         logger.info(f"Hermes 切换为: {'启用' if ctrl.use_hermes else '禁用'}")
 
     def _update_hermes_toggle_ui(self):
-        """更新 Hermes 开关按钮的显示状态"""
+        base = CATPPUCCIN
         if self.controller.use_hermes:
-            self.hermes_toggle_btn.configure(text="🟢 Hermes: 开", bootstyle="success")
+            self.hermes_toggle_btn.config(
+                text="🟢 Hermes: 开", bg=base["green_dim"], fg=base["green"]
+            )
             self.model_combo.config(state="readonly")
-            self.auto_switch_btn.configure(state="normal", bootstyle="success")
+            self.auto_switch_btn.config(state=tk.NORMAL, bg=base["green_dim"], fg=base["green"])
         else:
-            self.hermes_toggle_btn.configure(text="⚪ Hermes: 关", bootstyle="secondary")
+            self.hermes_toggle_btn.config(
+                text="⚪ Hermes: 关", bg=base["surface0"], fg=base["overlay0"]
+            )
             self.model_combo.config(state="disabled")
-            self.auto_switch_btn.configure(state="disabled", bootstyle="secondary")
+            self.auto_switch_btn.config(state=tk.DISABLED, bg=base["surface0"], fg=base["overlay0"])
 
     def _on_model_selected(self, event=None):
-        """模型下拉框切换事件"""
         display_name = self.model_var.get()
         model_id = self.MODEL_DISPLAY_MAP.get(display_name)
         if not model_id:
@@ -700,23 +978,23 @@ class ChatPanel:
                 ctrl.say("系统", f"❌ 模型切换失败: {e}")
 
     def _toggle_auto_switch(self):
-        """切换自动模型选择"""
         try:
             from services.model_switcher import get_model_switcher
             switcher = get_model_switcher()
             is_auto = switcher.toggle_auto_switch()
             self.auto_switch_var.set(is_auto)
             ctrl = self.controller
+            base = CATPPUCCIN
 
             if is_auto:
                 self.auto_switch_btn.configure(
-                    text="🔄 自动", bootstyle="success"
+                    text="🔄 自动", bg=base["green_dim"], fg=base["green"]
                 )
                 self.model_combo.config(state="disabled")
                 ctrl.say("系统", "🔄 自动模型选择已开启 - 根据任务复杂度自动匹配最优模型")
             else:
                 self.auto_switch_btn.configure(
-                    text="🔒 手动", bootstyle="warning"
+                    text="🔒 手动", bg=base["surface0"], fg=base["yellow"]
                 )
                 if ctrl.use_hermes:
                     self.model_combo.config(state="readonly")
@@ -725,7 +1003,6 @@ class ChatPanel:
             ctrl.say("系统", f"❌ 切换失败: {e}")
 
     def _update_model_display(self):
-        """更新模型相关UI显示"""
         try:
             from services.model_switcher import get_model_switcher
             switcher = get_model_switcher()
@@ -735,12 +1012,13 @@ class ChatPanel:
                     self.MODEL_ID_TO_DISPLAY.get(current.id, current.name)
                 )
                 self.auto_switch_var.set(switcher.auto_switch_enabled)
+                base = CATPPUCCIN
 
                 if switcher.auto_switch_enabled:
-                    self.auto_switch_btn.configure(text="🔄 自动", bootstyle="success")
+                    self.auto_switch_btn.configure(text="🔄 自动", bg=base["green_dim"], fg=base["green"])
                     self.model_combo.config(state="disabled")
                 else:
-                    self.auto_switch_btn.configure(text="🔒 手动", bootstyle="warning")
+                    self.auto_switch_btn.configure(text="🔒 手动", bg=base["surface0"], fg=base["yellow"])
 
                 models = [
                     self.MODEL_ID_TO_DISPLAY.get(m.id, m.name)
@@ -751,28 +1029,27 @@ class ChatPanel:
             pass
 
     def launch_hermes_task(self, task=None):
-        """向 Hermes 发送任务 - 使用 StreamingManager"""
         ctrl = self.controller
         if task is None:
-            task = self.input_text.get().strip()
+            task = self.input_text.get("1.0", tk.END).strip()
 
         if not task:
-            ctrl.say("系统", "⚠️ 请先在输入框中输入任务内容")
+            self._render_message("系统", "⚠️ 请先在输入框中输入任务内容")
             return
 
-        self.input_text.delete(0, tk.END)
-        ctrl.say("你", task)
+        self.input_text.delete("1.0", tk.END)
+        self._render_message("你", task)
 
         agent_svc = ctrl.agent_service
         agent_hermes_ok = agent_svc and agent_svc.ensure_ready() and agent_svc.get_preferred_backend() == "hermes"
         if not agent_hermes_ok and not ctrl.hermes_bridge.available:
-            ctrl.say("系统", "❌ Hermes 不可用,请检查 WSL 和 Hermes 安装")
+            self._render_message("系统", "❌ Hermes 不可用,请检查 WSL 和 Hermes 安装")
             return
 
         sm = self._get_streaming_manager()
 
         if not sm.can_start():
-            ctrl.say("系统", "⏳ Hermes 正在处理上一轮对话,请稍候...")
+            self._render_message("系统", "⏳ Hermes 正在处理上一轮对话,请稍候...")
             return
 
         if self.auto_switch_var.get():
@@ -818,21 +1095,20 @@ class ChatPanel:
         )
 
     def clear_chat(self):
-        """清空聊天显示"""
         self.chat.config(state=tk.NORMAL)
         self.chat.delete(1.0, tk.END)
         self.chat.config(state=tk.DISABLED)
 
     def _on_conv_right_click(self, event):
-        """对话列表右键菜单"""
         idx = self.conv_listbox.nearest(event.y)
         if idx < 0:
             return
         self.conv_listbox.selection_clear(0, tk.END)
         self.conv_listbox.selection_set(idx)
+        base = CATPPUCCIN
         menu = tk.Menu(self.conv_panel, tearoff=0,
-                        bg="#313244", fg="#cdd6f4",
-                        activebackground="#45475a", activeforeground="#f5e0dc")
+                        bg=base["surface0"], fg=base["text"],
+                        activebackground=base["surface1"], activeforeground=base["text"])
         menu.add_command(label="✏️ 重命名", command=self._rename_conversation)
         menu.add_command(label="🗑️ 删除", command=self._delete_conversation_dialog)
         menu.add_separator()
@@ -840,7 +1116,6 @@ class ChatPanel:
         menu.post(event.x_root, event.y_root)
 
     def _delete_conversation_dialog(self):
-        """删除对话确认对话框"""
         sel = self.conv_listbox.curselection()
         if not sel:
             return
@@ -848,7 +1123,6 @@ class ChatPanel:
             self._delete_selected_conversation(sel[0])
 
     def _delete_selected_conversation(self, idx):
-        """删除列表索引处的对话"""
         try:
             convs = self._conv_mgr.list_conversations()
             if idx >= len(convs):
@@ -862,7 +1136,6 @@ class ChatPanel:
         self.controller.show_toast("对话已删除")
 
     def _export_conversation(self):
-        """导出对话为文本文件"""
         sel = self.conv_listbox.curselection()
         if not sel:
             return
@@ -883,7 +1156,7 @@ class ChatPanel:
             return
         lines = []
         for turn in conv.messages:
-            lines.append(f"## {turn["role"].upper()}")
+            lines.append(f"## {turn['role'].upper()}")
             lines.append(turn["content"])
             lines.append("")
         with open(path, 'w', encoding='utf-8') as f:
